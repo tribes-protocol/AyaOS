@@ -11,15 +11,15 @@ export interface IAyaAgent {
   readonly wallet: IWalletService
   start(): Promise<void>
 
-  on(event: 'llm:pre', handler: ContextHandler): void
-  on(event: 'llm:post', handler: ContextHandler): void
-  on(event: 'tool:pre', handler: ContextHandler): void
-  on(event: 'tool:post', handler: ContextHandler): void
+  on(event: 'pre:llm', handler: ContextHandler): void
+  on(event: 'post:llm', handler: ContextHandler): void
+  on(event: 'pre:tool', handler: ContextHandler): void
+  on(event: 'post:tool', handler: ContextHandler): void
 
-  off(event: 'llm:pre', handler: ContextHandler): void
-  off(event: 'llm:post', handler: ContextHandler): void
-  off(event: 'tool:pre', handler: ContextHandler): void
-  off(event: 'tool:post', handler: ContextHandler): void
+  off(event: 'pre:llm', handler: ContextHandler): void
+  off(event: 'post:llm', handler: ContextHandler): void
+  off(event: 'pre:tool', handler: ContextHandler): void
+  off(event: 'post:tool', handler: ContextHandler): void
 
   register(kind: 'service', handler: Service): void
   register(kind: 'provider', handler: Provider): void

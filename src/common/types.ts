@@ -342,7 +342,7 @@ export interface Context {
 
 export type ContextHandler = (context: Context) => Promise<boolean>
 
-export type SdkEventKind = 'llm:pre' | 'llm:post' | 'tool:pre' | 'tool:post'
+export type SdkEventKind = 'pre:llm' | 'post:llm' | 'pre:tool' | 'post:tool'
 
 export enum ServiceKind {
   wallet = 'wallet-service',

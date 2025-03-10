@@ -1172,14 +1172,14 @@ export class MessageManager {
             telegramMessageHandlerTemplate
         })
 
-        let shouldContinue = await this.runtime.handle('llm:pre', {
+        let shouldContinue = await this.runtime.handle('pre:llm', {
           state,
           responses: [],
           memory
         })
 
         if (!shouldContinue) {
-          elizaLogger.info('TelegramMessageManager received llm:pre event but it was suppressed')
+          elizaLogger.info('TelegramMessageManager received pre:llm event but it was suppressed')
           return
         }
 
@@ -1190,7 +1190,7 @@ export class MessageManager {
         // Execute callback to send messages and log memories
         const messageResponses = await callback(responseContent)
 
-        shouldContinue = await this.runtime.handle('llm:post', {
+        shouldContinue = await this.runtime.handle('post:llm', {
           state,
           responses: [],
           memory,
@@ -1198,7 +1198,7 @@ export class MessageManager {
         })
 
         if (!shouldContinue) {
-          elizaLogger.info('TelegramMessageManager received llm:post event but it was suppressed')
+          elizaLogger.info('TelegramMessageManager received post:llm event but it was suppressed')
           return
         }
 
@@ -1210,20 +1210,20 @@ export class MessageManager {
         }
 
         // `preaction` event
-        shouldContinue = await this.runtime.handle('tool:pre', {
+        shouldContinue = await this.runtime.handle('pre:tool', {
           state,
           responses: messageResponses,
           memory
         })
 
         if (!shouldContinue) {
-          elizaLogger.info('TelegramMessageManager received tool:pre event but it was suppressed')
+          elizaLogger.info('TelegramMessageManager received pre:tool event but it was suppressed')
           return
         }
 
         // Handle any resulting actions
         await this.runtime.processActions(memory, messageResponses, state, async (newMessage) => {
-          shouldContinue = await this.runtime.handle('tool:post', {
+          shouldContinue = await this.runtime.handle('post:tool', {
             state,
             responses: messageResponses,
             memory,
@@ -1232,7 +1232,7 @@ export class MessageManager {
 
           if (!shouldContinue) {
             elizaLogger.info(
-              'TelegramMessageManager received tool:post event but it was suppressed'
+              'TelegramMessageManager received post:tool event but it was suppressed'
             )
             return
           }

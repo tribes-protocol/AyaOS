@@ -324,7 +324,7 @@ export class AgentcoinClient {
     })
 
     // `prellm` event
-    let shouldContinue = await this.runtime.handle('llm:pre', {
+    let shouldContinue = await this.runtime.handle('pre:llm', {
       state,
       responses: [],
       memory
@@ -345,7 +345,7 @@ export class AgentcoinClient {
     })
 
     // `postllm` event
-    shouldContinue = await this.runtime.handle('llm:post', {
+    shouldContinue = await this.runtime.handle('post:llm', {
       state,
       responses: [],
       memory,
@@ -391,7 +391,7 @@ export class AgentcoinClient {
     }
 
     // `preaction` event
-    shouldContinue = await this.runtime.handle('tool:pre', {
+    shouldContinue = await this.runtime.handle('pre:tool', {
       state,
       responses: messageResponses,
       memory
@@ -406,7 +406,7 @@ export class AgentcoinClient {
     await this.runtime.processActions(memory, messageResponses, state, async (newMessage) => {
       try {
         // `postaction` event
-        shouldContinue = await this.runtime.handle('tool:post', {
+        shouldContinue = await this.runtime.handle('post:tool', {
           state,
           responses: messageResponses,
           memory,

@@ -251,23 +251,23 @@ export class Agent implements IAyaAgent {
     }
   }
 
-  on(event: 'llm:pre', handler: ContextHandler): void
-  on(event: 'llm:post', handler: ContextHandler): void
-  on(event: 'tool:pre', handler: ContextHandler): void
-  on(event: 'tool:post', handler: ContextHandler): void
+  on(event: 'pre:llm', handler: ContextHandler): void
+  on(event: 'post:llm', handler: ContextHandler): void
+  on(event: 'pre:tool', handler: ContextHandler): void
+  on(event: 'post:tool', handler: ContextHandler): void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   on(event: string, handler: any): void {
     switch (event) {
-      case 'llm:pre':
+      case 'pre:llm':
         this.preLLMHandlers.push(handler)
         break
-      case 'llm:post':
+      case 'post:llm':
         this.postLLMHandlers.push(handler)
         break
-      case 'tool:pre':
+      case 'pre:tool':
         this.preActionHandlers.push(handler)
         break
-      case 'tool:post':
+      case 'post:tool':
         this.postActionHandlers.push(handler)
         break
       default:
@@ -275,23 +275,23 @@ export class Agent implements IAyaAgent {
     }
   }
 
-  off(event: 'llm:pre', handler: ContextHandler): void
-  off(event: 'llm:post', handler: ContextHandler): void
-  off(event: 'tool:pre', handler: ContextHandler): void
-  off(event: 'tool:post', handler: ContextHandler): void
+  off(event: 'pre:llm', handler: ContextHandler): void
+  off(event: 'post:llm', handler: ContextHandler): void
+  off(event: 'pre:tool', handler: ContextHandler): void
+  off(event: 'post:tool', handler: ContextHandler): void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   off(event: string, handler: any): void {
     switch (event) {
-      case 'llm:pre':
+      case 'pre:llm':
         this.preLLMHandlers = this.preLLMHandlers.filter((h) => h !== handler)
         break
-      case 'llm:post':
+      case 'post:llm':
         this.postLLMHandlers = this.postLLMHandlers.filter((h) => h !== handler)
         break
-      case 'tool:pre':
+      case 'pre:tool':
         this.preActionHandlers = this.preActionHandlers.filter((h) => h !== handler)
         break
-      case 'tool:post':
+      case 'post:tool':
         this.postActionHandlers = this.postActionHandlers.filter((h) => h !== handler)
         break
       default:
@@ -301,7 +301,7 @@ export class Agent implements IAyaAgent {
 
   private async handle(event: SdkEventKind, params: Context): Promise<boolean> {
     switch (event) {
-      case 'llm:pre': {
+      case 'pre:llm': {
         for (const handler of this.preLLMHandlers) {
           const shouldContinue = await handler(params)
           if (!shouldContinue) return false
@@ -309,7 +309,7 @@ export class Agent implements IAyaAgent {
         break
       }
 
-      case 'llm:post': {
+      case 'post:llm': {
         for (const handler of this.postLLMHandlers) {
           const shouldContinue = await handler(params)
           if (!shouldContinue) return false
@@ -317,7 +317,7 @@ export class Agent implements IAyaAgent {
         break
       }
 
-      case 'tool:pre': {
+      case 'pre:tool': {
         for (const handler of this.preActionHandlers) {
           const shouldContinue = await handler(params)
           if (!shouldContinue) return false
@@ -325,7 +325,7 @@ export class Agent implements IAyaAgent {
         break
       }
 
-      case 'tool:post': {
+      case 'post:tool': {
         for (const handler of this.postActionHandlers) {
           const shouldContinue = await handler(params)
           if (!shouldContinue) return false

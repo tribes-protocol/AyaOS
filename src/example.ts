@@ -7,17 +7,17 @@ async function main(): Promise<void> {
     console.log('hello, agent!')
     const agent = new Agent()
     console.log('agent created')
-    agent.on('llm:pre', async (context) => {
-      console.log('llm:pre', context.memory?.content)
+    agent.on('pre:llm', async (context) => {
+      console.log('pre:llm', context.memory?.content)
       return true
     })
-    console.log('llm:pre registered')
+    console.log('pre:llm registered')
 
-    agent.on('llm:post', async (context) => {
-      console.log('llm:post', context.memory?.content)
+    agent.on('post:llm', async (context) => {
+      console.log('post:llm', context.memory?.content)
       return true
     })
-    console.log('llm:post registered')
+    console.log('post:llm registered')
 
     agent.register('tool', tipForJokeAction)
 
