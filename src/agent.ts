@@ -24,6 +24,7 @@ import {
   Plugin,
   Provider,
   Service,
+  stringToUuid,
   UUID,
   type Character
 } from '@elizaos/core'
@@ -102,9 +103,11 @@ export class Agent implements IAyaAgent {
         fs.promises.readFile(CHARACTER_FILE, 'utf8')
       ])
 
+      const agentId = stringToUuid(await agentcoinService.getIdentity())
+
       const character: Character = JSON.parse(charString)
       const token = getTokenForProvider(character.modelProvider, character)
-      const cache = new CacheManager(new DbCacheAdapter(db, character.id))
+      const cache = new CacheManager(new DbCacheAdapter(db, agentId))
 
       elizaLogger.info(elizaLogger.successesTitle, 'Creating runtime for character', character.name)
 

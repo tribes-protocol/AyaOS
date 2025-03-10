@@ -118,8 +118,7 @@ export class FarcasterClient {
       this.cache.set(`farcaster/cast/${castHash}`, cast)
 
       return cast
-    } catch (err) {
-      elizaLogger.error('Error fetching cast', err)
+    } catch {
       return undefined
     }
   }
