@@ -14,10 +14,10 @@ const conversationProvider: Provider = {
       `
     }
 
-    // source != 'agentcoin', bail out
-    if (memory.content.source !== 'agentcoin') {
-      return ''
-    }
+    // // source != 'agentcoin', bail out
+    // if (memory.content.source !== 'agentcoin') {
+    //   return ''
+    // }
 
     const account = await runtime.databaseAdapter.getAccountById(memory.userId)
 

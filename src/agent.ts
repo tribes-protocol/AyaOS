@@ -9,7 +9,7 @@ import agentcoinPlugin from '@/plugins/agentcoin'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
 import { EventService } from '@/services/event'
-import { IKnowledgeBaseService, IMemoriesService } from '@/services/interfaces'
+import { IKnowledgeBaseService, IMemoriesService, IWalletService } from '@/services/interfaces'
 import { KeychainService } from '@/services/keychain'
 import { KnowledgeBaseService } from '@/services/knowledge-base'
 import { MemoriesService } from '@/services/memories'
@@ -30,6 +30,7 @@ import { bootstrapPlugin } from '@elizaos/plugin-bootstrap'
 import { createNodePlugin } from '@elizaos/plugin-node'
 import fs from 'fs'
 import { PathManager } from '@/services/paths'
+import { ensureUUID } from '@/common/functions'
 
 export class Agent implements IAyaAgent {
   private preLLMHandlers: ContextHandler[] = []
@@ -61,6 +62,10 @@ export class Agent implements IAyaAgent {
 
   get memories(): IMemoriesService {
     return this.runtime.getService(MemoriesService)
+  }
+
+  get wallet(): IWalletService {
+    return this.runtime.getService(WalletService)
   }
 
   constructor(baseDir?: string) {
@@ -101,7 +106,11 @@ export class Agent implements IAyaAgent {
         fs.promises.readFile(this.pathManager.CHARACTER_FILE, 'utf8')
       ])
 
+      const agentId = ensureUUID((await agentcoinService.getIdentity()).substring(6))
+
       const character: Character = JSON.parse(charString)
+      character.id = agentId
+
       const token = getTokenForProvider(character.modelProvider, character)
       const cache = new CacheManager(new DbCacheAdapter(db, character.id))
 
@@ -119,7 +128,8 @@ export class Agent implements IAyaAgent {
           actions: [...this.tools],
           services: [agentcoinService, walletService, configService, ...this.services],
           managers: [],
-          cacheManager: cache
+          cacheManager: cache,
+          agentId: character.id
         },
         pathManager: this.pathManager
       })

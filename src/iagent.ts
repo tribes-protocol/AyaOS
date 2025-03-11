@@ -1,6 +1,6 @@
 import { AgentcoinRuntime } from '@/common/runtime'
 import { ContextHandler, Tool } from '@/common/types'
-import { IKnowledgeBaseService, IMemoriesService } from '@/services/interfaces'
+import { IKnowledgeBaseService, IMemoriesService, IWalletService } from '@/services/interfaces'
 import { Plugin, Provider, Service, UUID } from '@elizaos/core'
 
 export interface IAyaAgent {
@@ -8,7 +8,7 @@ export interface IAyaAgent {
   readonly runtime: AgentcoinRuntime
   readonly knowledge: IKnowledgeBaseService
   readonly memories: IMemoriesService
-
+  readonly wallet: IWalletService
   start(): Promise<void>
 
   on(event: 'llm:pre', handler: ContextHandler): void

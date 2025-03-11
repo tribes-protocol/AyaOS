@@ -11,6 +11,7 @@ import express from 'express'
 import fs from 'fs'
 import net from 'net'
 import simpleGit from 'simple-git'
+import { AGENTCOIN_MONITORING_ENABLED } from '@/common/constants'
 
 export class ConfigService extends Service implements IConfigService {
   private readonly operationQueue = new OperationQueue(1)
@@ -40,6 +41,11 @@ export class ConfigService extends Service implements IConfigService {
     // disable in dev mode
     if (process.env.NODE_ENV !== 'production') {
       elizaLogger.info('Config service disabled in dev mode')
+      return
+    }
+
+    if (!AGENTCOIN_MONITORING_ENABLED) {
+      elizaLogger.info('Agentcoin monitoring disabled')
       return
     }
 

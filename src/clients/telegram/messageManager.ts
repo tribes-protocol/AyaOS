@@ -541,7 +541,7 @@ export class MessageManager {
     try {
       let imageUrl: string | null = null
 
-      elizaLogger.info(`Telegram Message: ${message}`)
+      elizaLogger.info(`Telegram Message: ${JSON.stringify(message)}`)
 
       if ('photo' in message && message.photo?.length > 0) {
         const photo = message.photo[message.photo.length - 1]
@@ -573,7 +573,10 @@ export class MessageManager {
     }
 
     // Respond if bot is mentioned
-    if ('text' in message && message.text?.includes(`@${this.bot.botInfo?.username}`)) {
+    if (
+      'text' in message &&
+      message.text?.toLowerCase().includes(`@${this.bot.botInfo?.username.toLowerCase()}`)
+    ) {
       elizaLogger.info(`Bot mentioned`)
       return true
     }
@@ -896,7 +899,6 @@ export class MessageManager {
       return // Exit if no message or sender info
     }
 
-    await ctx.telegram.sendChatAction(ctx.chat.id, 'typing')
     this.lastChannelActivity[ctx.chat.id.toString()] = Date.now()
 
     // Check for pinned message and route to monitor function
@@ -1105,11 +1107,12 @@ export class MessageManager {
         roomId,
         content,
         createdAt: message.date * 1000,
+        embedding: getEmbeddingZeroVector(),
         unique: true
       }
 
       // Create memory
-      await this.runtime.messageManager.addEmbeddingToMemory(memory)
+      // await this.runtime.messageManager.addEmbeddingToMemory(memory)
       await this.runtime.messageManager.createMemory(memory)
 
       // Update state with the new memory
@@ -1148,7 +1151,7 @@ export class MessageManager {
             // For the last message, use the original action from the response content
             memory.content.action = !isLastMessage ? 'CONTINUE' : content.action
 
-            await this.runtime.messageManager.addEmbeddingToMemory(memory)
+            // await this.runtime.messageManager.addEmbeddingToMemory(memory)
             await this.runtime.messageManager.createMemory(memory)
             memories.push(memory)
           }
@@ -1158,6 +1161,8 @@ export class MessageManager {
       }
 
       if (shouldRespond) {
+        await ctx.telegram.sendChatAction(ctx.chat.id, 'typing')
+
         // Generate response
         const context = composeContext({
           state,

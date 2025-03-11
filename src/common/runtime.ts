@@ -206,4 +206,31 @@ export class AgentcoinRuntime extends AgentRuntime {
 
     return state
   }
+
+  async registerService(service: Service): Promise<void> {
+    const serviceType = service.serviceType
+    elizaLogger.log(`${this.character.name}(${this.agentId}) - Registering service:`, serviceType)
+
+    if (this.services.has(serviceType)) {
+      elizaLogger.warn(
+        `${this.character.name}(${this.agentId}) - Service ${serviceType}` +
+          ` is already registered. Skipping registration.`
+      )
+      return
+    }
+
+    try {
+      await service.initialize(this)
+      this.services.set(serviceType, service)
+      elizaLogger.success(
+        `${this.character.name}(${this.agentId}) - Service ${serviceType} initialized successfully`
+      )
+    } catch (error) {
+      elizaLogger.error(
+        `${this.character.name}(${this.agentId}) - Failed to initialize service ${serviceType}:`,
+        error
+      )
+      throw error
+    }
+  }
 }

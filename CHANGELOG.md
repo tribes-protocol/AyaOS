@@ -1,5 +1,47 @@
 # @tribesxyz/ayaos
 
+## 0.0.19
+
+### Patch Changes
+
+- 35b8dcf: fix list on kb service
+
+## 0.0.18
+
+### Patch Changes
+
+- 79e98bd: add index to knowledge base
+
+## 0.0.17
+
+### Patch Changes
+
+- 38e13f1: disable embeddings in messages
+
+## 0.0.16
+
+### Patch Changes
+
+- c76081d: up the match threshold for embeddings
+
+## 0.0.15
+
+### Patch Changes
+
+- 3a4ccd9: fix typing status in tg + fix farcaster posting frequency
+
+## 0.0.14
+
+### Patch Changes
+
+- 6d8a198: fix send message
+
+## 0.0.13
+
+### Patch Changes
+
+- 8590038: send attachment
+
 ## 0.0.12
 
 ### Patch Changes

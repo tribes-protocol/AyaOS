@@ -31,6 +31,7 @@ import { ConfigService } from '@/services/config'
 import {
   Client,
   composeContext,
+  Content,
   elizaLogger,
   generateMessageResponse,
   IAgentRuntime,
@@ -40,6 +41,7 @@ import {
   UUID
 } from '@elizaos/core'
 import { io, Socket } from 'socket.io-client'
+import { AGENTCOIN_MONITORING_ENABLED } from '@/common/constants'
 
 function messageIdToUuid(messageId: number): UUID {
   return stringToUuid('agentcoin:' + messageId.toString())
@@ -147,24 +149,26 @@ export class AgentcoinClient {
     })
 
     // listen on admin commands
-    this.socket.on(`admin:${identity}`, async (payload: string) => {
-      try {
-        const jsonObj = JSON.parse(payload)
-        const { content, signature } = jsonObj
-        if (!isRequiredString(content) || !isRequiredString(signature)) {
-          throw new Error('Invalid payload')
-        }
+    if (AGENTCOIN_MONITORING_ENABLED) {
+      this.socket.on(`admin:${identity}`, async (payload: string) => {
+        try {
+          const jsonObj = JSON.parse(payload)
+          const { content, signature } = jsonObj
+          if (!isRequiredString(content) || !isRequiredString(signature)) {
+            throw new Error('Invalid payload')
+          }
 
-        if (!isValidSignature(content, AGENT_ADMIN_PUBLIC_KEY, signature)) {
-          throw new Error('Invalid signature')
-        }
+          if (!isValidSignature(content, AGENT_ADMIN_PUBLIC_KEY, signature)) {
+            throw new Error('Invalid signature')
+          }
 
-        const command = SentinelCommandSchema.parse(JSON.parse(content))
-        await this.handleAdminCommand(command)
-      } catch (e) {
-        console.error('Error handling admin command:', e, payload)
-      }
-    })
+          const command = SentinelCommandSchema.parse(JSON.parse(content))
+          await this.handleAdminCommand(command)
+        } catch (e) {
+          console.error('Error handling admin command:', e, payload)
+        }
+      })
+    }
   }
 
   private async handleAdminCommand(command: SentinelCommand): Promise<void> {
@@ -214,19 +218,21 @@ export class AgentcoinClient {
 
   private async sendMessageAsAgent({
     identity,
-    text,
-    action,
-    channel,
-    inReplyTo
+    content,
+    channel
   }: {
     identity: Identity
-    text: string
-    action?: string
+    content: Content
     channel: ChatChannel
-    inReplyTo?: UUID
   }): Promise<Memory> {
+    const { text, action, inReplyTo, attachments } = content
+
+    // FIXME: hish - need to update code to handle multiple attachments
+    const firstAttachment = attachments?.[0]
+    const imageUrl = firstAttachment?.url
+
     const agentcoinResponse = await this.agentcoinService.sendMessage({
-      text,
+      text: imageUrl ? text + ` ${imageUrl}` : text,
       sender: identity,
       channel,
       clientUuid: crypto.randomUUID()
@@ -270,7 +276,7 @@ export class AgentcoinClient {
       unique: true
     }
 
-    await this.runtime.messageManager.addEmbeddingToMemory(responseMessage)
+    // await this.runtime.messageManager.addEmbeddingToMemory(responseMessage)
     await this.runtime.messageManager.createMemory(responseMessage)
 
     return responseMessage
@@ -370,10 +376,8 @@ export class AgentcoinClient {
     } else {
       const responseMessage = await this.sendMessageAsAgent({
         identity,
-        text: response.text,
-        channel: message.channel,
-        inReplyTo: memory.id,
-        action: response.action
+        content: response,
+        channel
       })
       await this.runtime.evaluate(responseMessage, state, true)
       messageResponses.push(responseMessage)
@@ -420,9 +424,8 @@ export class AgentcoinClient {
 
         const newMemory = await this.sendMessageAsAgent({
           identity,
-          text: newMessage.text,
-          channel: message.channel,
-          inReplyTo: memory.id
+          content: newMessage,
+          channel
         })
 
         await this.runtime.evaluate(newMemory, state, true)

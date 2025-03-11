@@ -1,6 +1,6 @@
 {
   "name": "@tribesxyz/ayaos",
-  "version": "0.0.12",
+  "version": "0.0.19",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -11,7 +11,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "bun run type-check && tsup src/index.ts --format esm --dts",
+    "type-check": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "dev": "tsx src/example.ts",
     "check-packages": "bash ./scripts/check-packages.sh",

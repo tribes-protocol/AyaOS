@@ -31,7 +31,11 @@ export interface IConfigService {
 }
 
 export interface IKnowledgeBaseService {
-  list(): Promise<RAGKnowledgeItem[]>
+  list(options: {
+    limit?: number
+    contentType?: string
+    sortDirection?: 'asc' | 'desc'
+  }): Promise<RAGKnowledgeItem[]>
   get(id: UUID): Promise<RAGKnowledgeItem | undefined>
   add(id: UUID, knowledge: RagKnowledgeItemContent): Promise<void>
   remove(id: UUID): Promise<void>

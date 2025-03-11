@@ -181,17 +181,7 @@ export const Knowledges = pgTable('knowledge', {
   embedding: vector('embedding', { dimensions: 1536 }),
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
   isMain: boolean('isMain').default(false),
-  originalId: uuid('originalId').references(() => Knowledges.id),
+  originalId: uuid('originalId'),
   chunkIndex: integer('chunkIndex'),
   isShared: boolean('isShared').default(false)
 })
-
-// export type Knowledge = typeof Knowledges.$inferSelect
-// export type Account = typeof Accounts.$inferSelect
-// export type Room = typeof Rooms.$inferSelect
-// export type Memory = typeof Memories.$inferSelect
-// export type Goal = typeof Goals.$inferSelect
-// export type Log = typeof Logs.$inferSelect
-// export type Participant = typeof Participants.$inferSelect
-// export type Relationship = typeof Relationships.$inferSelect
-// export type CacheEntry = typeof Cache.$inferSelect
