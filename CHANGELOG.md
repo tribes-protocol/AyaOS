@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.21
+
+### Patch Changes
+
+- 41aa51f: export some more types
+
 ## 0.0.20
 
 ### Patch Changes
