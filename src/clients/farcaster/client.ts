@@ -119,8 +119,13 @@ export class FarcasterClient {
 
       return cast
     } catch (err) {
-      elizaLogger.error('Error fetching cast', err)
-      return undefined
+      if (isApiErrorResponse(err)) {
+        elizaLogger.error('Neynar error: ', err.response.data)
+        throw err.response.data
+      } else {
+        elizaLogger.error('Error: ', err)
+        throw err
+      }
     }
   }
 
