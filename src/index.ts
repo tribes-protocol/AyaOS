@@ -24,18 +24,21 @@ export type { IAyaAgent } from '@/agent/iagent'
 export { ensureUUID } from '@/common/functions'
 export { AgentcoinRuntime } from '@/common/runtime'
 export { ContextHandler } from '@/common/types'
-export { IKnowledgeBaseService, IMemoriesService, IWalletService } from '@/services/interfaces'
+export type { IKnowledgeBaseService, IMemoriesService, IWalletService } from '@/services/interfaces'
 export { KnowledgeBaseService } from '@/services/knowledge-base'
 export { MemoriesService } from '@/services/memories'
 export { WalletService } from '@/services/wallet'
-export { stringToUuid }
+
+// Export values (classes, enums, functions)
+export { GoalStatus, Service, ServiceType, stringToUuid }
+
+// Export types (interfaces, type aliases)
 export type {
   Account,
   Action,
   Actor,
   Content,
   Goal,
-  GoalStatus,
   HandlerCallback,
   Memory,
   Participant,
@@ -43,8 +46,6 @@ export type {
   Provider,
   RAGKnowledgeItem,
   Relationship,
-  Service,
-  ServiceType,
   State,
   UUID
 }
