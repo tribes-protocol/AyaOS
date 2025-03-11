@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.22
+
+### Patch Changes
+
+- 2bc007a: more type fixes
+
 ## 0.0.21
 
 ### Patch Changes
