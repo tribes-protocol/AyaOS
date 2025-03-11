@@ -1,5 +1,5 @@
 import { isRequiredString, sortIdentities } from '@/common/functions'
-import { Action, Content, Memory, State } from '@elizaos/core'
+import { Content, Memory, State } from '@elizaos/core'
 import { isAddress } from 'viem'
 import { z } from 'zod'
 
@@ -342,7 +342,7 @@ export interface Context {
 
 export type ContextHandler = (context: Context) => Promise<boolean>
 
-export type SdkEventKind = 'llm:pre' | 'llm:post' | 'tool:pre' | 'tool:post'
+export type SdkEventKind = 'pre:llm' | 'post:llm' | 'pre:action' | 'post:action'
 
 export enum ServiceKind {
   wallet = 'wallet-service',
@@ -431,6 +431,3 @@ export const MessageEventSchema = z.discriminatedUnion('kind', [
 ])
 
 export type MessageEvent = z.infer<typeof MessageEventSchema>
-
-// type alias for some Eliza types
-export type Tool = Action

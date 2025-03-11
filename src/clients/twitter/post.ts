@@ -467,7 +467,7 @@ export class TwitterPostClient {
         }
       )
 
-      let shouldContinue = await this.runtime.handle('llm:pre', {
+      let shouldContinue = await this.runtime.handle('pre:llm', {
         state,
         responses: [],
         memory: null
@@ -491,7 +491,7 @@ export class TwitterPostClient {
         modelClass: ModelClass.SMALL
       })
 
-      shouldContinue = await this.runtime.handle('llm:post', {
+      shouldContinue = await this.runtime.handle('post:llm', {
         state,
         responses: [],
         memory: null,

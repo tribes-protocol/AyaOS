@@ -1,11 +1,12 @@
+import { IAyaAgent } from '@/agent/iagent'
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { initializeClients } from '@/clients'
 import { getTokenForProvider } from '@/common/config'
 import { CHARACTER_FILE } from '@/common/constants'
 import { initializeDatabase } from '@/common/db'
+import { ensureUUID } from '@/common/functions'
 import { AgentcoinRuntime } from '@/common/runtime'
-import { Context, ContextHandler, SdkEventKind, Tool } from '@/common/types'
-import { IAyaAgent } from '@/iagent'
+import { Context, ContextHandler, SdkEventKind } from '@/common/types'
 import agentcoinPlugin from '@/plugins/agentcoin'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
@@ -17,6 +18,7 @@ import { MemoriesService } from '@/services/memories'
 import { ProcessService } from '@/services/process'
 import { WalletService } from '@/services/wallet'
 import {
+  Action,
   CacheManager,
   DbCacheAdapter,
   elizaLogger,
@@ -30,7 +32,6 @@ import {
 import { bootstrapPlugin } from '@elizaos/plugin-bootstrap'
 import { createNodePlugin } from '@elizaos/plugin-node'
 import fs from 'fs'
-import { ensureUUID } from '@/common/functions'
 
 export class Agent implements IAyaAgent {
   private preLLMHandlers: ContextHandler[] = []
@@ -39,7 +40,7 @@ export class Agent implements IAyaAgent {
   private postActionHandlers: ContextHandler[] = []
   private services: Service[] = []
   private providers: Provider[] = []
-  private tools: Tool[] = []
+  private actions: Action[] = []
   private plugins: Plugin[] = []
   private evaluators: Evaluator[] = []
   private runtime_: AgentcoinRuntime | undefined
@@ -120,7 +121,7 @@ export class Agent implements IAyaAgent {
           character,
           plugins: [bootstrapPlugin, createNodePlugin(), agentcoinPlugin, ...this.plugins],
           providers: [...this.providers],
-          actions: [...this.tools],
+          actions: [...this.actions],
           services: [agentcoinService, walletService, configService, ...this.services],
           managers: [],
           cacheManager: cache,
@@ -214,7 +215,7 @@ export class Agent implements IAyaAgent {
 
   register(kind: 'service', handler: Service): void
   register(kind: 'provider', handler: Provider): void
-  register(kind: 'tool', handler: Tool): void
+  register(kind: 'action', handler: Action): void
   register(kind: 'plugin', handler: Plugin): void
   register(kind: 'evaluator', handler: Evaluator): void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -226,8 +227,8 @@ export class Agent implements IAyaAgent {
           void this.runtime.registerService(handler)
         }
         break
-      case 'tool':
-        this.tools.push(handler)
+      case 'action':
+        this.actions.push(handler)
         if (this.runtime_) {
           this.runtime.registerAction(handler)
         }
@@ -255,23 +256,23 @@ export class Agent implements IAyaAgent {
     }
   }
 
-  on(event: 'llm:pre', handler: ContextHandler): void
-  on(event: 'llm:post', handler: ContextHandler): void
-  on(event: 'tool:pre', handler: ContextHandler): void
-  on(event: 'tool:post', handler: ContextHandler): void
+  on(event: 'pre:llm', handler: ContextHandler): void
+  on(event: 'post:llm', handler: ContextHandler): void
+  on(event: 'pre:action', handler: ContextHandler): void
+  on(event: 'post:action', handler: ContextHandler): void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   on(event: string, handler: any): void {
     switch (event) {
-      case 'llm:pre':
+      case 'pre:llm':
         this.preLLMHandlers.push(handler)
         break
-      case 'llm:post':
+      case 'post:llm':
         this.postLLMHandlers.push(handler)
         break
-      case 'tool:pre':
+      case 'pre:action':
         this.preActionHandlers.push(handler)
         break
-      case 'tool:post':
+      case 'post:action':
         this.postActionHandlers.push(handler)
         break
       default:
@@ -279,23 +280,23 @@ export class Agent implements IAyaAgent {
     }
   }
 
-  off(event: 'llm:pre', handler: ContextHandler): void
-  off(event: 'llm:post', handler: ContextHandler): void
-  off(event: 'tool:pre', handler: ContextHandler): void
-  off(event: 'tool:post', handler: ContextHandler): void
+  off(event: 'pre:llm', handler: ContextHandler): void
+  off(event: 'post:llm', handler: ContextHandler): void
+  off(event: 'pre:action', handler: ContextHandler): void
+  off(event: 'post:action', handler: ContextHandler): void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   off(event: string, handler: any): void {
     switch (event) {
-      case 'llm:pre':
+      case 'pre:llm':
         this.preLLMHandlers = this.preLLMHandlers.filter((h) => h !== handler)
         break
-      case 'llm:post':
+      case 'post:llm':
         this.postLLMHandlers = this.postLLMHandlers.filter((h) => h !== handler)
         break
-      case 'tool:pre':
+      case 'pre:action':
         this.preActionHandlers = this.preActionHandlers.filter((h) => h !== handler)
         break
-      case 'tool:post':
+      case 'post:action':
         this.postActionHandlers = this.postActionHandlers.filter((h) => h !== handler)
         break
       default:
@@ -305,7 +306,7 @@ export class Agent implements IAyaAgent {
 
   private async handle(event: SdkEventKind, params: Context): Promise<boolean> {
     switch (event) {
-      case 'llm:pre': {
+      case 'pre:llm': {
         for (const handler of this.preLLMHandlers) {
           const shouldContinue = await handler(params)
           if (!shouldContinue) return false
@@ -313,7 +314,7 @@ export class Agent implements IAyaAgent {
         break
       }
 
-      case 'llm:post': {
+      case 'post:llm': {
         for (const handler of this.postLLMHandlers) {
           const shouldContinue = await handler(params)
           if (!shouldContinue) return false
@@ -321,7 +322,7 @@ export class Agent implements IAyaAgent {
         break
       }
 
-      case 'tool:pre': {
+      case 'pre:action': {
         for (const handler of this.preActionHandlers) {
           const shouldContinue = await handler(params)
           if (!shouldContinue) return false
@@ -329,7 +330,7 @@ export class Agent implements IAyaAgent {
         break
       }
 
-      case 'tool:post': {
+      case 'post:action': {
         for (const handler of this.postActionHandlers) {
           const shouldContinue = await handler(params)
           if (!shouldContinue) return false
