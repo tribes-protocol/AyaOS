@@ -13,7 +13,6 @@ import {
   Character,
   ChatChannel,
   ChatChannelKind,
-  CoinChannelSchema,
   EthAddressSchema,
   HydratedMessageSchema,
   Identity,
@@ -93,18 +92,6 @@ export class AgentcoinClient {
     })
     this.socket.on('disconnect', () => {
       elizaLogger.info('Disconnected from Agentcoin API')
-    })
-
-    const coinChannel = CoinChannelSchema.parse({
-      kind: ChatChannelKind.COIN,
-      chainId: 8453,
-      // FIXME: avp: change channel to agentID
-      address: '0xf4D70D2fd1DE59ff34aA0350263ba742cb94b1c8'
-    })
-
-    this.socket.on(serializeChannel(coinChannel), async (data: unknown) => {
-      elizaLogger.info('Agentcoin client received coin message', data)
-      await this.processMessage(coinChannel, data)
     })
 
     const identity = await this.agentcoinService.getIdentity()
