@@ -500,7 +500,7 @@ export class TwitterInteractionClient {
           }
 
           // `preaction` event
-          shouldContinue = await this.runtime.handle('pre:tool', {
+          shouldContinue = await this.runtime.handle('pre:action', {
             state,
             responses: messageResponses,
             memory: message
@@ -516,7 +516,7 @@ export class TwitterInteractionClient {
             messageResponses,
             state,
             async (response: Content) => {
-              shouldContinue = await this.runtime.handle('post:tool', {
+              shouldContinue = await this.runtime.handle('post:action', {
                 state,
                 responses: messageResponses,
                 memory: message,

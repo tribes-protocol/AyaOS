@@ -1,4 +1,4 @@
-import { Agent } from '@/agent'
+import { Agent } from '@/agent/agent'
 import { tipForJokeAction } from '@/plugins/tipping/actions/tipForJoke'
 import { elizaLogger } from '@elizaos/core'
 
@@ -19,10 +19,10 @@ async function main(): Promise<void> {
     })
     console.log('post:llm registered')
 
-    agent.register('tool', tipForJokeAction)
+    agent.register('action', tipForJokeAction)
 
     await agent.start()
-    console.log('tool registered')
+    console.log('action registered')
     console.log('starting agent...')
     console.log('agent started', agent.agentId)
   } catch (error) {

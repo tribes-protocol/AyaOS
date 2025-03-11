@@ -1210,20 +1210,20 @@ export class MessageManager {
         }
 
         // `preaction` event
-        shouldContinue = await this.runtime.handle('pre:tool', {
+        shouldContinue = await this.runtime.handle('pre:action', {
           state,
           responses: messageResponses,
           memory
         })
 
         if (!shouldContinue) {
-          elizaLogger.info('TelegramMessageManager received pre:tool event but it was suppressed')
+          elizaLogger.info('TelegramMessageManager received pre:action event but it was suppressed')
           return
         }
 
         // Handle any resulting actions
         await this.runtime.processActions(memory, messageResponses, state, async (newMessage) => {
-          shouldContinue = await this.runtime.handle('post:tool', {
+          shouldContinue = await this.runtime.handle('post:action', {
             state,
             responses: messageResponses,
             memory,
@@ -1232,7 +1232,7 @@ export class MessageManager {
 
           if (!shouldContinue) {
             elizaLogger.info(
-              'TelegramMessageManager received post:tool event but it was suppressed'
+              'TelegramMessageManager received post:action event but it was suppressed'
             )
             return
           }

@@ -391,7 +391,7 @@ export class AgentcoinClient {
     }
 
     // `preaction` event
-    shouldContinue = await this.runtime.handle('pre:tool', {
+    shouldContinue = await this.runtime.handle('pre:action', {
       state,
       responses: messageResponses,
       memory
@@ -406,7 +406,7 @@ export class AgentcoinClient {
     await this.runtime.processActions(memory, messageResponses, state, async (newMessage) => {
       try {
         // `postaction` event
-        shouldContinue = await this.runtime.handle('post:tool', {
+        shouldContinue = await this.runtime.handle('post:action', {
           state,
           responses: messageResponses,
           memory,

@@ -299,7 +299,7 @@ export class FarcasterInteractionManager {
     }
 
     // `preaction` event
-    shouldContinue = await this.runtime.handle('pre:tool', {
+    shouldContinue = await this.runtime.handle('pre:action', {
       state,
       responses: messageResponses,
       memory
@@ -315,7 +315,7 @@ export class FarcasterInteractionManager {
       messageResponses,
       newState,
       async (newMessage) => {
-        shouldContinue = await this.runtime.handle('post:tool', {
+        shouldContinue = await this.runtime.handle('post:action', {
           state,
           responses: messageResponses,
           memory,
