@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.20
+
+### Patch Changes
+
+- 92dfaaa: fix caching issue + rename events
+
 ## 0.0.19
 
 ### Patch Changes
