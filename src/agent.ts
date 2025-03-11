@@ -24,15 +24,13 @@ import {
   Plugin,
   Provider,
   Service,
-  stringToUuid,
   UUID,
   type Character
 } from '@elizaos/core'
 import { bootstrapPlugin } from '@elizaos/plugin-bootstrap'
 import { createNodePlugin } from '@elizaos/plugin-node'
 import fs from 'fs'
-import { fileURLToPath } from 'url'
-const __filename = fileURLToPath(import.meta.url)
+import { ensureUUID } from '@/common/functions'
 
 export class Agent implements IAyaAgent {
   private preLLMHandlers: ContextHandler[] = []
@@ -103,11 +101,13 @@ export class Agent implements IAyaAgent {
         fs.promises.readFile(CHARACTER_FILE, 'utf8')
       ])
 
-      const agentId = stringToUuid(await agentcoinService.getIdentity())
+      const agentId = ensureUUID((await agentcoinService.getIdentity()).substring(6))
 
       const character: Character = JSON.parse(charString)
+      character.id = agentId
+
       const token = getTokenForProvider(character.modelProvider, character)
-      const cache = new CacheManager(new DbCacheAdapter(db, agentId))
+      const cache = new CacheManager(new DbCacheAdapter(db, character.id))
 
       elizaLogger.info(elizaLogger.successesTitle, 'Creating runtime for character', character.name)
 
@@ -123,7 +123,8 @@ export class Agent implements IAyaAgent {
           actions: [...this.tools],
           services: [agentcoinService, walletService, configService, ...this.services],
           managers: [],
-          cacheManager: cache
+          cacheManager: cache,
+          agentId: character.id
         }
       })
       this.runtime_ = runtime

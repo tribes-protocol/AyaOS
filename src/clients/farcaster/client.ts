@@ -118,8 +118,14 @@ export class FarcasterClient {
       this.cache.set(`farcaster/cast/${castHash}`, cast)
 
       return cast
-    } catch {
-      return undefined
+    } catch (err) {
+      if (isApiErrorResponse(err)) {
+        elizaLogger.error('Neynar error: ', err.response.data)
+        throw err.response.data
+      } else {
+        elizaLogger.error('Error: ', err)
+        throw err
+      }
     }
   }
 
