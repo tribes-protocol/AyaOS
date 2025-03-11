@@ -42,15 +42,13 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
     )
   }
 
-  async list(
-    options: {
-      limit?: number
-      contentType?: string
-      sortDirection?: 'asc' | 'desc'
-    } = {}
-  ): Promise<RAGKnowledgeItem[]> {
+  async list(options?: {
+    limit?: number
+    contentType?: string
+    sortDirection?: 'asc' | 'desc'
+  }): Promise<RAGKnowledgeItem[]> {
     /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-    const { limit = 10, contentType, sortDirection = 'desc' } = options
+    const { limit = 10, contentType, sortDirection = 'desc' } = options ?? {}
 
     // Build the query conditions
     const conditions = [eq(Knowledges.agentId, this.runtime.agentId)]
