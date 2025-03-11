@@ -42,7 +42,6 @@ export interface IKnowledgeBaseService {
   search(options: {
     q: string
     limit: number
-    tag?: string
     matchThreshold?: number
   }): Promise<RAGKnowledgeItem[]>
 }
