@@ -1,5 +1,5 @@
 import { isRequiredString, sortIdentities } from '@/common/functions'
-import { Content, Memory, State } from '@elizaos/core'
+import { Content, Memory, ModelConfiguration, ModelProviderName, State } from '@elizaos/core'
 import { isAddress } from 'viem'
 import { z } from 'zod'
 
@@ -431,3 +431,9 @@ export const MessageEventSchema = z.discriminatedUnion('kind', [
 ])
 
 export type MessageEvent = z.infer<typeof MessageEventSchema>
+
+export type ModelConfig = ModelConfiguration & {
+  provider: ModelProviderName
+  endpoint?: string
+  apiKey?: string
+}

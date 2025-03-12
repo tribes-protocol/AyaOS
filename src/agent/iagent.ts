@@ -9,6 +9,7 @@ export interface IAyaAgent {
   readonly knowledge: IKnowledgeBaseService
   readonly memories: IMemoriesService
   readonly wallet: IWalletService
+
   start(): Promise<void>
 
   on(event: 'pre:llm', handler: ContextHandler): void
