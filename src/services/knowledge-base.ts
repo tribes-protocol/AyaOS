@@ -42,15 +42,13 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
     )
   }
 
-  async list(
-    options: {
-      limit?: number
-      contentType?: string
-      sortDirection?: 'asc' | 'desc'
-    } = {}
-  ): Promise<RAGKnowledgeItem[]> {
+  async list(options?: {
+    limit?: number
+    contentType?: string
+    sortDirection?: 'asc' | 'desc'
+  }): Promise<RAGKnowledgeItem[]> {
     /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-    const { limit = 10, contentType, sortDirection = 'desc' } = options
+    const { limit = 10, contentType, sortDirection = 'desc' } = options ?? {}
 
     // Build the query conditions
     const conditions = [eq(Knowledges.agentId, this.runtime.agentId)]
@@ -108,7 +106,13 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
         similarity
       })
       .from(Knowledges)
-      .where(and(gt(similarity, matchThreshold), eq(Knowledges.agentId, this.runtime.agentId)))
+      .where(
+        and(
+          gt(similarity, matchThreshold),
+          eq(Knowledges.agentId, this.runtime.agentId),
+          eq(Knowledges.isMain, false)
+        )
+      )
       .orderBy((t) => desc(t.similarity))
       .limit(limit)
 
@@ -213,7 +217,6 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
   }
 
   async add(id: UUID, knowledge: RagKnowledgeItemContent): Promise<void> {
-    const shouldChunk = knowledge.text.length > this.textSplitter.chunkSize
     const databaseAdapter = this.runtime.databaseAdapter
     const agentId = this.runtime.agentId
     const checksum = calculateChecksum(knowledge.text)
@@ -236,7 +239,7 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
       id,
       agentId,
       content: {
-        text: shouldChunk ? '' : knowledge.text,
+        text: '',
         metadata: {
           ...knowledge.metadata,
           // Move checksum and other properties to metadata
@@ -247,9 +250,7 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
           checksum
         }
       },
-      embedding: shouldChunk
-        ? new Float32Array(getEmbeddingZeroVector())
-        : new Float32Array(await embed(this.runtime, knowledge.text)),
+      embedding: new Float32Array(getEmbeddingZeroVector()),
       createdAt: Date.now()
     }
 
@@ -260,11 +261,6 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
 
     // create main knowledge item
     await databaseAdapter.createKnowledge(knowledgeItem)
-
-    if (!shouldChunk) {
-      // no need to chunk, done!
-      return
-    }
 
     // Split the content into chunks
     const chunks = await this.textSplitter.createDocuments([knowledge.text])
