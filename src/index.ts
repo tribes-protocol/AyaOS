@@ -7,6 +7,7 @@ import {
   GoalStatus,
   HandlerCallback,
   Memory,
+  ModelProviderName,
   Participant,
   Plugin,
   Provider,
@@ -23,14 +24,14 @@ export { Agent } from '@/agent/agent'
 export type { IAyaAgent } from '@/agent/iagent'
 export { ensureUUID } from '@/common/functions'
 export { AgentcoinRuntime } from '@/common/runtime'
-export { ContextHandler } from '@/common/types'
+export { ContextHandler, ModelConfig } from '@/common/types'
 export type { IKnowledgeBaseService, IMemoriesService, IWalletService } from '@/services/interfaces'
 export { KnowledgeBaseService } from '@/services/knowledge-base'
 export { MemoriesService } from '@/services/memories'
 export { WalletService } from '@/services/wallet'
 
 // Export values (classes, enums, functions)
-export { GoalStatus, Service, ServiceType, stringToUuid }
+export { GoalStatus, ModelProviderName, Service, ServiceType, stringToUuid }
 
 // Export types (interfaces, type aliases)
 export type {
