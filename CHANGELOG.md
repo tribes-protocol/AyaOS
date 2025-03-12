@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.24
+
+### Patch Changes
+
+- 14d37f8: allow custom llm
+
 ## 0.0.23
 
 ### Patch Changes
