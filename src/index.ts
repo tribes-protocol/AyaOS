@@ -1,11 +1,54 @@
-export { Agent } from '@/agent'
+import {
+  Account,
+  Action,
+  Actor,
+  Content,
+  Goal,
+  GoalStatus,
+  HandlerCallback,
+  Memory,
+  Participant,
+  Plugin,
+  Provider,
+  RAGKnowledgeItem,
+  Relationship,
+  Service,
+  ServiceType,
+  State,
+  stringToUuid,
+  UUID
+} from '@elizaos/core'
+
+export { Agent } from '@/agent/agent'
+export type { IAyaAgent } from '@/agent/iagent'
+export { ensureUUID } from '@/common/functions'
 export { AgentcoinRuntime } from '@/common/runtime'
-export { ContextHandler, Tool } from '@/common/types'
-export type { IAyaAgent } from '@/iagent'
+export { ContextHandler } from '@/common/types'
+export type { IKnowledgeBaseService, IMemoriesService, IWalletService } from '@/services/interfaces'
 export { KnowledgeBaseService } from '@/services/knowledge-base'
 export { MemoriesService } from '@/services/memories'
 export { WalletService } from '@/services/wallet'
-export { IKnowledgeBaseService, IMemoriesService, IWalletService } from '@/services/interfaces'
+
+// Export values (classes, enums, functions)
+export { GoalStatus, Service, ServiceType, stringToUuid }
+
+// Export types (interfaces, type aliases)
+export type {
+  Account,
+  Action,
+  Actor,
+  Content,
+  Goal,
+  HandlerCallback,
+  Memory,
+  Participant,
+  Plugin,
+  Provider,
+  RAGKnowledgeItem,
+  Relationship,
+  State,
+  UUID
+}
 
 // export { elizaLogger, Provider, Service, UUID } from '@elizaos/core'
 // FIXME: hish - elizaLogger should be renamed to ayaLogger and be unique to aya os

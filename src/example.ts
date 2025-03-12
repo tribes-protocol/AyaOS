@@ -1,5 +1,4 @@
-import { Agent } from '@/agent'
-import { tipForJokeAction } from '@/plugins/tipping/actions/tipForJoke'
+import { Agent } from '@/agent/agent'
 import { elizaLogger } from '@elizaos/core'
 
 async function main(): Promise<void> {
@@ -7,23 +6,19 @@ async function main(): Promise<void> {
     console.log('hello, agent!')
     const agent = new Agent('new-agent')
     console.log('agent created')
-    agent.on('llm:pre', async (context) => {
-      console.log('llm:pre', context.memory?.content)
+    agent.on('pre:llm', async (context) => {
+      console.log('pre:llm', context.memory?.content)
       return true
     })
-    console.log('llm:pre registered')
+    console.log('pre:llm registered')
 
-    agent.on('llm:post', async (context) => {
-      console.log('llm:post', context.memory?.content)
+    agent.on('post:llm', async (context) => {
+      console.log('post:llm', context.memory?.content)
       return true
     })
-    console.log('llm:post registered')
-
-    agent.register('tool', tipForJokeAction)
+    console.log('post:llm registered')
 
     await agent.start()
-    console.log('tool registered')
-    console.log('starting agent...')
     console.log('agent started', agent.agentId)
   } catch (error) {
     console.error(`error: ${error}`, error)

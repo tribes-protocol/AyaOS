@@ -425,14 +425,14 @@ export class TwitterInteractionClient {
         twitterMessageHandlerTemplate
     })
 
-    let shouldContinue = await this.runtime.handle('llm:pre', {
+    let shouldContinue = await this.runtime.handle('pre:llm', {
       state,
       responses: [],
       memory: message
     })
 
     if (!shouldContinue) {
-      elizaLogger.info('TwitterClient received llm:pre event but it was suppressed')
+      elizaLogger.info('TwitterClient received pre:llm event but it was suppressed')
       return
     }
 
@@ -450,7 +450,7 @@ export class TwitterInteractionClient {
 
     response.text = removeQuotes(response.text)
 
-    shouldContinue = await this.runtime.handle('llm:post', {
+    shouldContinue = await this.runtime.handle('post:llm', {
       state,
       responses: [],
       memory: message,
@@ -458,7 +458,7 @@ export class TwitterInteractionClient {
     })
 
     if (!shouldContinue) {
-      elizaLogger.info('TwitterClient received llm:post event but it was suppressed')
+      elizaLogger.info('TwitterClient received post:llm event but it was suppressed')
       return
     }
 
@@ -500,7 +500,7 @@ export class TwitterInteractionClient {
           }
 
           // `preaction` event
-          shouldContinue = await this.runtime.handle('tool:pre', {
+          shouldContinue = await this.runtime.handle('pre:action', {
             state,
             responses: messageResponses,
             memory: message
@@ -516,7 +516,7 @@ export class TwitterInteractionClient {
             messageResponses,
             state,
             async (response: Content) => {
-              shouldContinue = await this.runtime.handle('tool:post', {
+              shouldContinue = await this.runtime.handle('post:action', {
                 state,
                 responses: messageResponses,
                 memory: message,

@@ -137,14 +137,14 @@ export class FarcasterPostManager {
         template: this.runtime.character.templates?.farcasterPostTemplate || postTemplate
       })
 
-      let shouldContinue = await this.runtime.handle('llm:pre', {
+      let shouldContinue = await this.runtime.handle('pre:llm', {
         state,
         responses: [],
         memory: null
       })
 
       if (!shouldContinue) {
-        elizaLogger.info('FarcasterPostManager received llm:pre event but it was suppressed')
+        elizaLogger.info('FarcasterPostManager received pre:llm event but it was suppressed')
         return
       }
 
@@ -154,7 +154,7 @@ export class FarcasterPostManager {
         modelClass: ModelClass.SMALL
       })
 
-      shouldContinue = await this.runtime.handle('llm:post', {
+      shouldContinue = await this.runtime.handle('post:llm', {
         state,
         responses: [],
         memory: null,
@@ -162,7 +162,7 @@ export class FarcasterPostManager {
       })
 
       if (!shouldContinue) {
-        elizaLogger.info('FarcasterPostManager received llm:post event but it was suppressed')
+        elizaLogger.info('FarcasterPostManager received post:llm event but it was suppressed')
         return
       }
 

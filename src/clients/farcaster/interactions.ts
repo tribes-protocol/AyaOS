@@ -220,7 +220,7 @@ export class FarcasterInteractionManager {
         messageHandlerTemplate
     })
 
-    let shouldContinue = await this.runtime.handle('llm:pre', {
+    let shouldContinue = await this.runtime.handle('pre:llm', {
       state,
       responses: [],
       memory
@@ -237,7 +237,7 @@ export class FarcasterInteractionManager {
       modelClass: ModelClass.LARGE
     })
 
-    shouldContinue = await this.runtime.handle('llm:post', {
+    shouldContinue = await this.runtime.handle('post:llm', {
       state,
       responses: [],
       memory,
@@ -299,7 +299,7 @@ export class FarcasterInteractionManager {
     }
 
     // `preaction` event
-    shouldContinue = await this.runtime.handle('tool:pre', {
+    shouldContinue = await this.runtime.handle('pre:action', {
       state,
       responses: messageResponses,
       memory
@@ -315,7 +315,7 @@ export class FarcasterInteractionManager {
       messageResponses,
       newState,
       async (newMessage) => {
-        shouldContinue = await this.runtime.handle('tool:post', {
+        shouldContinue = await this.runtime.handle('post:action', {
           state,
           responses: messageResponses,
           memory,

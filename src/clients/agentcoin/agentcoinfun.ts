@@ -23,10 +23,9 @@ import {
 } from '@/common/types'
 import * as fs from 'fs'
 
-import { messageHandlerTemplate } from '@elizaos/client-direct'
-
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
+import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
 import {
   Client,
   composeContext,
@@ -311,11 +310,11 @@ export class AgentcoinClient {
 
     const context = composeContext({
       state,
-      template: messageHandlerTemplate
+      template: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
     })
 
     // `prellm` event
-    let shouldContinue = await this.runtime.handle('llm:pre', {
+    let shouldContinue = await this.runtime.handle('pre:llm', {
       state,
       responses: [],
       memory
@@ -336,7 +335,7 @@ export class AgentcoinClient {
     })
 
     // `postllm` event
-    shouldContinue = await this.runtime.handle('llm:post', {
+    shouldContinue = await this.runtime.handle('post:llm', {
       state,
       responses: [],
       memory,
@@ -382,7 +381,7 @@ export class AgentcoinClient {
     }
 
     // `preaction` event
-    shouldContinue = await this.runtime.handle('tool:pre', {
+    shouldContinue = await this.runtime.handle('pre:action', {
       state,
       responses: messageResponses,
       memory
@@ -397,7 +396,7 @@ export class AgentcoinClient {
     await this.runtime.processActions(memory, messageResponses, state, async (newMessage) => {
       try {
         // `postaction` event
-        shouldContinue = await this.runtime.handle('tool:post', {
+        shouldContinue = await this.runtime.handle('post:action', {
           state,
           responses: messageResponses,
           memory,

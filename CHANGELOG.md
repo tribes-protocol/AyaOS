@@ -1,5 +1,29 @@
 # @tribesxyz/ayaos
 
+## 0.0.23
+
+### Patch Changes
+
+- ad63104: bug fixes
+
+## 0.0.22
+
+### Patch Changes
+
+- 2bc007a: more type fixes
+
+## 0.0.21
+
+### Patch Changes
+
+- 41aa51f: export some more types
+
+## 0.0.20
+
+### Patch Changes
+
+- 92dfaaa: fix caching issue + rename events
+
 ## 0.0.19
 
 ### Patch Changes
