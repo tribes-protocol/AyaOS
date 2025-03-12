@@ -17,6 +17,7 @@ import { KnowledgeBaseService } from '@/services/knowledge-base'
 import { MemoriesService } from '@/services/memories'
 import { ProcessService } from '@/services/process'
 import { WalletService } from '@/services/wallet'
+import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
 import {
   Action,
   CacheManager,
@@ -30,7 +31,6 @@ import {
   type Character
 } from '@elizaos/core'
 import { bootstrapPlugin } from '@elizaos/plugin-bootstrap'
-import { createNodePlugin } from '@elizaos/plugin-node'
 import fs from 'fs'
 
 export class Agent implements IAyaAgent {
@@ -106,6 +106,10 @@ export class Agent implements IAyaAgent {
 
       const character: Character = JSON.parse(charString)
       character.id = agentId
+      character.templates = {
+        ...character.templates,
+        messageHandlerTemplate: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
+      }
 
       const token = getTokenForProvider(character.modelProvider, character)
       const cache = new CacheManager(new DbCacheAdapter(db, character.id))
@@ -119,7 +123,7 @@ export class Agent implements IAyaAgent {
           modelProvider: character.modelProvider,
           evaluators: [...this.evaluators],
           character,
-          plugins: [bootstrapPlugin, createNodePlugin(), agentcoinPlugin, ...this.plugins],
+          plugins: [bootstrapPlugin, agentcoinPlugin, ...this.plugins],
           providers: [...this.providers],
           actions: [...this.actions],
           services: [agentcoinService, walletService, configService, ...this.services],

@@ -25,10 +25,9 @@ import {
 } from '@/common/types'
 import * as fs from 'fs'
 
-import { messageHandlerTemplate } from '@elizaos/client-direct'
-
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
+import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
 import {
   Client,
   composeContext,
@@ -320,7 +319,7 @@ export class AgentcoinClient {
 
     const context = composeContext({
       state,
-      template: messageHandlerTemplate
+      template: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
     })
 
     // `prellm` event
