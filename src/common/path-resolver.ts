@@ -5,7 +5,7 @@ import * as path from 'path'
 /**
  * Class to manage all application paths based on a configurable root directory
  */
-export class PathManager {
+export class PathResolver {
   private rootDir: string
 
   constructor(rootDir?: string) {
@@ -14,15 +14,14 @@ export class PathManager {
       rootDir = path.resolve(process.cwd(), rootDir)
     }
 
-    this.rootDir =
-      rootDir ?? process.env.AGENTCOIN_FUN_DIR ?? path.join(os.homedir(), '.agentcoin-fun')
+    this.rootDir = rootDir ?? path.join(os.homedir(), '.agentcoin-fun')
     this.ensureRootDirExists()
   }
 
   /**
    * Get the root directory path
    */
-  get AGENTCOIN_FUN_DIR(): string {
+  get DATA_DIR(): string {
     return this.rootDir
   }
 

@@ -1,6 +1,6 @@
 import { isNull, isRequiredString } from '@/common/functions'
 import { OperationQueue } from '@/common/lang/operation_queue'
-import { PathManager } from '@/services/paths'
+import { PathResolver } from '@/common/path-resolver'
 import { CharacterSchema, ServiceKind } from '@/common/types'
 import { EventService } from '@/services/event'
 import { IConfigService } from '@/services/interfaces'
@@ -29,7 +29,7 @@ export class ConfigService extends Service implements IConfigService {
   constructor(
     private readonly eventService: EventService,
     private readonly processService: ProcessService,
-    private readonly pathManager: PathManager
+    private readonly pathResolver: PathResolver
   ) {
     super()
   }
@@ -78,11 +78,11 @@ export class ConfigService extends Service implements IConfigService {
     })
 
     // Remove existing socket file if it exists
-    if (fs.existsSync(this.pathManager.RUNTIME_SERVER_SOCKET_FILE)) {
-      fs.unlinkSync(this.pathManager.RUNTIME_SERVER_SOCKET_FILE)
+    if (fs.existsSync(this.pathResolver.RUNTIME_SERVER_SOCKET_FILE)) {
+      fs.unlinkSync(this.pathResolver.RUNTIME_SERVER_SOCKET_FILE)
     }
 
-    this.server = app.listen(this.pathManager.RUNTIME_SERVER_SOCKET_FILE)
+    this.server = app.listen(this.pathResolver.RUNTIME_SERVER_SOCKET_FILE)
 
     while (this.isRunning) {
       await Promise.all([
@@ -101,7 +101,7 @@ export class ConfigService extends Service implements IConfigService {
   private async checkEnvUpdate(): Promise<void> {
     await this.operationQueue.submit(async () => {
       // read envvars file
-      const envvars = fs.readFileSync(this.pathManager.ENV_FILE, 'utf8')
+      const envvars = fs.readFileSync(this.pathResolver.ENV_FILE, 'utf8')
       const checksum = crypto.createHash('md5').update(envvars).digest('hex')
       if (isNull(this.envvarsChecksum) || this.envvarsChecksum === checksum) {
         this.envvarsChecksum = checksum
@@ -122,7 +122,7 @@ export class ConfigService extends Service implements IConfigService {
   private async checkCharacterUpdate(): Promise<void> {
     await this.operationQueue.submit(async () => {
       // read character file
-      const character = fs.readFileSync(this.pathManager.CHARACTER_FILE, 'utf8')
+      const character = fs.readFileSync(this.pathResolver.CHARACTER_FILE, 'utf8')
       const checksum = crypto.createHash('md5').update(character).digest('hex')
       if (isNull(this.characterChecksum) || this.characterChecksum === checksum) {
         this.characterChecksum = checksum
@@ -132,7 +132,7 @@ export class ConfigService extends Service implements IConfigService {
       // kill the process and docker container should restart it
       elizaLogger.info(`New character file detected. Restarting agent...`)
       const characterObject = CharacterSchema.parse(
-        JSON.parse(fs.readFileSync(this.pathManager.CHARACTER_FILE, 'utf8'))
+        JSON.parse(fs.readFileSync(this.pathResolver.CHARACTER_FILE, 'utf8'))
       )
       this.characterChecksum = checksum
       await this.eventService.publishCharacterChangeEvent(characterObject)
@@ -145,7 +145,7 @@ export class ConfigService extends Service implements IConfigService {
   private async checkCodeUpdate(): Promise<void> {
     await this.operationQueue.submit(async () => {
       try {
-        const git = simpleGit(this.pathManager.CODE_DIR)
+        const git = simpleGit(this.pathResolver.CODE_DIR)
         const commitHash = (await git.revparse(['HEAD'])).trim()
         const remoteUrl = await git.remote(['get-url', 'origin'])
 
@@ -185,9 +185,9 @@ export class ConfigService extends Service implements IConfigService {
     if (this.server) {
       this.server.close()
       console.log('Closing server')
-      if (fs.existsSync(this.pathManager.RUNTIME_SERVER_SOCKET_FILE)) {
+      if (fs.existsSync(this.pathResolver.RUNTIME_SERVER_SOCKET_FILE)) {
         console.log('Removing socket file')
-        fs.unlinkSync(this.pathManager.RUNTIME_SERVER_SOCKET_FILE)
+        fs.unlinkSync(this.pathResolver.RUNTIME_SERVER_SOCKET_FILE)
       }
       this.server = undefined
     }

@@ -1,6 +1,6 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { isNull, toJsonTree } from '@/common/functions'
-import { PathManager } from '@/services/paths'
+import { PathResolver } from '@/common/path-resolver'
 import {
   AgentIdentity,
   AgentProvisionResponse,
@@ -19,10 +19,9 @@ import { IAgentcoinService } from '@/services/interfaces'
 import { KeychainService } from '@/services/keychain'
 import { elizaLogger, IAgentRuntime, Service, ServiceType } from '@elizaos/core'
 import * as fs from 'fs'
-import * as path from 'path'
-import { AGENTCOIN_FUN_DIR } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
-import { getDefaultCharacter } from '@/common/character'
+import { createGenericCharacter } from '@/common/character'
+import { USER_CREDENTIALS_FILE } from '@/common/constants'
 
 export class AgentcoinService extends Service implements IAgentcoinService {
   private cachedCookie: string | undefined
@@ -36,7 +35,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
   constructor(
     private readonly keychain: KeychainService,
     private readonly api: AgentcoinAPI,
-    private readonly pathManager: PathManager
+    private readonly pathResolver: PathResolver
   ) {
     super()
   }
@@ -50,7 +49,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
   async getIdentity(): Promise<Identity> {
     if (isNull(this.cachedIdentity)) {
       const { agentId } = AgentProvisionResponseSchema.parse(
-        JSON.parse(fs.readFileSync(this.pathManager.AGENT_PROVISION_FILE, 'utf-8'))
+        JSON.parse(fs.readFileSync(this.pathResolver.AGENT_PROVISION_FILE, 'utf-8'))
       )
       this.cachedIdentity = agentId
     }
@@ -96,7 +95,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
 
     elizaLogger.info('Provisioning hardware...')
 
-    const regPath = this.pathManager.REGISTRATION_FILE
+    const regPath = this.pathResolver.REGISTRATION_FILE
 
     if (!fs.existsSync(regPath)) {
       const agentId = await this.provisionPureAgent()
@@ -171,12 +170,11 @@ export class AgentcoinService extends Service implements IAgentcoinService {
   }
 
   async getCliAuthToken(): Promise<string | undefined> {
-    const credentialsPath = path.join(AGENTCOIN_FUN_DIR, 'credentials.json')
-    if (!fs.existsSync(credentialsPath)) {
+    if (!fs.existsSync(USER_CREDENTIALS_FILE)) {
       return undefined
     }
     const credentials = CredentialsSchema.parse(
-      JSON.parse(fs.readFileSync(credentialsPath, 'utf-8'))
+      JSON.parse(fs.readFileSync(USER_CREDENTIALS_FILE, 'utf-8'))
     )
     return credentials.token
   }
@@ -186,7 +184,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     const id = await this.api.createCliAuthRequest()
 
     // Calculate the box width based on the URL length
-    const url = `${AGENTCOIN_FUN_API_URL}/user/login?id=${id}`
+    const url = `${AGENTCOIN_FUN_API_URL}/user/connect?id=${id}`
     const boxWidth = Math.max(70, url.length + 6) // Ensure minimum width of 70 chars
 
     // Print a fancy bordered URL message for the user
@@ -222,18 +220,17 @@ export class AgentcoinService extends Service implements IAgentcoinService {
             clearInterval(waitingInterval)
             console.log('\n\n┌' + '─'.repeat(boxWidth) + '┐')
             console.log('│' + ' '.repeat(boxWidth) + '│')
-            console.log('│' + '  ✅ Authentication successful!'.padEnd(boxWidth, ' ') + '│')
+            console.log('│' + '  ✅ Authentication successful!'.padEnd(boxWidth - 1, ' ') + '│')
             console.log('│' + ' '.repeat(boxWidth) + '│')
             console.log('└' + '─'.repeat(boxWidth) + '┘\n')
 
             // Save the token to credentials.json
-            const credentialsPath = path.join(AGENTCOIN_FUN_DIR, 'credentials.json')
             fs.writeFileSync(
-              credentialsPath,
+              USER_CREDENTIALS_FILE,
               JSON.stringify({ token, createdAt: new Date().toISOString() }, null, 2)
             )
 
-            elizaLogger.success('Credentials saved to', credentialsPath)
+            elizaLogger.success('Credentials saved to', USER_CREDENTIALS_FILE)
             return token
           }
         } catch (error) {
@@ -254,7 +251,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
 
   private async isProvisioned(): Promise<boolean> {
     try {
-      return fs.existsSync(this.pathManager.AGENT_PROVISION_FILE)
+      return fs.existsSync(this.pathResolver.AGENT_PROVISION_FILE)
     } catch {
       return false
     }
@@ -262,17 +259,17 @@ export class AgentcoinService extends Service implements IAgentcoinService {
 
   private async saveProvisionState(provisionState: AgentProvisionResponse): Promise<void> {
     fs.writeFileSync(
-      this.pathManager.AGENT_PROVISION_FILE,
+      this.pathResolver.AGENT_PROVISION_FILE,
       JSON.stringify(toJsonTree(provisionState))
     )
   }
 
   private async createCharacterFile(): Promise<void> {
-    const character = getDefaultCharacter()
-    fs.writeFileSync(this.pathManager.CHARACTER_FILE, JSON.stringify(toJsonTree(character)))
+    const character = createGenericCharacter('Agentcoin')
+    fs.writeFileSync(this.pathResolver.CHARACTER_FILE, JSON.stringify(toJsonTree(character)))
 
     // FIXME: avp: temp fix to ensure env.production is created
-    const envFile = this.pathManager.ENV_FILE
+    const envFile = this.pathResolver.ENV_FILE
     if (!fs.existsSync(envFile)) {
       fs.writeFileSync(envFile, '')
     }

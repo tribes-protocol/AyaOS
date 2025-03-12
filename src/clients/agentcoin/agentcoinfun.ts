@@ -183,7 +183,7 @@ export class AgentcoinClient {
   ): Promise<void> {
     // write the character to the character file
     await fs.promises.writeFile(
-      this.runtime.pathManager.CHARACTER_FILE,
+      this.runtime.pathResolver.CHARACTER_FILE,
       JSON.stringify(character, null, 2)
     )
 
@@ -192,7 +192,7 @@ export class AgentcoinClient {
       .map(([key, value]) => `${key}=${value}`)
       .join('\n')
 
-    await fs.promises.writeFile(this.runtime.pathManager.ENV_FILE, envContent)
+    await fs.promises.writeFile(this.runtime.pathResolver.ENV_FILE, envContent)
 
     // notify config service
     await this.configService.checkEnvAndCharacterUpdate()
