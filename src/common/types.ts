@@ -1,5 +1,5 @@
 import { isRequiredString, sortIdentities } from '@/common/functions'
-import { Content, Memory, State } from '@elizaos/core'
+import { Action, Content, Memory, State } from '@elizaos/core'
 import { isAddress } from 'viem'
 import { z } from 'zod'
 
