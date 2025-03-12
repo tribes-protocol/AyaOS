@@ -23,7 +23,6 @@
     "@elizaos/client-direct": "0.1.9",
     "@elizaos/core": "0.1.9",
     "@elizaos/plugin-bootstrap": "0.1.9",
-    "@elizaos/plugin-node": "0.1.9",
     "@langchain/community": "0.3.31",
     "@langchain/core": "0.3.40",
     "@neynar/nodejs-sdk": "2.13.1",
