@@ -1,4 +1,8 @@
-import { AGENT_ADMIN_PUBLIC_KEY, AGENTCOIN_FUN_API_URL } from '@/common/env'
+import {
+  AGENT_ADMIN_PUBLIC_KEY,
+  AGENTCOIN_FUN_API_URL,
+  AGENTCOIN_MONITORING_ENABLED
+} from '@/common/env'
 import {
   hasActions,
   isNull,
@@ -39,7 +43,6 @@ import {
   UUID
 } from '@elizaos/core'
 import { io, Socket } from 'socket.io-client'
-import { AGENTCOIN_MONITORING_ENABLED } from '@/common/constants'
 
 function messageIdToUuid(messageId: number): UUID {
   return stringToUuid('agentcoin:' + messageId.toString())

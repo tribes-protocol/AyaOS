@@ -1,3 +1,4 @@
+import { AGENTCOIN_MONITORING_ENABLED } from '@/common/env'
 import { isNull, isRequiredString } from '@/common/functions'
 import { OperationQueue } from '@/common/lang/operation_queue'
 import { PathResolver } from '@/common/path-resolver'
@@ -11,7 +12,6 @@ import express from 'express'
 import fs from 'fs'
 import net from 'net'
 import simpleGit from 'simple-git'
-import { AGENTCOIN_MONITORING_ENABLED } from '@/common/constants'
 
 export class ConfigService extends Service implements IConfigService {
   private readonly operationQueue = new OperationQueue(1)

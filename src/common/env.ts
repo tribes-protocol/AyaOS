@@ -1,11 +1,8 @@
 import { ensureString } from '@/common/functions'
 
-export const AGENTCOIN_FUN_API_URL = ensureString(
-  process.env.AGENTCOIN_FUN_API_URL,
-  'AGENTCOIN_FUN_API_URL is not set'
-)
+export const AGENTCOIN_FUN_API_URL = process.env.AGENTCOIN_FUN_API_URL || 'https://agentcoin.fun'
 
-export const BASE_RPC_URL = ensureString(process.env.BASE_RPC_URL, 'BASE_RPC_URL is not set')
+export const AGENTCOIN_MONITORING_ENABLED = process.env.AGENTCOIN_MONITORING_ENABLED === 'true'
 
 export const POSTGRES_URL = ensureString(process.env.POSTGRES_URL, 'POSTGRES_URL is not set')
 

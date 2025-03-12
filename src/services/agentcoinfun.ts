@@ -267,11 +267,5 @@ export class AgentcoinService extends Service implements IAgentcoinService {
   private async createCharacterFile(): Promise<void> {
     const character = createGenericCharacter('Agentcoin')
     fs.writeFileSync(this.pathResolver.CHARACTER_FILE, JSON.stringify(toJsonTree(character)))
-
-    // FIXME: avp: temp fix to ensure env.production is created
-    const envFile = this.pathResolver.ENV_FILE
-    if (!fs.existsSync(envFile)) {
-      fs.writeFileSync(envFile, '')
-    }
   }
 }
