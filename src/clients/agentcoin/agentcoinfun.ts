@@ -1,8 +1,4 @@
-import {
-  AGENT_ADMIN_PUBLIC_KEY,
-  AGENTCOIN_FUN_API_URL,
-  AGENTCOIN_MONITORING_ENABLED
-} from '@/common/env'
+import { AGENTCOIN_FUN_API_URL, AGENTCOIN_MONITORING_ENABLED } from '@/common/env'
 import {
   hasActions,
   isNull,
@@ -43,6 +39,7 @@ import {
   UUID
 } from '@elizaos/core'
 import { io, Socket } from 'socket.io-client'
+import { AGENT_ADMIN_PUBLIC_KEY } from '@/common/constants'
 
 function messageIdToUuid(messageId: number): UUID {
   return stringToUuid('agentcoin:' + messageId.toString())
@@ -147,7 +144,9 @@ export class AgentcoinClient {
             throw new Error('Invalid payload')
           }
 
-          if (!isValidSignature(content, AGENT_ADMIN_PUBLIC_KEY, signature)) {
+          const adminPublicKey = this.runtime.getSetting(AGENT_ADMIN_PUBLIC_KEY)
+
+          if (!isValidSignature(content, adminPublicKey, signature)) {
             throw new Error('Invalid signature')
           }
 
@@ -161,12 +160,13 @@ export class AgentcoinClient {
   }
 
   private async handleAdminCommand(command: SentinelCommand): Promise<void> {
+    elizaLogger.info('handling admin command', command.kind)
     switch (command.kind) {
       case 'set_git':
         elizaLogger.info('ignoring set_git. sentinel service is handling this', command)
         break
-      case 'set_character_n_envvars':
-        await this.handleSetCharacterAndEnvvars(command.character, command.envVars)
+      case 'set_character':
+        await this.handleSetCharacter(command.character)
         break
       case 'set_knowledge':
         elizaLogger.info('ignoring set_knowledge', command)
@@ -179,25 +179,15 @@ export class AgentcoinClient {
     }
   }
 
-  private async handleSetCharacterAndEnvvars(
-    character: Character,
-    envVars: Record<string, string>
-  ): Promise<void> {
+  private async handleSetCharacter(character: Character): Promise<void> {
     // write the character to the character file
     await fs.promises.writeFile(
       this.runtime.pathResolver.CHARACTER_FILE,
       JSON.stringify(character, null, 2)
     )
 
-    // write the env vars to the env file
-    const envContent = Object.entries(envVars)
-      .map(([key, value]) => `${key}=${value}`)
-      .join('\n')
-
-    await fs.promises.writeFile(this.runtime.pathResolver.ENV_FILE, envContent)
-
     // notify config service
-    await this.configService.checkEnvAndCharacterUpdate()
+    await this.configService.checkCharacterUpdate()
   }
 
   public stop(): void {

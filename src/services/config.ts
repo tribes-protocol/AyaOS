@@ -85,41 +85,12 @@ export class ConfigService extends Service implements IConfigService {
     this.server = app.listen(this.pathResolver.RUNTIME_SERVER_SOCKET_FILE)
 
     while (this.isRunning) {
-      await Promise.all([
-        this.checkCodeUpdate(),
-        this.checkEnvUpdate(),
-        this.checkCharacterUpdate()
-      ])
+      await Promise.all([this.checkCodeUpdate(), this.checkCharacterUpdate()])
       await new Promise((resolve) => setTimeout(resolve, 30000))
     }
   }
 
-  public async checkEnvAndCharacterUpdate(): Promise<void> {
-    await Promise.all([this.checkEnvUpdate(), this.checkCharacterUpdate()])
-  }
-
-  private async checkEnvUpdate(): Promise<void> {
-    await this.operationQueue.submit(async () => {
-      // read envvars file
-      const envvars = fs.readFileSync(this.pathResolver.ENV_FILE, 'utf8')
-      const checksum = crypto.createHash('md5').update(envvars).digest('hex')
-      if (isNull(this.envvarsChecksum) || this.envvarsChecksum === checksum) {
-        this.envvarsChecksum = checksum
-        return
-      }
-
-      // kill the process and docker container should restart it
-      elizaLogger.info(`New envvars file detected. Restarting agent...`)
-      await this.eventService.publishEnvChangeEvent(envvars)
-      this.envvarsChecksum = checksum
-
-      if (process.env.NODE_ENV === 'production') {
-        await this.processService.kill()
-      }
-    })
-  }
-
-  private async checkCharacterUpdate(): Promise<void> {
+  async checkCharacterUpdate(): Promise<void> {
     await this.operationQueue.submit(async () => {
       // read character file
       const character = fs.readFileSync(this.pathResolver.CHARACTER_FILE, 'utf8')

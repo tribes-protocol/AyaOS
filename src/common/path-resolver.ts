@@ -26,24 +26,10 @@ export class PathResolver {
   }
 
   /**
-   * Get the agent provision file path
-   */
-  get AGENT_PROVISION_FILE(): string {
-    return path.join(this.rootDir, 'agent-provision.json')
-  }
-
-  /**
    * Get the character file path
    */
   get CHARACTER_FILE(): string {
     return path.join(this.rootDir, 'character.json')
-  }
-
-  /**
-   * Get the environment file path
-   */
-  get ENV_FILE(): string {
-    return path.join(this.rootDir, 'env.production')
   }
 
   /**

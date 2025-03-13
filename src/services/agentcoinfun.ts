@@ -3,9 +3,9 @@ import { isNull, toJsonTree } from '@/common/functions'
 import { PathResolver } from '@/common/path-resolver'
 import {
   AgentIdentity,
-  AgentProvisionResponse,
-  AgentProvisionResponseSchema,
+  AgentIdentitySchema,
   AgentRegistrationSchema,
+  CharacterSchema,
   ChatChannel,
   CreateMessage,
   CredentialsSchema,
@@ -20,7 +20,6 @@ import { KeychainService } from '@/services/keychain'
 import { elizaLogger, IAgentRuntime, Service, ServiceType } from '@elizaos/core'
 import * as fs from 'fs'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
-import { createGenericCharacter } from '@/common/character'
 import { USER_CREDENTIALS_FILE } from '@/common/constants'
 
 export class AgentcoinService extends Service implements IAgentcoinService {
@@ -48,10 +47,10 @@ export class AgentcoinService extends Service implements IAgentcoinService {
 
   async getIdentity(): Promise<Identity> {
     if (isNull(this.cachedIdentity)) {
-      const { agentId } = AgentProvisionResponseSchema.parse(
-        JSON.parse(fs.readFileSync(this.pathResolver.AGENT_PROVISION_FILE, 'utf-8'))
+      const { id } = CharacterSchema.parse(
+        JSON.parse(fs.readFileSync(this.pathResolver.CHARACTER_FILE, 'utf-8'))
       )
-      this.cachedIdentity = agentId
+      this.cachedIdentity = AgentIdentitySchema.parse(`AGENT-${id}`)
     }
     return this.cachedIdentity
   }
@@ -89,6 +88,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
   }
 
   async provisionIfNeeded(): Promise<void> {
+    console.log('Checking if agent coin is provisioned...')
     if (await this.isProvisioned()) {
       return
     }
@@ -99,7 +99,6 @@ export class AgentcoinService extends Service implements IAgentcoinService {
 
     if (!fs.existsSync(regPath)) {
       const agentId = await this.provisionPureAgent()
-      await this.saveProvisionState({ agentId })
       elizaLogger.success('Agent coin provisioned successfully', agentId)
       return
     }
@@ -111,10 +110,10 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     const signature = await this.keychain.sign(token)
     const publicKey = this.keychain.publicKey
 
-    const { agentId } = await this.api.provisionAgent(token, signature, publicKey)
+    const character = await this.api.provisionAgent(token, signature, publicKey)
+    fs.writeFileSync(this.pathResolver.CHARACTER_FILE, JSON.stringify(toJsonTree(character)))
 
-    await this.saveProvisionState({ agentId })
-    elizaLogger.success('Agent coin provisioned successfully', agentId)
+    elizaLogger.success('Agent coin provisioned successfully', character.id)
   }
 
   async getCookie(): Promise<string> {
@@ -143,17 +142,19 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     const message = this.keychain.publicKey
     const signature = await this.keychain.sign(message)
 
-    const { agentId } = await this.api.createAgentFromCli(
+    const character = await this.api.createAgentFromCli(
       message,
       this.keychain.publicKey,
       signature,
       `jwt_auth_token=${token}`
     )
 
-    await this.createCharacterFile()
+    fs.writeFileSync(this.pathResolver.CHARACTER_FILE, JSON.stringify(toJsonTree(character)))
+
+    const agentId = AgentIdentitySchema.parse(`AGENT-${character.id}`)
 
     // Display agent creation success message
-    const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${agentId}`
+    const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${character.id}`
     const boxWidth = Math.max(70, agentUrl.length + 6) // Ensure minimum width of 70 chars
 
     console.log('\n┌' + '─'.repeat(boxWidth) + '┐')
@@ -247,25 +248,25 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     return token
   }
 
-  // helper private functions
-
   private async isProvisioned(): Promise<boolean> {
     try {
-      return fs.existsSync(this.pathResolver.AGENT_PROVISION_FILE)
-    } catch {
+      if (!fs.existsSync(this.pathResolver.CHARACTER_FILE)) {
+        return false
+      }
+
+      console.log(JSON.parse(fs.readFileSync(this.pathResolver.CHARACTER_FILE, 'utf-8')))
+
+      const character = CharacterSchema.parse(
+        JSON.parse(fs.readFileSync(this.pathResolver.CHARACTER_FILE, 'utf-8'))
+      )
+      console.log({ character })
+
+      if (character.id) {
+        return true
+      }
+    } catch (error) {
+      console.log('Error parsing character file:', error)
       return false
     }
-  }
-
-  private async saveProvisionState(provisionState: AgentProvisionResponse): Promise<void> {
-    fs.writeFileSync(
-      this.pathResolver.AGENT_PROVISION_FILE,
-      JSON.stringify(toJsonTree(provisionState))
-    )
-  }
-
-  private async createCharacterFile(): Promise<void> {
-    const character = createGenericCharacter('Agentcoin')
-    fs.writeFileSync(this.pathResolver.CHARACTER_FILE, JSON.stringify(toJsonTree(character)))
   }
 }

@@ -193,12 +193,6 @@ export const AgentRegistrationSchema = z.object({
 
 export type AgentRegistration = z.infer<typeof AgentRegistrationSchema>
 
-export const AgentProvisionResponseSchema = z.object({
-  agentId: AgentIdentitySchema
-})
-
-export type AgentProvisionResponse = z.infer<typeof AgentProvisionResponseSchema>
-
 export const GitStateSchema = z.object({
   repositoryUrl: z.string(),
   branch: z.string(),
@@ -244,18 +238,21 @@ export const BaseCharacterSchema = z.object({
 export type BaseCharacter = z.infer<typeof BaseCharacterSchema>
 
 export const CharacterSchema = BaseCharacterSchema.extend({
+  id: z.string(),
   name: z.string(),
   clients: z.array(z.string()),
   modelProvider: z.string(),
-  settings: z.object({
-    secrets: z.record(z.string()).optional().nullable(),
-    voice: z
-      .object({
-        model: z.string()
-      })
-      .optional()
-      .nullable()
-  }),
+  settings: z
+    .object({
+      secrets: z.record(z.string()).optional().nullable(),
+      voice: z
+        .object({
+          model: z.string()
+        })
+        .optional()
+        .nullable()
+    })
+    .passthrough(),
   plugins: z.array(z.string())
 })
 
@@ -306,10 +303,9 @@ export const SentinelSetGitCommandSchema = z.object({
   state: GitStateSchema
 })
 
-export const SentinelSetCharAndEnvVarsCommandSchema = z.object({
-  kind: z.literal('set_character_n_envvars'),
-  character: CharacterSchema,
-  envVars: z.record(z.string(), z.string())
+export const SentinelSetCharacterCommandSchema = z.object({
+  kind: z.literal('set_character'),
+  character: CharacterSchema
 })
 
 export const SentinelSetKnowledgeCommandSchema = z.object({
@@ -328,7 +324,7 @@ export const SentinelCommandSchema = z.discriminatedUnion('kind', [
   SentinelSetGitCommandSchema,
   SentinelSetKnowledgeCommandSchema,
   SentinelDeleteKnowledgeCommandSchema,
-  SentinelSetCharAndEnvVarsCommandSchema
+  SentinelSetCharacterCommandSchema
 ])
 
 export type SentinelCommand = z.infer<typeof SentinelCommandSchema>

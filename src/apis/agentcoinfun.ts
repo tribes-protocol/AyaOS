@@ -2,11 +2,11 @@ import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { serializeIdentity, toJsonTree } from '@/common/functions'
 import {
   AgentEventData,
-  AgentProvisionResponse,
-  AgentProvisionResponseSchema,
   AgentWallet,
   AgentWalletKind,
   AgentWalletSchema,
+  Character,
+  CharacterSchema,
   ChatStatusBody,
   CliAuthRequestSchema,
   CliAuthResponseSchema,
@@ -116,7 +116,7 @@ export class AgentcoinAPI {
     signupToken: string,
     signature: string,
     publicKey: string
-  ): Promise<AgentProvisionResponse> {
+  ): Promise<Character> {
     const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/provision`, {
       method: 'POST',
       headers: {
@@ -131,7 +131,7 @@ export class AgentcoinAPI {
       throw new Error('Failed to provision agent coin')
     }
 
-    return AgentProvisionResponseSchema.parse(data)
+    return CharacterSchema.parse(data)
   }
 
   async generateAuthMessage(publicKey: string): Promise<string> {
@@ -227,7 +227,7 @@ export class AgentcoinAPI {
     publicKey: string,
     signature: string,
     cookie: string
-  ): Promise<AgentProvisionResponse> {
+  ): Promise<Character> {
     const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/create-from-cli`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
@@ -243,7 +243,7 @@ export class AgentcoinAPI {
     }
 
     const responseData = await response.json()
-    return AgentProvisionResponseSchema.parse(responseData)
+    return CharacterSchema.parse(responseData)
   }
 
   async createCliAuthRequest(): Promise<string> {

@@ -4,7 +4,7 @@ import { elizaLogger } from '@elizaos/core'
 async function main(): Promise<void> {
   try {
     console.log('hello, agent!')
-    const agent = new Agent('new-agent')
+    const agent = new Agent('data')
     console.log('agent created')
     agent.on('pre:llm', async (context) => {
       console.log('pre:llm', context.memory?.content)

@@ -31,7 +31,7 @@ import {
 import { bootstrapPlugin } from '@elizaos/plugin-bootstrap'
 import fs from 'fs'
 import { PathResolver } from '@/common/path-resolver'
-import { ensureUUID } from '@/common/functions'
+import { isNull } from '@/common/functions'
 
 const reservedAgentDirs = new Set<string>()
 
@@ -95,6 +95,11 @@ export class Agent implements IAyaAgent {
       )
       await agentcoinService.provisionIfNeeded()
 
+      if (isNull(process.env.POSTGRES_URL)) {
+        elizaLogger.error('POSTGRES_URL is not set, please set it in your .env file')
+        process.exit(1)
+      }
+
       // eagerly start event service
       const agentcoinCookie = await agentcoinService.getCookie()
       const agentcoinIdentity = await agentcoinService.getIdentity()
@@ -117,10 +122,8 @@ export class Agent implements IAyaAgent {
         fs.promises.readFile(this.pathResolver.CHARACTER_FILE, 'utf8')
       ])
 
-      const agentId = ensureUUID((await agentcoinService.getIdentity()).substring(6))
+      const character: Character = keychainService.processCharacterSecrets(JSON.parse(charString))
 
-      const character: Character = JSON.parse(charString)
-      character.id = agentId
       character.templates = {
         ...character.templates,
         messageHandlerTemplate: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
