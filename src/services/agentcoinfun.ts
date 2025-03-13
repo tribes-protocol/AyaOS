@@ -111,9 +111,14 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     const publicKey = this.keychain.publicKey
 
     const character = await this.api.provisionAgent(token, signature, publicKey)
-    fs.writeFileSync(this.pathResolver.CHARACTER_FILE, JSON.stringify(toJsonTree(character)))
+    fs.writeFileSync(
+      this.pathResolver.CHARACTER_FILE,
+      JSON.stringify(toJsonTree(character), null, 2)
+    )
 
     elizaLogger.success('Agent coin provisioned successfully', character.id)
+
+    fs.unlinkSync(regPath)
   }
 
   async getCookie(): Promise<string> {
@@ -149,7 +154,10 @@ export class AgentcoinService extends Service implements IAgentcoinService {
       `jwt_auth_token=${token}`
     )
 
-    fs.writeFileSync(this.pathResolver.CHARACTER_FILE, JSON.stringify(toJsonTree(character)))
+    fs.writeFileSync(
+      this.pathResolver.CHARACTER_FILE,
+      JSON.stringify(toJsonTree(character), null, 2)
+    )
 
     const agentId = AgentIdentitySchema.parse(`AGENT-${character.id}`)
 
