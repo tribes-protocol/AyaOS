@@ -4,7 +4,7 @@ import { initializeClients } from '@/clients'
 import { getTokenForProvider } from '@/common/config'
 import { initializeDatabase } from '@/common/db'
 import { AgentcoinRuntime } from '@/common/runtime'
-import { Context, ContextHandler, SdkEventKind } from '@/common/types'
+import { Context, ContextHandler, ModelConfig, SdkEventKind } from '@/common/types'
 import agentcoinPlugin from '@/plugins/agentcoin'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
@@ -36,6 +36,7 @@ import { isNull } from '@/common/functions'
 const reservedAgentDirs = new Set<string>()
 
 export class Agent implements IAyaAgent {
+  private modelConfig?: ModelConfig
   private preLLMHandlers: ContextHandler[] = []
   private postLLMHandlers: ContextHandler[] = []
   private preActionHandlers: ContextHandler[] = []
@@ -47,6 +48,10 @@ export class Agent implements IAyaAgent {
   private evaluators: Evaluator[] = []
   private runtime_: AgentcoinRuntime | undefined
   private pathResolver: PathResolver
+
+  constructor(options?: { modelConfig?: ModelConfig }) {
+    this.modelConfig = options?.modelConfig
+  }
 
   get runtime(): AgentcoinRuntime {
     if (!this.runtime_) {
@@ -124,12 +129,24 @@ export class Agent implements IAyaAgent {
 
       const character: Character = keychainService.processCharacterSecrets(JSON.parse(charString))
 
+      const modelConfig = this.modelConfig
       character.templates = {
         ...character.templates,
         messageHandlerTemplate: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
       }
 
-      const token = getTokenForProvider(character.modelProvider, character)
+      if (modelConfig) {
+        character.modelProvider = modelConfig.provider
+        character.modelEndpointOverride = modelConfig.endpoint
+        character.settings = character.settings ?? {}
+        character.settings.modelConfig = modelConfig
+      }
+
+      // Set elizaLogger to debug mode
+      // elizaLogger.level = 'debug'
+      // elizaLogger.debug('Logger set to debug mode')
+
+      const token = modelConfig?.apiKey ?? getTokenForProvider(character.modelProvider, character)
       const cache = new CacheManager(new DbCacheAdapter(db, character.id))
 
       elizaLogger.info(elizaLogger.successesTitle, 'Creating runtime for character', character.name)

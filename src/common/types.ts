@@ -1,5 +1,12 @@
 import { isRequiredString, sortIdentities } from '@/common/functions'
-import { Action, Content, Memory, State } from '@elizaos/core'
+import {
+  Action,
+  Content,
+  Memory,
+  ModelConfiguration,
+  ModelProviderName,
+  State
+} from '@elizaos/core'
 import { isAddress } from 'viem'
 import { z } from 'zod'
 
@@ -448,3 +455,9 @@ export const CredentialsSchema = z.object({
 })
 
 export type Credentials = z.infer<typeof CredentialsSchema>
+
+export type ModelConfig = ModelConfiguration & {
+  provider: ModelProviderName
+  endpoint?: string
+  apiKey?: string
+}
