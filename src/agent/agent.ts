@@ -51,10 +51,10 @@ export class Agent implements IAyaAgent {
 
   constructor(options?: { modelConfig?: ModelConfig; dataDir?: string }) {
     this.modelConfig = options?.modelConfig
-    if (reservedAgentDirs.has(options.dataDir)) {
+    if (reservedAgentDirs.has(options?.dataDir)) {
       throw new Error('Data directory already used. Please provide a unique data directory.')
     }
-    reservedAgentDirs.add(options.dataDir)
+    reservedAgentDirs.add(options?.dataDir)
     this.pathResolver = new PathResolver(options?.dataDir)
   }
 
