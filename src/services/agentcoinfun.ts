@@ -88,7 +88,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
   }
 
   async provisionIfNeeded(): Promise<void> {
-    console.log('Checking if agent coin is provisioned...')
+    elizaLogger.info('Checking if agent coin is provisioned...')
     if (await this.isProvisioned()) {
       return
     }
@@ -154,7 +154,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     const agentId = AgentIdentitySchema.parse(`AGENT-${character.id}`)
 
     // Display agent creation success message
-    const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${character.id}`
+    const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${agentId}`
     const boxWidth = Math.max(70, agentUrl.length + 6) // Ensure minimum width of 70 chars
 
     console.log('\n┌' + '─'.repeat(boxWidth) + '┐')
@@ -254,12 +254,9 @@ export class AgentcoinService extends Service implements IAgentcoinService {
         return false
       }
 
-      console.log(JSON.parse(fs.readFileSync(this.pathResolver.CHARACTER_FILE, 'utf-8')))
-
       const character = CharacterSchema.parse(
         JSON.parse(fs.readFileSync(this.pathResolver.CHARACTER_FILE, 'utf-8'))
       )
-      console.log({ character })
 
       if (character.id) {
         return true
