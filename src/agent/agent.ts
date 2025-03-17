@@ -3,6 +3,8 @@ import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { initializeClients } from '@/clients'
 import { getTokenForProvider } from '@/common/config'
 import { initializeDatabase } from '@/common/db'
+import { isNull } from '@/common/functions'
+import { PathResolver } from '@/common/path-resolver'
 import { AgentcoinRuntime } from '@/common/runtime'
 import { Context, ContextHandler, ModelConfig, SdkEventKind } from '@/common/types'
 import agentcoinPlugin from '@/plugins/agentcoin'
@@ -30,8 +32,6 @@ import {
 } from '@elizaos/core'
 import { bootstrapPlugin } from '@elizaos/plugin-bootstrap'
 import fs from 'fs'
-import { PathResolver } from '@/common/path-resolver'
-import { isNull } from '@/common/functions'
 
 const reservedAgentDirs = new Set<string | undefined>()
 
@@ -386,7 +386,7 @@ export class Agent implements IAyaAgent {
       if (key.startsWith('AGENTCOIN_ENC_') && value) {
         const decryptedValue = this.keychainService.decrypt(value)
         const newKey = key.substring(14)
-        elizaLogger.info('Decrypted secret', newKey, decryptedValue)
+        elizaLogger.info('Decrypted secret', newKey)
         character.settings.secrets[newKey] = decryptedValue
       }
     })
