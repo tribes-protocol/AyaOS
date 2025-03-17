@@ -1,4 +1,3 @@
-import { KEYPAIR_FILE } from '@/common/constants'
 import { KeyPair, KeyPairSchema } from '@/common/types'
 import { ApiKeyStamper } from '@turnkey/sdk-server'
 import { createDecipheriv, createHash } from 'crypto'
@@ -22,9 +21,7 @@ export class KeychainService {
     })
   }
 
-  constructor() {
-    const keyPairPath = KEYPAIR_FILE
-
+  constructor(keyPairPath: string) {
     if (!fs.existsSync(keyPairPath)) {
       const keyPair = ec.genKeyPair()
       this.keyPairData = {
@@ -38,8 +35,6 @@ export class KeychainService {
       const keyPairData = KeyPairSchema.parse(JSON.parse(fs.readFileSync(keyPairPath, 'utf-8')))
       this.keyPairData = keyPairData
     }
-
-    this.processEnvVariables()
   }
 
   async sign(message: string): Promise<string> {
@@ -67,15 +62,5 @@ export class KeychainService {
     decrypted += decipher.final('utf8')
 
     return decrypted
-  }
-
-  private processEnvVariables(): void {
-    Object.entries(process.env).forEach(([key, value]) => {
-      if (key.startsWith('AGENTCOIN_ENC_') && value) {
-        const decryptedValue = this.decrypt(value)
-        const newKey = key.substring(14)
-        process.env[newKey] = decryptedValue
-      }
-    })
   }
 }

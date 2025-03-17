@@ -1,5 +1,8 @@
-import { AGENTCOIN_MONITORING_ENABLED, CHARACTER_FILE, ENV_FILE } from '@/common/constants'
-import { AGENT_ADMIN_PUBLIC_KEY, AGENTCOIN_FUN_API_URL, TOKEN_ADDRESS } from '@/common/env'
+import {
+  AGENT_ADMIN_PUBLIC_KEY,
+  AGENTCOIN_FUN_API_URL,
+  AGENTCOIN_MONITORING_ENABLED
+} from '@/common/env'
 import {
   hasActions,
   isNull,
@@ -14,7 +17,6 @@ import {
   Character,
   ChatChannel,
   ChatChannelKind,
-  CoinChannelSchema,
   EthAddressSchema,
   HydratedMessageSchema,
   Identity,
@@ -94,17 +96,6 @@ export class AgentcoinClient {
       elizaLogger.info('Disconnected from Agentcoin API')
     })
 
-    const coinChannel = CoinChannelSchema.parse({
-      kind: ChatChannelKind.COIN,
-      chainId: 8453,
-      address: TOKEN_ADDRESS
-    })
-
-    this.socket.on(serializeChannel(coinChannel), async (data: unknown) => {
-      elizaLogger.info('Agentcoin client received coin message', data)
-      await this.processMessage(coinChannel, data)
-    })
-
     const identity = await this.agentcoinService.getIdentity()
     const eventName = `user:${serializeIdentity(identity)}`
     elizaLogger.info(
@@ -137,7 +128,7 @@ export class AgentcoinClient {
             break
           }
           case 'status':
-            elizaLogger.info('received status', event.data.status)
+            elizaLogger.info('Received status', event.data.status)
             break
         }
       } catch (error) {
@@ -170,12 +161,13 @@ export class AgentcoinClient {
   }
 
   private async handleAdminCommand(command: SentinelCommand): Promise<void> {
+    elizaLogger.info('handling admin command', command.kind)
     switch (command.kind) {
       case 'set_git':
         elizaLogger.info('ignoring set_git. sentinel service is handling this', command)
         break
-      case 'set_character_n_envvars':
-        await this.handleSetCharacterAndEnvvars(command.character, command.envVars)
+      case 'set_character':
+        await this.handleSetCharacter(command.character)
         break
       case 'set_knowledge':
         elizaLogger.info('ignoring set_knowledge', command)
@@ -188,22 +180,15 @@ export class AgentcoinClient {
     }
   }
 
-  private async handleSetCharacterAndEnvvars(
-    character: Character,
-    envVars: Record<string, string>
-  ): Promise<void> {
+  private async handleSetCharacter(character: Character): Promise<void> {
     // write the character to the character file
-    await fs.promises.writeFile(CHARACTER_FILE, JSON.stringify(character, null, 2))
-
-    // write the env vars to the env file
-    const envContent = Object.entries(envVars)
-      .map(([key, value]) => `${key}=${value}`)
-      .join('\n')
-
-    await fs.promises.writeFile(ENV_FILE, envContent)
+    await fs.promises.writeFile(
+      this.runtime.pathResolver.characterFile,
+      JSON.stringify(character, null, 2)
+    )
 
     // notify config service
-    await this.configService.checkEnvAndCharacterUpdate()
+    await this.configService.checkCharacterUpdate()
   }
 
   public stop(): void {
