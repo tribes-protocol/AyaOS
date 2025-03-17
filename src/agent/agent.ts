@@ -33,7 +33,7 @@ import fs from 'fs'
 import { PathResolver } from '@/common/path-resolver'
 import { isNull } from '@/common/functions'
 
-const reservedAgentDirs = new Set<string>()
+const reservedAgentDirs = new Set<string | undefined>()
 
 export class Agent implements IAyaAgent {
   private modelConfig?: ModelConfig
@@ -48,6 +48,7 @@ export class Agent implements IAyaAgent {
   private evaluators: Evaluator[] = []
   private runtime_: AgentcoinRuntime | undefined
   private pathResolver: PathResolver
+  private keychainService: KeychainService
 
   constructor(options?: { modelConfig?: ModelConfig; dataDir?: string }) {
     this.modelConfig = options?.modelConfig
@@ -88,10 +89,10 @@ export class Agent implements IAyaAgent {
       elizaLogger.info('Starting agent...')
 
       // step 1: provision the hardware if needed.
-      const keychainService = new KeychainService(this.pathResolver.KEYPAIR_FILE)
+      this.keychainService = new KeychainService(this.pathResolver.keypairFile)
       const agentcoinAPI = new AgentcoinAPI()
       const agentcoinService = new AgentcoinService(
-        keychainService,
+        this.keychainService,
         agentcoinAPI,
         this.pathResolver
       )
@@ -112,7 +113,8 @@ export class Agent implements IAyaAgent {
         agentcoinCookie,
         agentcoinIdentity,
         agentcoinAPI,
-        keychainService.turnkeyApiKeyStamper
+        this.runtime,
+        this.keychainService.turnkeyApiKeyStamper
       )
       const processService = new ProcessService()
       const configService = new ConfigService(eventService, processService, this.pathResolver)
@@ -121,10 +123,10 @@ export class Agent implements IAyaAgent {
       elizaLogger.info('Loading character...')
       const [db, charString] = await Promise.all([
         initializeDatabase(),
-        fs.promises.readFile(this.pathResolver.CHARACTER_FILE, 'utf8')
+        fs.promises.readFile(this.pathResolver.characterFile, 'utf8')
       ])
 
-      const character: Character = keychainService.processCharacterSecrets(JSON.parse(charString))
+      const character: Character = this.processCharacterSecrets(JSON.parse(charString))
 
       const modelConfig = this.modelConfig
       character.templates = {
@@ -377,5 +379,18 @@ export class Agent implements IAyaAgent {
     }
 
     return true
+  }
+
+  private processCharacterSecrets(character: Character): Character {
+    Object.entries(character.settings.secrets || {}).forEach(([key, value]) => {
+      if (key.startsWith('AGENTCOIN_ENC_') && value) {
+        const decryptedValue = this.keychainService.decrypt(value)
+        const newKey = key.substring(14)
+        elizaLogger.info('Decrypted secret', newKey, decryptedValue)
+        character.settings.secrets[newKey] = decryptedValue
+      }
+    })
+
+    return character
   }
 }

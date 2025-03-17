@@ -1,5 +1,4 @@
 import { KeyPair, KeyPairSchema } from '@/common/types'
-import { Character, elizaLogger } from '@elizaos/core'
 import { ApiKeyStamper } from '@turnkey/sdk-server'
 import { createDecipheriv, createHash } from 'crypto'
 import EC from 'elliptic'
@@ -63,18 +62,5 @@ export class KeychainService {
     decrypted += decipher.final('utf8')
 
     return decrypted
-  }
-
-  public processCharacterSecrets(character: Character): Character {
-    Object.entries(character.settings.secrets || {}).forEach(([key, value]) => {
-      if (key.startsWith('AGENTCOIN_ENC_') && value) {
-        const decryptedValue = this.decrypt(value)
-        const newKey = key.substring(14)
-        elizaLogger.info('Decrypted secret', newKey, decryptedValue)
-        character.settings.secrets[newKey] = decryptedValue
-      }
-    })
-
-    return character
   }
 }

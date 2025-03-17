@@ -1,5 +1,6 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { isNull } from '@/common/functions'
+import { AgentcoinRuntime } from '@/common/runtime'
 import {
   AgentWallet,
   AgentWalletKind,
@@ -28,6 +29,7 @@ export class WalletService extends Service implements IWalletService {
     private readonly agentcoinCookie: string,
     private readonly agentcoinIdentity: Identity,
     private readonly agentcoinAPI: AgentcoinAPI,
+    private readonly runtime: AgentcoinRuntime,
     apiKeyStamper: ApiKeyStamper
   ) {
     super()
@@ -64,10 +66,17 @@ export class WalletService extends Service implements IWalletService {
       throw new Error(`Unsupported chainId: ${transaction.chainId}`)
     }
 
+    const baseRpcUrl = this.runtime.getSetting('BASE_RPC_URL')
+    if (isNull(baseRpcUrl)) {
+      throw new Error(
+        'BASE_RPC_URL is not set, you must add it in you character secrets or in the .env file'
+      )
+    }
+
     const client: WalletClient = createWalletClient({
       account: this.getAccount(wallet),
       chain: base,
-      transport: http(process.env.BASE_RPC_URL)
+      transport: http(baseRpcUrl)
     })
 
     const txHash = await client.sendTransaction({

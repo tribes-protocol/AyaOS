@@ -48,7 +48,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
   async getIdentity(): Promise<Identity> {
     if (isNull(this.cachedIdentity)) {
       const { id } = CharacterSchema.parse(
-        JSON.parse(fs.readFileSync(this.pathResolver.CHARACTER_FILE, 'utf-8'))
+        JSON.parse(fs.readFileSync(this.pathResolver.characterFile, 'utf-8'))
       )
       this.cachedIdentity = AgentIdentitySchema.parse(`AGENT-${id}`)
     }
@@ -95,7 +95,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
 
     elizaLogger.info('Provisioning hardware...')
 
-    const regPath = this.pathResolver.REGISTRATION_FILE
+    const regPath = this.pathResolver.registrationFile
 
     if (!fs.existsSync(regPath)) {
       const agentId = await this.provisionPureAgent()
@@ -112,7 +112,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
 
     const character = await this.api.provisionAgent(token, signature, publicKey)
     fs.writeFileSync(
-      this.pathResolver.CHARACTER_FILE,
+      this.pathResolver.characterFile,
       JSON.stringify(toJsonTree(character), null, 2)
     )
 
@@ -155,7 +155,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     )
 
     fs.writeFileSync(
-      this.pathResolver.CHARACTER_FILE,
+      this.pathResolver.characterFile,
       JSON.stringify(toJsonTree(character), null, 2)
     )
 
@@ -258,12 +258,12 @@ export class AgentcoinService extends Service implements IAgentcoinService {
 
   private async isProvisioned(): Promise<boolean> {
     try {
-      if (!fs.existsSync(this.pathResolver.CHARACTER_FILE)) {
+      if (!fs.existsSync(this.pathResolver.characterFile)) {
         return false
       }
 
       const character = CharacterSchema.parse(
-        JSON.parse(fs.readFileSync(this.pathResolver.CHARACTER_FILE, 'utf-8'))
+        JSON.parse(fs.readFileSync(this.pathResolver.characterFile, 'utf-8'))
       )
 
       if (character.id) {

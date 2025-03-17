@@ -1,4 +1,8 @@
-import { AGENTCOIN_FUN_API_URL, AGENTCOIN_MONITORING_ENABLED } from '@/common/env'
+import {
+  AGENT_ADMIN_PUBLIC_KEY,
+  AGENTCOIN_FUN_API_URL,
+  AGENTCOIN_MONITORING_ENABLED
+} from '@/common/env'
 import {
   hasActions,
   isNull,
@@ -39,7 +43,6 @@ import {
   UUID
 } from '@elizaos/core'
 import { io, Socket } from 'socket.io-client'
-import { AGENT_ADMIN_PUBLIC_KEY } from '@/common/constants'
 
 function messageIdToUuid(messageId: number): UUID {
   return stringToUuid('agentcoin:' + messageId.toString())
@@ -144,9 +147,7 @@ export class AgentcoinClient {
             throw new Error('Invalid payload')
           }
 
-          const adminPublicKey = this.runtime.getSetting(AGENT_ADMIN_PUBLIC_KEY)
-
-          if (!isValidSignature(content, adminPublicKey, signature)) {
+          if (!isValidSignature(content, AGENT_ADMIN_PUBLIC_KEY, signature)) {
             throw new Error('Invalid signature')
           }
 
@@ -182,7 +183,7 @@ export class AgentcoinClient {
   private async handleSetCharacter(character: Character): Promise<void> {
     // write the character to the character file
     await fs.promises.writeFile(
-      this.runtime.pathResolver.CHARACTER_FILE,
+      this.runtime.pathResolver.characterFile,
       JSON.stringify(character, null, 2)
     )
 
