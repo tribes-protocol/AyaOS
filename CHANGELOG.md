@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.25
+
+### Patch Changes
+
+- fb4b59a: Don't log decrypted secret
+
 ## 0.0.24
 
 ### Patch Changes
