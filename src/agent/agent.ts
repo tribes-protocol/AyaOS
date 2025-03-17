@@ -109,13 +109,6 @@ export class Agent implements IAyaAgent {
       const eventService = new EventService(agentcoinCookie, agentcoinAPI)
       void eventService.start()
 
-      const walletService = new WalletService(
-        agentcoinCookie,
-        agentcoinIdentity,
-        agentcoinAPI,
-        this.runtime,
-        this.keychainService.turnkeyApiKeyStamper
-      )
       const processService = new ProcessService()
       const configService = new ConfigService(eventService, processService, this.pathResolver)
 
@@ -160,7 +153,7 @@ export class Agent implements IAyaAgent {
           plugins: [bootstrapPlugin, agentcoinPlugin, ...this.plugins],
           providers: [...this.providers],
           actions: [...this.actions],
-          services: [agentcoinService, walletService, configService, ...this.services],
+          services: [agentcoinService, configService, ...this.services],
           managers: [],
           cacheManager: cache,
           agentId: character.id
@@ -171,6 +164,13 @@ export class Agent implements IAyaAgent {
 
       const knowledgeBaseService = new KnowledgeBaseService(runtime)
       const memoriesService = new MemoriesService(runtime)
+      const walletService = new WalletService(
+        agentcoinCookie,
+        agentcoinIdentity,
+        agentcoinAPI,
+        runtime,
+        this.keychainService.turnkeyApiKeyStamper
+      )
 
       // shutdown handler
       let isShuttingDown = false
@@ -223,7 +223,7 @@ export class Agent implements IAyaAgent {
       this.runtime.clients = await initializeClients(this.runtime.character, this.runtime)
       this.register('service', knowledgeBaseService)
       this.register('service', memoriesService)
-
+      this.register('service', walletService)
       // no need to await these. it'll lock up the main process
       // void knowledgeService.start()
       void configService.start()
