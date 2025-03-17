@@ -1,4 +1,5 @@
 import { formatKnowledge, isNull } from '@/common/functions'
+import { PathResolver } from '@/common/path-resolver'
 import { Context, SdkEventKind } from '@/common/types'
 import { KnowledgeBaseService } from '@/services/knowledge-base'
 import { MemoriesService } from '@/services/memories'
@@ -21,7 +22,6 @@ import {
   State,
   UUID
 } from '@elizaos/core'
-import { PathResolver } from '@/common/path-resolver'
 
 type AgentEventHandler = (event: SdkEventKind, params: Context) => Promise<boolean>
 
@@ -181,14 +181,14 @@ export class AgentcoinRuntime extends AgentRuntime {
     const [kbItems, memItems] = await Promise.all([
       kbService.search({
         q: message.content.text,
-        limit: 10,
-        matchThreshold: 0.3
+        limit: 6,
+        matchThreshold: 0.4
       }),
       memService.search({
         q: message.content.text,
-        limit: 10,
+        limit: 6,
         type: 'fragments',
-        matchThreshold: 0.3
+        matchThreshold: 0.4
       })
     ])
 
