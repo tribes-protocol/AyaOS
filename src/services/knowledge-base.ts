@@ -34,7 +34,7 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
   }
 
   async initialize(_: AgentcoinRuntime): Promise<void> {
-    elizaLogger.info('initializing knowledge base service')
+    elizaLogger.info('Initializing knowledge base service')
     // Create index on knowledge.content.type
     await drizzleDB.execute(
       sql`CREATE INDEX IF NOT EXISTS idx_knowledge_content_type 

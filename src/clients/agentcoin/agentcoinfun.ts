@@ -169,7 +169,7 @@ export class AgentcoinClient {
   }
 
   private async handleAdminCommand(command: SentinelCommand): Promise<void> {
-    elizaLogger.info('handling admin command', command.kind)
+    elizaLogger.info('Handling admin command', command.kind)
     switch (command.kind) {
       case 'set_git':
         elizaLogger.info('ignoring set_git. sentinel service is handling this', command)
