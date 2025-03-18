@@ -32,7 +32,7 @@ import {
 import type { Message } from '@telegraf/types'
 import type { Context, Telegraf } from 'telegraf'
 
-import { hasActions } from '@/common/functions'
+import { hasActions, isNull } from '@/common/functions'
 import { convertMarkdownToTelegram } from '@/common/markdown'
 import { AgentcoinRuntime } from '@/common/runtime'
 import fs from 'fs'
@@ -56,7 +56,7 @@ interface AutoPostConfig {
   enabled: boolean
   monitorTime: number
   inactivityThreshold: number // milliseconds
-  mainChannelId: string
+  mainChannelId?: string
   pinnedMessagesGroups: string[] // Instead of announcementChannelIds
   lastAutoPost?: number
   minTimeBetweenPosts?: number
@@ -80,7 +80,7 @@ export class MessageManager {
 
   private autoPostConfig: AutoPostConfig
   private lastChannelActivity: { [channelId: string]: number } = {}
-  private autoPostInterval: NodeJS.Timeout
+  private autoPostInterval: NodeJS.Timeout | undefined
 
   constructor(bot: Telegraf<Context>, runtime: AgentcoinRuntime) {
     this.bot = bot
@@ -211,9 +211,14 @@ export class MessageManager {
           console.log(`[Auto Post Telegram] Recent Messages: ${responseContent}`)
 
           // Send message directly using telegram bot
+          const mainChannelId = this.autoPostConfig.mainChannelId
+          if (isNull(mainChannelId)) {
+            throw new Error('Main channel ID is not defined')
+          }
+
           const messages = await Promise.all(
             this.splitMessage(responseContent.text.trim()).map((chunk) =>
-              this.bot.telegram.sendMessage(this.autoPostConfig.mainChannelId, chunk)
+              this.bot.telegram.sendMessage(mainChannelId, chunk)
             )
           )
 
@@ -261,6 +266,10 @@ export class MessageManager {
 
     const pinnedMessage = ctx.message.pinned_message
     if (!pinnedMessage) return
+
+    if (isNull(ctx.chat?.id)) {
+      throw new Error('Chat ID is not defined')
+    }
 
     if (!this.autoPostConfig.pinnedMessagesGroups.includes(ctx.chat.id.toString())) return
 
@@ -384,7 +393,7 @@ export class MessageManager {
     const teamConfig = this.runtime.character.clientConfig?.telegram
 
     // Check leader's context based on last message
-    if (this._isTeamLeader() && lastAgentMemory?.content.text) {
+    if (this._isTeamLeader() && lastAgentMemory?.content.text && lastAgentMemory.createdAt) {
       const timeSinceLastMessage = Date.now() - lastAgentMemory.createdAt
       if (timeSinceLastMessage > MESSAGE_CONSTANTS.INTEREST_DECAY_TIME) {
         return false
@@ -556,11 +565,14 @@ export class MessageManager {
         const imageDescriptionService = this.runtime.getService<IImageDescriptionService>(
           ServiceType.IMAGE_DESCRIPTION
         )
+        if (isNull(imageDescriptionService)) {
+          throw new Error('Image description service is not defined')
+        }
         const { title, description } = await imageDescriptionService.describeImage(imageUrl)
         return { description: `[Image: ${title}\n${description}]` }
       }
     } catch (error) {
-      console.error('❌ Error processing image:', error)
+      elizaLogger.error('❌ Error processing image:', error)
     }
 
     return null
@@ -598,6 +610,10 @@ export class MessageManager {
     const chatState = this.interestChats[chatId]
     const messageText =
       'text' in message ? message.text : 'caption' in message ? message.caption : ''
+
+    if (isNull(messageText)) {
+      return false
+    }
 
     // Check if team member has direct interest first
     if (
@@ -700,7 +716,7 @@ export class MessageManager {
         if (ourMessageCount > 2) {
           const responseChance = Math.pow(0.5, ourMessageCount - 2)
           if (Math.random() > responseChance) {
-            return
+            return true
           }
         }
       }
@@ -757,7 +773,7 @@ export class MessageManager {
           let mediaType: MediaType | undefined
 
           for (const prefix in typeMap) {
-            if (attachment.contentType.startsWith(prefix)) {
+            if (attachment.contentType?.startsWith(prefix)) {
               mediaType = typeMap[prefix]
               break
             }
@@ -776,6 +792,10 @@ export class MessageManager {
     } else {
       const chunks = this.splitMessage(content.text)
       const sentMessages: Message.TextMessage[] = []
+
+      if (isNull(ctx.chat?.id)) {
+        throw new Error('Chat ID is not defined')
+      }
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = convertMarkdownToTelegram(chunks[i])
@@ -815,6 +835,10 @@ export class MessageManager {
         throw new Error(`Unsupported media type: ${type}`)
       }
 
+      if (isNull(ctx.chat?.id)) {
+        throw new Error('Chat ID is not defined')
+      }
+
       if (isUrl) {
         // Handle HTTP URLs
         await sendFunction(ctx.chat.id, mediaPath, { caption })
@@ -837,10 +861,7 @@ export class MessageManager {
         `${type.charAt(0).toUpperCase() + type.slice(1)} sent successfully: ${mediaPath}`
       )
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      elizaLogger.error(`Failed to send ${type}. Path: ${mediaPath}. Error: ${error.message}`)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      elizaLogger.debug(error.stack)
+      elizaLogger.error(`Failed to send ${type}. Path: ${mediaPath}. Error: ${error}`)
       throw error
     }
   }
@@ -879,8 +900,8 @@ export class MessageManager {
     })
 
     if (!response) {
-      console.error('❌ No response from generateMessageResponse')
-      return null
+      elizaLogger.error('❌ No response from generateMessageResponse')
+      return { text: '', action: 'IGNORE' }
     }
 
     await this.runtime.databaseAdapter.log({
@@ -895,7 +916,7 @@ export class MessageManager {
 
   // Main handler for incoming messages
   public async handleMessage(ctx: Context): Promise<void> {
-    if (!ctx.message || !ctx.from) {
+    if (!ctx.message || !ctx.from || isNull(ctx.chat?.id)) {
       return // Exit if no message or sender info
     }
 
@@ -932,6 +953,10 @@ export class MessageManager {
     ) {
       const isDirectlyMentioned = this._isMessageForMe(message)
       const hasInterest = this._checkInterest(chatId)
+
+      if (isNull(messageText)) {
+        throw new Error('Message text is not defined')
+      }
 
       // Non-leader team member showing interest based on keywords
       if (!this._isTeamLeader() && this._isRelevantToTeamMember(messageText, chatId)) {
@@ -991,11 +1016,11 @@ export class MessageManager {
       }
 
       // Check for other team member mentions using cached usernames
-      const otherTeamMembers = this.runtime.character.clientConfig.telegram.teamAgentIds.filter(
+      const otherTeamMembers = this.runtime.character.clientConfig.telegram.teamAgentIds?.filter(
         (id) => id !== this.bot.botInfo?.id.toString()
       )
 
-      const mentionedTeamMember = otherTeamMembers.find((id) => {
+      const mentionedTeamMember = otherTeamMembers?.find((id) => {
         const username = this._getTeamMemberUsername(id)
         return username && messageText?.includes(`@${username}`)
       })
@@ -1158,6 +1183,8 @@ export class MessageManager {
 
           return memories
         }
+
+        return []
       }
 
       if (shouldRespond) {
@@ -1234,7 +1261,7 @@ export class MessageManager {
             elizaLogger.info(
               'TelegramMessageManager received post:action event but it was suppressed'
             )
-            return
+            return []
           }
 
           return callback(newMessage)

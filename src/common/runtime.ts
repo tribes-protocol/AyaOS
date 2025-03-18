@@ -134,8 +134,8 @@ export class AgentcoinRuntime extends AgentRuntime {
 
   async ensureAccountExists(params: {
     userId: UUID
-    username: string | null
-    name: string | null
+    username: string
+    name: string
     email?: string | null
     source?: string | null
     image?: string | null
@@ -149,8 +149,8 @@ export class AgentcoinRuntime extends AgentRuntime {
         id: userId,
         name,
         username,
-        email,
-        avatarUrl: image,
+        email: email || undefined,
+        avatarUrl: image || undefined,
         details: { bio, source, ethAddress }
       })
 
@@ -176,7 +176,13 @@ export class AgentcoinRuntime extends AgentRuntime {
     // Since ElizaOS rag knowledge is currently broken on postgres adapter, we're just going
     // to override the knowledge state with our own kb service results
     const kbService = this.getService(KnowledgeBaseService)
+    if (isNull(kbService)) {
+      throw new Error('Knowledge base service not found')
+    }
     const memService = this.getService(MemoriesService)
+    if (isNull(memService)) {
+      throw new Error('Memories service not found')
+    }
     // Run both searches in parallel
     const [kbItems, memItems] = await Promise.all([
       kbService.search({
@@ -197,10 +203,17 @@ export class AgentcoinRuntime extends AgentRuntime {
     state.ragKnowledge = formatKnowledge(kbItems).trim()
 
     // Set regular knowledge from memService
-    const knowledgeItems: KnowledgeItem[] = memItems.map((item) => ({
-      id: item.id,
-      content: item.content
-    }))
+    const knowledgeItems: KnowledgeItem[] = memItems
+      .map((item) => {
+        if (isNull(item.id)) {
+          return undefined
+        }
+        return {
+          id: item.id,
+          content: item.content
+        }
+      })
+      .filter((item) => !isNull(item))
     state.knowledge = formatKnowledge(knowledgeItems).trim()
     state.knowledgeData = knowledgeItems
 

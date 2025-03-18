@@ -140,7 +140,7 @@ export class FarcasterPostManager {
       let shouldContinue = await this.runtime.handle('pre:llm', {
         state,
         responses: [],
-        memory: null
+        memory: undefined
       })
 
       if (!shouldContinue) {
@@ -157,7 +157,7 @@ export class FarcasterPostManager {
       shouldContinue = await this.runtime.handle('post:llm', {
         state,
         responses: [],
-        memory: null,
+        memory: undefined,
         content: { text: newContent }
       })
 

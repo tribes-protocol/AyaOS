@@ -1,5 +1,6 @@
 import type { ClientBase } from '@/clients/twitter/base'
 import { CreateTweetResponseSchema, MediaData } from '@/clients/twitter/types'
+import { isNull } from '@/common/functions'
 import type { Content, Media, Memory, UUID } from '@elizaos/core'
 import { elizaLogger, getEmbeddingZeroVector, stringToUuid } from '@elizaos/core'
 import type { Tweet } from 'agent-twitter-client'
@@ -53,7 +54,7 @@ export async function buildConversationThread(
     )
     if (!memory) {
       const roomId = stringToUuid(currentTweet.conversationId + '-' + client.runtime.agentId)
-      const userId = stringToUuid(currentTweet.userId)
+      const userId = stringToUuid(currentTweet.userId ?? '')
 
       await client.runtime.ensureConnection(
         userId,
@@ -67,21 +68,26 @@ export async function buildConversationThread(
         id: stringToUuid(currentTweet.id + '-' + client.runtime.agentId),
         agentId: client.runtime.agentId,
         content: {
-          text: currentTweet.text,
+          text: currentTweet.text ?? '',
           source: 'twitter',
           url: currentTweet.permanentUrl,
           inReplyTo: currentTweet.inReplyToStatusId
             ? stringToUuid(currentTweet.inReplyToStatusId + '-' + client.runtime.agentId)
             : undefined
         },
-        createdAt: currentTweet.timestamp * 1000,
+        createdAt: currentTweet.timestamp ? currentTweet.timestamp * 1000 : Date.now(),
         roomId,
         userId:
-          currentTweet.userId === client.profile.id
+          currentTweet.userId === client.profile?.id
             ? client.runtime.agentId
-            : stringToUuid(currentTweet.userId),
+            : stringToUuid(currentTweet.userId ?? ''),
         embedding: getEmbeddingZeroVector()
       })
+    }
+
+    if (isNull(currentTweet.id)) {
+      elizaLogger.warn('Returning: No tweet ID found')
+      return
     }
 
     if (visited.has(currentTweet.id)) {
@@ -147,12 +153,12 @@ export async function fetchMediaData(attachments: Media[]): Promise<MediaData[]>
           throw new Error(`Failed to fetch file: ${attachment.url}`)
         }
         const mediaBuffer = Buffer.from(await response.arrayBuffer())
-        const mediaType = attachment.contentType
+        const mediaType = attachment.contentType ?? ''
         return { data: mediaBuffer, mediaType }
       } else if (fs.existsSync(attachment.url)) {
         // Handle local file paths
         const mediaBuffer = await fs.promises.readFile(path.resolve(attachment.url))
-        const mediaType = attachment.contentType
+        const mediaType = attachment.contentType ?? ''
         return { data: mediaBuffer, mediaType }
       } else {
         throw new Error(`File not found: ${attachment.url}. Make sure the path is correct.`)
@@ -176,7 +182,7 @@ export async function sendTweet(
   let previousTweetId = inReplyTo
 
   for (const chunk of tweetChunks) {
-    let mediaData = null
+    let mediaData: MediaData[] | null = null
 
     if (content.attachments && content.attachments.length > 0) {
       mediaData = await fetchMediaData(content.attachments)
@@ -186,8 +192,8 @@ export async function sendTweet(
 
     const result = await client.requestQueue.add(async () =>
       isLongTweet
-        ? client.twitterClient.sendLongTweet(cleanChunk, previousTweetId, mediaData)
-        : client.twitterClient.sendTweet(cleanChunk, previousTweetId, mediaData)
+        ? client.twitterClient.sendLongTweet(cleanChunk, previousTweetId, mediaData ?? [])
+        : client.twitterClient.sendTweet(cleanChunk, previousTweetId, mediaData ?? [])
     )
 
     const rawBody = await result.json()
@@ -208,7 +214,7 @@ export async function sendTweet(
           conversationId: tweetResult.legacy.conversation_id_str,
           timestamp: new Date(tweetResult.legacy.created_at).getTime() / 1000,
           userId: tweetResult.legacy.user_id_str,
-          inReplyToStatusId: tweetResult.legacy.in_reply_to_status_id_str || null,
+          inReplyToStatusId: tweetResult.legacy.in_reply_to_status_id_str ?? undefined,
           permanentUrl: `https://twitter.com/${twitterUsername}/status/${tweetResult.rest_id}`,
           hashtags: [],
           mentions: [],
@@ -218,7 +224,7 @@ export async function sendTweet(
           videos: []
         }
         sentTweets.push(finalTweet)
-        previousTweetId = finalTweet.id
+        previousTweetId = finalTweet.id ?? ''
       } else {
         elizaLogger.error('Error sending tweet chunk: No tweet result found', {
           chunk,
@@ -243,7 +249,7 @@ export async function sendTweet(
     userId: client.runtime.agentId,
     content: {
       tweetId: tweet.id,
-      text: tweet.text,
+      text: tweet.text ?? '',
       source: 'twitter',
       url: tweet.permanentUrl,
       inReplyTo: tweet.inReplyToStatusId
@@ -252,7 +258,7 @@ export async function sendTweet(
     },
     roomId,
     embedding: getEmbeddingZeroVector(),
-    createdAt: tweet.timestamp * 1000
+    createdAt: tweet.timestamp ? tweet.timestamp * 1000 : Date.now()
   }))
 
   return memories

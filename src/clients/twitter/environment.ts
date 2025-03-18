@@ -107,7 +107,7 @@ export async function validateTwitterConfig(runtime: IAgentRuntime): Promise<Twi
     const twitterConfig = {
       TWITTER_DRY_RUN:
         parseBooleanFromText(
-          runtime.getSetting('TWITTER_DRY_RUN') || process.env.TWITTER_DRY_RUN
+          runtime.getSetting('TWITTER_DRY_RUN') || process.env.TWITTER_DRY_RUN || 'false'
         ) ?? false, // parseBooleanFromText return null if "", map "" to false
 
       TWITTER_USERNAME: runtime.getSetting('TWITTER_USERNAME') || process.env.TWITTER_USERNAME,
@@ -124,7 +124,9 @@ export async function validateTwitterConfig(runtime: IAgentRuntime): Promise<Twi
 
       TWITTER_SEARCH_ENABLE:
         parseBooleanFromText(
-          runtime.getSetting('TWITTER_SEARCH_ENABLE') || process.env.TWITTER_SEARCH_ENABLE
+          runtime.getSetting('TWITTER_SEARCH_ENABLE') ||
+            process.env.TWITTER_SEARCH_ENABLE ||
+            'false'
         ) ?? false,
 
       // string passthru
@@ -163,7 +165,9 @@ export async function validateTwitterConfig(runtime: IAgentRuntime): Promise<Twi
       // bool
       ENABLE_ACTION_PROCESSING:
         parseBooleanFromText(
-          runtime.getSetting('ENABLE_ACTION_PROCESSING') || process.env.ENABLE_ACTION_PROCESSING
+          runtime.getSetting('ENABLE_ACTION_PROCESSING') ||
+            process.env.ENABLE_ACTION_PROCESSING ||
+            'false'
         ) ?? false,
 
       // init in minutes (min 1m)
@@ -175,12 +179,14 @@ export async function validateTwitterConfig(runtime: IAgentRuntime): Promise<Twi
       // bool
       POST_IMMEDIATELY:
         parseBooleanFromText(
-          runtime.getSetting('POST_IMMEDIATELY') || process.env.POST_IMMEDIATELY
+          runtime.getSetting('POST_IMMEDIATELY') || process.env.POST_IMMEDIATELY || 'false'
         ) ?? false,
 
       TWITTER_SPACES_ENABLE:
         parseBooleanFromText(
-          runtime.getSetting('TWITTER_SPACES_ENABLE') || process.env.TWITTER_SPACES_ENABLE
+          runtime.getSetting('TWITTER_SPACES_ENABLE') ||
+            process.env.TWITTER_SPACES_ENABLE ||
+            'false'
         ) ?? false,
 
       MAX_ACTIONS_PROCESSING: safeParseInt(

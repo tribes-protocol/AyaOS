@@ -244,7 +244,11 @@ export function formatKnowledge(knowledge: KnowledgeItem[]): string {
  * @returns The validated UUID
  * @throws Error if the input is not a valid UUID
  */
-export function ensureUUID(input: string): UUID {
+export function ensureUUID(input?: string | null): UUID {
+  if (isNull(input)) {
+    throw new Error('Input is undefined')
+  }
+
   if (!UUID_PATTERN.test(input)) {
     throw new Error(`Invalid UUID format: ${input}`)
   }

@@ -139,8 +139,10 @@ export class KnowledgeService extends Service {
         elizaLogger.info(`Removing knowledge: ${knowledge.content.metadata?.source}`)
 
         await this.runtime.databaseAdapter.removeKnowledge(knowledge.id)
+        if (knowledge.content.metadata?.source) {
+          await fs.unlink(path.join(this.knowledgeRoot, knowledge.content.metadata?.source))
+        }
 
-        await fs.unlink(path.join(this.knowledgeRoot, knowledge.content.metadata?.source))
         await this.runtime.ragKnowledgeManager.cleanupDeletedKnowledgeFiles()
       }
       elizaLogger.info(

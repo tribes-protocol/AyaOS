@@ -55,8 +55,16 @@ export class AgentcoinClient {
 
   constructor(private readonly runtime: AgentcoinRuntime) {
     elizaLogger.info('Connecting to Agentcoin API', AGENTCOIN_FUN_API_URL)
-    this.agentcoinService = runtime.getService(AgentcoinService)
-    this.configService = runtime.getService(ConfigService)
+    const agentcoinService = runtime.getService(AgentcoinService)
+    if (isNull(agentcoinService)) {
+      throw new Error('Agentcoin service not found')
+    }
+    this.agentcoinService = agentcoinService
+    const configService = runtime.getService(ConfigService)
+    if (isNull(configService)) {
+      throw new Error('Config service not found')
+    }
+    this.configService = configService
   }
 
   public async start(): Promise<void> {
@@ -215,7 +223,8 @@ export class AgentcoinClient {
       text: imageUrl ? text + ` ${imageUrl}` : text,
       sender: identity,
       channel,
-      clientUuid: crypto.randomUUID()
+      clientUuid: crypto.randomUUID(),
+      openGraphId: null
     })
 
     return this.saveMessage({
@@ -289,7 +298,7 @@ export class AgentcoinClient {
       username: user.username,
       name: user.username,
       email: user.identity,
-      bio: user.bio,
+      bio: user.bio || undefined,
       ethAddress: EthAddressSchema.safeParse(user.identity).success ? user.identity : undefined,
       source: 'agentcoin'
     })
@@ -399,7 +408,7 @@ export class AgentcoinClient {
 
         if (!shouldContinue) {
           elizaLogger.info('AgentcoinClient received postaction event but it was suppressed')
-          return
+          return []
         }
 
         const newMemory = await this.sendMessageAsAgent({
@@ -420,8 +429,9 @@ export class AgentcoinClient {
 }
 
 export const AgentcoinClientInterface: Client = {
-  start: async (_runtime: AgentcoinRuntime) => {
-    const client = new AgentcoinClient(_runtime)
+  start: async (runtime: IAgentRuntime) => {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const client = new AgentcoinClient(runtime as AgentcoinRuntime)
     await client.start()
     return client
   },

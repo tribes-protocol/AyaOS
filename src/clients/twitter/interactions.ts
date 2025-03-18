@@ -1,6 +1,6 @@
 import type { ClientBase } from '@/clients/twitter/base'
 import { buildConversationThread, sendTweet, wait } from '@/clients/twitter/utils'
-import { hasActions } from '@/common/functions'
+import { hasActions, isNull } from '@/common/functions'
 import { AgentcoinRuntime } from '@/common/runtime'
 import {
   composeContext,
@@ -131,7 +131,11 @@ export class TwitterInteractionClient {
   async handleTwitterInteractions(): Promise<void> {
     elizaLogger.log('Checking Twitter interactions')
 
-    const twitterUsername = this.client.profile.username
+    const twitterUsername = this.client.profile?.username
+    if (isNull(twitterUsername)) {
+      elizaLogger.error('Twitter username is not set')
+      return
+    }
     try {
       // Check for mentions
       const mentionCandidates = (
@@ -165,8 +169,10 @@ export class TwitterInteractionClient {
               const validTweets = userTweets.filter((tweet) => {
                 const isUnprocessed =
                   !this.client.lastCheckedTweetId ||
-                  Number.parseInt(tweet.id) > this.client.lastCheckedTweetId
-                const isRecent = Date.now() - tweet.timestamp * 1000 < 2 * 60 * 60 * 1000
+                  (tweet.id && Number.parseInt(tweet.id) > this.client.lastCheckedTweetId)
+                const isRecent = tweet.timestamp
+                  ? Date.now() - tweet.timestamp * 1000 < 2 * 60 * 60 * 1000
+                  : false
 
                 elizaLogger.log(`Tweet ${tweet.id} checks:`, {
                   isUnprocessed,
@@ -210,11 +216,16 @@ export class TwitterInteractionClient {
 
       // Sort tweet candidates by ID in ascending order
       uniqueTweetCandidates
-        .sort((a, b) => a.id.localeCompare(b.id))
-        .filter((tweet) => tweet.userId !== this.client.profile.id)
+        .sort((a, b) => (a.id ?? '').localeCompare(b.id ?? ''))
+        .filter((tweet) => tweet.userId !== this.client.profile?.id)
 
       // for each tweet candidate, handle the tweet
       for (const tweet of uniqueTweetCandidates) {
+        if (isNull(tweet.id)) {
+          elizaLogger.error('Tweet ID is not set', tweet)
+          continue
+        }
+
         if (!this.client.lastCheckedTweetId || BigInt(tweet.id) > this.client.lastCheckedTweetId) {
           // Generate the tweetId UUID the same way it's done in handleTweet
           const tweetId = stringToUuid(tweet.id + '-' + this.runtime.agentId)
@@ -231,9 +242,9 @@ export class TwitterInteractionClient {
           const roomId = stringToUuid(tweet.conversationId + '-' + this.runtime.agentId)
 
           const userIdUUID =
-            tweet.userId === this.client.profile.id
+            tweet.userId === this.client.profile?.id
               ? this.runtime.agentId
-              : stringToUuid(tweet.userId)
+              : stringToUuid(tweet.userId ?? '')
 
           const username = tweet.username
           await this.runtime.ensureUserRoomConnection({
@@ -249,7 +260,7 @@ export class TwitterInteractionClient {
 
           const message = {
             content: {
-              text: tweet.text,
+              text: tweet.text ?? '',
               imageUrls: tweet.photos?.map((photo) => photo.url) || []
             },
             agentId: this.runtime.agentId,
@@ -288,10 +299,11 @@ export class TwitterInteractionClient {
   }): Promise<{ text: string; action: string }> {
     // Only skip if tweet is from self AND not from a target user
     if (
-      tweet.userId === this.client.profile.id &&
+      tweet.userId === this.client.profile?.id &&
+      tweet.username &&
       !this.client.twitterConfig.TWITTER_TARGET_USERS.includes(tweet.username)
     ) {
-      return
+      return { text: '', action: 'IGNORE' }
     }
 
     if (!message.content.text) {
@@ -308,27 +320,34 @@ export class TwitterInteractionClient {
 
     const formattedConversation = thread
       .map(
-        (tweet) => `@${tweet.username} (${new Date(tweet.timestamp * 1000).toLocaleString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          month: 'short',
-          day: 'numeric'
-        })}):
+        (tweet) => `@${tweet.username} (${
+          tweet.timestamp
+            ? new Date(tweet.timestamp * 1000).toLocaleString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                month: 'short',
+                day: 'numeric'
+              })
+            : ''
+        }):
         ${tweet.text}`
       )
       .join('\n\n')
 
-    const imageDescriptionsArray = []
+    const imageDescriptionsArray: { title: string; description: string }[] = []
     try {
       for (const photo of tweet.photos) {
         const description = await this.runtime
           .getService<IImageDescriptionService>(ServiceType.IMAGE_DESCRIPTION)
-          .describeImage(photo.url)
-        imageDescriptionsArray.push(description)
+          ?.describeImage(photo.url)
+        if (description) {
+          imageDescriptionsArray.push(description)
+        }
       }
     } catch (error) {
       // Handle the error
       elizaLogger.error('Error Occured during describing image: ', error)
+      return { text: '', action: 'IGNORE' }
     }
 
     let state = await this.runtime.composeState(message, {
@@ -352,6 +371,10 @@ export class TwitterInteractionClient {
     const tweetExists = await this.runtime.messageManager.getMemoryById(tweetId)
 
     if (!tweetExists) {
+      if (isNull(tweet.userId) || isNull(tweet.conversationId)) {
+        elizaLogger.error('Tweet user ID or conversation ID is not set', tweet)
+        return { text: '', action: 'IGNORE' }
+      }
       elizaLogger.log('tweet does not exist, saving')
       const userIdUUID = stringToUuid(tweet.userId)
       const roomId = stringToUuid(tweet.conversationId)
@@ -360,7 +383,7 @@ export class TwitterInteractionClient {
         id: tweetId,
         agentId: this.runtime.agentId,
         content: {
-          text: tweet.text,
+          text: tweet.text ?? '',
           url: tweet.permanentUrl,
           imageUrls: tweet.photos?.map((photo) => photo.url) || [],
           inReplyTo: tweet.inReplyToStatusId
@@ -369,7 +392,7 @@ export class TwitterInteractionClient {
         },
         userId: userIdUUID,
         roomId,
-        createdAt: tweet.timestamp * 1000
+        createdAt: tweet.timestamp ? tweet.timestamp * 1000 : Date.now()
       }
       void this.client.saveRequestMessage(message, state)
     }
@@ -394,7 +417,7 @@ export class TwitterInteractionClient {
     // Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
     if (shouldRespond !== 'RESPOND') {
       elizaLogger.log('Not responding to message')
-      return { text: 'Response Decision:', action: shouldRespond }
+      return { text: 'Response Decision:', action: shouldRespond ?? 'IGNORE' }
     }
 
     const context = composeContext({
@@ -433,7 +456,7 @@ export class TwitterInteractionClient {
 
     if (!shouldContinue) {
       elizaLogger.info('TwitterClient received pre:llm event but it was suppressed')
-      return
+      return { text: '', action: 'IGNORE' }
     }
 
     const response = await generateMessageResponse({
@@ -459,7 +482,7 @@ export class TwitterInteractionClient {
 
     if (!shouldContinue) {
       elizaLogger.info('TwitterClient received post:llm event but it was suppressed')
-      return
+      return { text: '', action: 'IGNORE' }
     }
 
     if (response.text) {
@@ -471,6 +494,9 @@ export class TwitterInteractionClient {
       } else {
         try {
           const callback: HandlerCallback = async (response: Content, tweetId?: string) => {
+            if (isNull(tweet.id)) {
+              throw new Error('Tweet ID is not set')
+            }
             const memories = await sendTweet(
               this.client,
               response,
@@ -496,7 +522,7 @@ export class TwitterInteractionClient {
           const responseTweetId = messageResponses[messageResponses.length - 1]?.content?.tweetId
 
           if (!hasActions(messageResponses)) {
-            return
+            return { text: '', action: 'IGNORE' }
           }
 
           // `preaction` event
@@ -508,7 +534,7 @@ export class TwitterInteractionClient {
 
           if (!shouldContinue) {
             elizaLogger.info('TwitterClient received preaction event but it was suppressed')
-            return
+            return { text: '', action: 'IGNORE' }
           }
 
           await this.runtime.processActions(
@@ -525,7 +551,7 @@ export class TwitterInteractionClient {
 
               if (!shouldContinue) {
                 elizaLogger.info('TwitterClient received postaction event but it was suppressed')
-                return
+                return []
               }
 
               return callback(response, responseTweetId)
@@ -546,6 +572,8 @@ export class TwitterInteractionClient {
         }
       }
     }
+
+    return { text: '', action: 'IGNORE' }
   }
 
   async buildConversationThread(tweet: Tweet, maxReplies = 10): Promise<Tweet[]> {
@@ -574,6 +602,10 @@ export class TwitterInteractionClient {
         stringToUuid(currentTweet.id + '-' + this.runtime.agentId)
       )
       if (!memory) {
+        if (isNull(currentTweet.userId) || isNull(currentTweet.conversationId)) {
+          elizaLogger.error('Tweet user ID or conversation ID is not set', currentTweet)
+          return
+        }
         const roomId = stringToUuid(currentTweet.conversationId + '-' + this.runtime.agentId)
         const userId = stringToUuid(currentTweet.userId)
 
@@ -589,7 +621,7 @@ export class TwitterInteractionClient {
           id: stringToUuid(currentTweet.id + '-' + this.runtime.agentId),
           agentId: this.runtime.agentId,
           content: {
-            text: currentTweet.text,
+            text: currentTweet.text ?? '',
             source: 'twitter',
             url: currentTweet.permanentUrl,
             imageUrls: currentTweet.photos?.map((photo) => photo.url) || [],
@@ -597,14 +629,19 @@ export class TwitterInteractionClient {
               ? stringToUuid(currentTweet.inReplyToStatusId + '-' + this.runtime.agentId)
               : undefined
           },
-          createdAt: currentTweet.timestamp * 1000,
+          createdAt: currentTweet.timestamp ? currentTweet.timestamp * 1000 : Date.now(),
           roomId,
           userId:
-            currentTweet.userId === this.client.profile.id
+            currentTweet.userId === this.client.profile?.id
               ? this.runtime.agentId
               : stringToUuid(currentTweet.userId),
           embedding: getEmbeddingZeroVector()
         })
+      }
+
+      if (isNull(currentTweet.id)) {
+        elizaLogger.error('Tweet ID is not set', currentTweet)
+        return
       }
 
       if (visited.has(currentTweet.id)) {

@@ -17,7 +17,6 @@ export class ConfigService extends Service implements IConfigService {
   private readonly operationQueue = new OperationQueue(1)
   private isRunning = false
   private gitCommitHash: string | undefined
-  private envvarsChecksum: string | undefined
   private characterChecksum: string | undefined
   private server: net.Server | undefined
 

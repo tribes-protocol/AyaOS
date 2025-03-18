@@ -48,7 +48,7 @@ export class Agent implements IAyaAgent {
   private evaluators: Evaluator[] = []
   private runtime_: AgentcoinRuntime | undefined
   private pathResolver: PathResolver
-  private keychainService: KeychainService
+  private keychainService: KeychainService | undefined
 
   constructor(options?: { modelConfig?: ModelConfig; dataDir?: string }) {
     this.modelConfig = options?.modelConfig
@@ -71,15 +71,27 @@ export class Agent implements IAyaAgent {
   }
 
   get knowledge(): IKnowledgeBaseService {
-    return this.runtime.getService(KnowledgeBaseService)
+    const service = this.runtime.getService(KnowledgeBaseService)
+    if (isNull(service)) {
+      throw new Error('Knowledge base service not found')
+    }
+    return service
   }
 
   get memories(): IMemoriesService {
-    return this.runtime.getService(MemoriesService)
+    const service = this.runtime.getService(MemoriesService)
+    if (isNull(service)) {
+      throw new Error('Memories service not found')
+    }
+    return service
   }
 
   get wallet(): IWalletService {
-    return this.runtime.getService(WalletService)
+    const service = this.runtime.getService(WalletService)
+    if (isNull(service)) {
+      throw new Error('Wallet service not found')
+    }
+    return service
   }
 
   async start(): Promise<void> {
@@ -120,6 +132,9 @@ export class Agent implements IAyaAgent {
       ])
 
       const character: Character = this.processCharacterSecrets(JSON.parse(charString))
+      if (isNull(character.id)) {
+        throw new Error('Character id not found')
+      }
 
       const modelConfig = this.modelConfig
       character.templates = {
@@ -139,6 +154,9 @@ export class Agent implements IAyaAgent {
       // elizaLogger.debug('Logger set to debug mode')
 
       const token = modelConfig?.apiKey ?? getTokenForProvider(character.modelProvider, character)
+      if (isNull(token)) {
+        throw new Error('AI API key not found')
+      }
       const cache = new CacheManager(new DbCacheAdapter(db, character.id))
 
       elizaLogger.info(elizaLogger.successesTitle, 'Creating runtime for character', character.name)
@@ -382,12 +400,20 @@ export class Agent implements IAyaAgent {
   }
 
   private processCharacterSecrets(character: Character): Character {
-    Object.entries(character.settings.secrets || {}).forEach(([key, value]) => {
+    const keychainService = this.keychainService
+
+    if (isNull(keychainService)) {
+      throw new Error('Keychain service not initialized')
+    }
+
+    Object.entries(character.settings?.secrets || {}).forEach(([key, value]) => {
       if (key.startsWith('AGENTCOIN_ENC_') && value) {
-        const decryptedValue = this.keychainService.decrypt(value)
+        const decryptedValue = keychainService.decrypt(value)
         const newKey = key.substring(14)
         elizaLogger.info('Decrypted secret', newKey)
-        character.settings.secrets[newKey] = decryptedValue
+        if (character.settings && character.settings.secrets) {
+          character.settings.secrets[newKey] = decryptedValue
+        }
       }
     })
 

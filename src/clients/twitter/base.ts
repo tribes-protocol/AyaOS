@@ -1,5 +1,6 @@
 import type { TwitterConfig } from '@/clients/twitter/environment'
 import { RawTweetType, TwitterCookie } from '@/clients/twitter/types'
+import { isNull } from '@/common/functions'
 import {
   ActionTimelineType,
   type IAgentRuntime,
@@ -54,6 +55,10 @@ class RequestQueue {
 
     while (this.queue.length > 0) {
       const request = this.queue.shift()
+      if (isNull(request)) {
+        return
+      }
+
       try {
         await request()
       } catch (error) {
@@ -85,12 +90,12 @@ export class ClientBase extends EventEmitter {
   twitterConfig: TwitterConfig
   directions: string
   lastCheckedTweetId: bigint | null = null
-  imageDescriptionService: IImageDescriptionService
+  imageDescriptionService: IImageDescriptionService | null = null
   temperature = 0.5
 
   requestQueue: RequestQueue = new RequestQueue()
 
-  profile: TwitterProfile | null
+  profile: TwitterProfile | null = null
 
   async cacheTweet(tweet: Tweet): Promise<void> {
     if (!tweet) {
@@ -107,7 +112,7 @@ export class ClientBase extends EventEmitter {
     return cached
   }
 
-  async getTweet(tweetId: string): Promise<Tweet> {
+  async getTweet(tweetId: string): Promise<Tweet | null> {
     const cachedTweet = await this.getCachedTweet(tweetId)
 
     if (cachedTweet) {
@@ -116,12 +121,15 @@ export class ClientBase extends EventEmitter {
 
     const tweet = await this.requestQueue.add(() => this.twitterClient.getTweet(tweetId))
 
-    await this.cacheTweet(tweet)
+    if (tweet) {
+      await this.cacheTweet(tweet)
+    }
+
     return tweet
   }
 
   // eslint-disable-next-line no-use-before-define
-  callback: (self: ClientBase) => Promise<void> = null
+  callback: ((self: ClientBase) => Promise<void>) | null = null
 
   onReady(): void {
     throw new Error('Not implemented in base class, please call from subclass')
@@ -307,6 +315,9 @@ export class ClientBase extends EventEmitter {
 
   async fetchOwnPosts(count: number): Promise<Tweet[]> {
     elizaLogger.debug('fetching own posts')
+    if (isNull(this.profile)) {
+      throw new Error('Profile is not loaded')
+    }
     const homeTimeline = await this.twitterClient.getUserTweets(this.profile.id, count)
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return homeTimeline.tweets.map((t) => this.parseTweet(t as RawTweetType))
@@ -403,7 +414,7 @@ export class ClientBase extends EventEmitter {
       // TODO: load tweets not in cache?
 
       // Create a Set to store the IDs of existing memories
-      const existingMemoryIds = new Set(existingMemories.map((memory) => memory.id.toString()))
+      const existingMemoryIds = new Set(existingMemories.map((memory) => memory.id?.toString()))
 
       // Check if any of the cached tweets exist in the existing memories
       const someCachedTweetsExist = cachedTimeline.some((tweet) =>
@@ -427,14 +438,16 @@ export class ClientBase extends EventEmitter {
           const roomId = stringToUuid(tweet.conversationId + '-' + this.runtime.agentId)
 
           const userId =
-            tweet.userId === this.profile.id ? this.runtime.agentId : stringToUuid(tweet.userId)
+            tweet.userId === this.profile?.id
+              ? this.runtime.agentId
+              : stringToUuid(tweet.userId ?? '')
 
-          if (tweet.userId === this.profile.id) {
+          if (tweet.userId === this.profile?.id) {
             await this.runtime.ensureConnection(
               this.runtime.agentId,
               roomId,
-              this.profile.username,
-              this.profile.screenName,
+              this.profile?.username,
+              this.profile?.screenName,
               'twitter'
             )
           } else {
@@ -448,7 +461,7 @@ export class ClientBase extends EventEmitter {
           }
 
           const content = {
-            text: tweet.text,
+            text: tweet.text ?? '',
             url: tweet.permanentUrl,
             source: 'twitter',
             inReplyTo: tweet.inReplyToStatusId
@@ -475,7 +488,7 @@ export class ClientBase extends EventEmitter {
             agentId: this.runtime.agentId,
             roomId,
             embedding: getEmbeddingZeroVector(),
-            createdAt: tweet.timestamp * 1000
+            createdAt: tweet.timestamp ? tweet.timestamp * 1000 : undefined
           })
 
           await this.cacheTweet(tweet)
@@ -505,6 +518,9 @@ export class ClientBase extends EventEmitter {
 
     // Add tweet IDs to the Set
     for (const tweet of allTweets) {
+      if (isNull(tweet.id)) {
+        continue
+      }
       tweetIdsToCheck.add(tweet.id)
       roomIds.add(stringToUuid(tweet.conversationId + '-' + this.runtime.agentId))
     }
@@ -513,9 +529,12 @@ export class ClientBase extends EventEmitter {
     const existingMemories = await this.runtime.messageManager.getMemoriesByRoomIds({
       roomIds: Array.from(roomIds)
     })
-
     // Create a Set to store the existing memory IDs
-    const existingMemoryIds = new Set<UUID>(existingMemories.map((memory) => memory.id))
+    const existingMemoryIds = new Set<UUID>(
+      existingMemories
+        .map((memory) => memory.id)
+        .filter((id): id is `${string}-${string}-${string}-${string}-${string}` => id !== undefined)
+    )
 
     // Filter out the tweets that already exist in the database
     const tweetsToSave = allTweets.filter(
@@ -528,7 +547,7 @@ export class ClientBase extends EventEmitter {
 
     await this.runtime.ensureUserExists(
       this.runtime.agentId,
-      this.profile.username,
+      this.profile?.username ?? null,
       this.runtime.character.name,
       'twitter'
     )
@@ -539,14 +558,14 @@ export class ClientBase extends EventEmitter {
 
       const roomId = stringToUuid(tweet.conversationId + '-' + this.runtime.agentId)
       const userId =
-        tweet.userId === this.profile.id ? this.runtime.agentId : stringToUuid(tweet.userId)
+        tweet.userId === this.profile?.id ? this.runtime.agentId : stringToUuid(tweet.userId ?? '')
 
-      if (tweet.userId === this.profile.id) {
+      if (tweet.userId === this.profile?.id) {
         await this.runtime.ensureConnection(
           this.runtime.agentId,
           roomId,
-          this.profile.username,
-          this.profile.screenName,
+          this.profile?.username,
+          this.profile?.screenName,
           'twitter'
         )
       } else {
@@ -554,7 +573,7 @@ export class ClientBase extends EventEmitter {
       }
 
       const content = {
-        text: tweet.text,
+        text: tweet.text ?? '',
         url: tweet.permanentUrl,
         source: 'twitter',
         inReplyTo: tweet.inReplyToStatusId ? stringToUuid(tweet.inReplyToStatusId) : undefined
@@ -567,7 +586,7 @@ export class ClientBase extends EventEmitter {
         agentId: this.runtime.agentId,
         roomId,
         embedding: getEmbeddingZeroVector(),
-        createdAt: tweet.timestamp * 1000
+        createdAt: tweet.timestamp ? tweet.timestamp * 1000 : undefined
       })
 
       await this.cacheTweet(tweet)
@@ -614,7 +633,7 @@ export class ClientBase extends EventEmitter {
 
   async loadLatestCheckedTweetId(): Promise<void> {
     const latestCheckedTweetId = await this.runtime.cacheManager.get<string>(
-      `twitter/${this.profile.username}/latest_checked_tweet_id`
+      `twitter/${this.profile?.username}/latest_checked_tweet_id`
     )
 
     if (latestCheckedTweetId) {
@@ -625,29 +644,31 @@ export class ClientBase extends EventEmitter {
   async cacheLatestCheckedTweetId(): Promise<void> {
     if (this.lastCheckedTweetId) {
       await this.runtime.cacheManager.set(
-        `twitter/${this.profile.username}/latest_checked_tweet_id`,
+        `twitter/${this.profile?.username}/latest_checked_tweet_id`,
         this.lastCheckedTweetId.toString()
       )
     }
   }
 
   async getCachedTimeline(): Promise<Tweet[] | undefined> {
-    return await this.runtime.cacheManager.get<Tweet[]>(`twitter/${this.profile.username}/timeline`)
+    return await this.runtime.cacheManager.get<Tweet[]>(
+      `twitter/${this.profile?.username}/timeline`
+    )
   }
 
   async cacheTimeline(timeline: Tweet[]): Promise<void> {
-    await this.runtime.cacheManager.set(`twitter/${this.profile.username}/timeline`, timeline, {
+    await this.runtime.cacheManager.set(`twitter/${this.profile?.username}/timeline`, timeline, {
       expires: Date.now() + 10 * 1000
     })
   }
 
   async cacheMentions(mentions: Tweet[]): Promise<void> {
-    await this.runtime.cacheManager.set(`twitter/${this.profile.username}/mentions`, mentions, {
+    await this.runtime.cacheManager.set(`twitter/${this.profile?.username}/mentions`, mentions, {
       expires: Date.now() + 10 * 1000
     })
   }
 
-  async getCachedCookies(username: string): Promise<TwitterCookie[]> {
+  async getCachedCookies(username: string): Promise<TwitterCookie[] | undefined> {
     return await this.runtime.cacheManager.get<TwitterCookie[]>(`twitter/${username}/cookies`)
   }
 
@@ -659,6 +680,9 @@ export class ClientBase extends EventEmitter {
     try {
       const profile = await this.requestQueue.add(async () => {
         const profile = await this.twitterClient.getProfile(username)
+        if (isNull(profile.userId)) {
+          throw new Error('Profile ID is not set')
+        }
         return {
           id: profile.userId,
           username,

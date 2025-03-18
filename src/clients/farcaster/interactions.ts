@@ -135,7 +135,7 @@ export class FarcasterInteractionManager {
   }): Promise<{ text: string; action: string }> {
     if (cast.profile.fid === agent.fid) {
       elizaLogger.info('skipping cast from bot itself', cast.hash)
-      return
+      return { text: '', action: 'IGNORE' }
     }
 
     if (!memory.content.text) {
@@ -209,7 +209,7 @@ export class FarcasterInteractionManager {
       elizaLogger.info(
         `Not responding to cast because generated ShouldRespond was ${shouldRespondResponse}`
       )
-      return
+      return { text: '', action: 'IGNORE' }
     }
 
     const context = composeContext({
@@ -228,7 +228,7 @@ export class FarcasterInteractionManager {
 
     if (!shouldContinue) {
       elizaLogger.info('AgentcoinClient received prellm event but it was suppressed')
-      return
+      return { text: '', action: 'IGNORE' }
     }
 
     const responseContent = await generateMessageResponse({
@@ -246,18 +246,20 @@ export class FarcasterInteractionManager {
 
     if (!shouldContinue) {
       elizaLogger.info('AgentcoinClient received postllm event but it was suppressed')
-      return
+      return { text: '', action: 'IGNORE' }
     }
 
     responseContent.inReplyTo = memoryId
 
-    if (!responseContent.text) return
+    if (!responseContent.text) {
+      return { text: '', action: 'IGNORE' }
+    }
 
     if (this.client.farcasterConfig?.FARCASTER_DRY_RUN) {
       elizaLogger.info(
         `Dry run: would have responded to cast ${cast.hash} with ${responseContent.text}`
       )
-      return
+      return { text: '', action: 'IGNORE' }
     }
 
     const callback: HandlerCallback = async (content: Content, _files: unknown[]) => {
@@ -295,7 +297,7 @@ export class FarcasterInteractionManager {
     const newState = await this.runtime.updateRecentMessageState(state)
 
     if (!hasActions(messageResponses)) {
-      return
+      return { text: '', action: 'IGNORE' }
     }
 
     // `preaction` event
@@ -307,7 +309,7 @@ export class FarcasterInteractionManager {
 
     if (!shouldContinue) {
       elizaLogger.info('AgentcoinClient received preaction event but it was suppressed')
-      return
+      return { text: '', action: 'IGNORE' }
     }
 
     await this.runtime.processActions(
@@ -324,11 +326,13 @@ export class FarcasterInteractionManager {
 
         if (!shouldContinue) {
           elizaLogger.info('AgentcoinClient received postaction event but it was suppressed')
-          return
+          return []
         }
 
         return callback(newMessage)
       }
     )
+
+    return { text: '', action: 'IGNORE' }
   }
 }

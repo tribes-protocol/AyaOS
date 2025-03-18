@@ -5,10 +5,12 @@ import type { Client, IAgentRuntime } from '@elizaos/core'
 import { elizaLogger } from '@elizaos/core'
 
 export const TelegramClientInterface: Client = {
-  start: async (runtime: AgentcoinRuntime) => {
-    await validateTelegramConfig(runtime)
+  start: async (runtime: IAgentRuntime) => {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const runtime_ = runtime as AgentcoinRuntime
+    await validateTelegramConfig(runtime_)
 
-    const tg = new TelegramClient(runtime, runtime.getSetting('TELEGRAM_BOT_TOKEN'))
+    const tg = new TelegramClient(runtime_, runtime_.getSetting('TELEGRAM_BOT_TOKEN'))
 
     await tg.start()
 

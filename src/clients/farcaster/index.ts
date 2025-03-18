@@ -62,12 +62,14 @@ class FarcasterManager {
 }
 
 export const FarcasterClientInterface: Client = {
-  async start(runtime: AgentcoinRuntime) {
-    const farcasterConfig = await validateFarcasterConfig(runtime)
+  async start(runtime: IAgentRuntime) {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const runtime_ = runtime as AgentcoinRuntime
+    const farcasterConfig = await validateFarcasterConfig(runtime_)
 
     elizaLogger.log('Farcaster client started')
 
-    const manager = new FarcasterManager(runtime, farcasterConfig)
+    const manager = new FarcasterManager(runtime_, farcasterConfig)
 
     // Start all services
     await manager.start()

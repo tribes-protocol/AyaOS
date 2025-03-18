@@ -1,5 +1,5 @@
 import { drizzleDB } from '@/common/db'
-import { calculateChecksum, ensureUUID } from '@/common/functions'
+import { calculateChecksum, ensureUUID, isNull } from '@/common/functions'
 import { AgentcoinRuntime } from '@/common/runtime'
 import { Knowledges, RagKnowledgeItemContent } from '@/common/schema'
 import { ServiceKind } from '@/common/types'
@@ -76,7 +76,6 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
       .where(and(...conditions))
       .orderBy(sortDirection === 'desc' ? desc(Knowledges.createdAt) : Knowledges.createdAt)
       .limit(limit)
-    /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 
     // Convert the database results to RAGKnowledgeItem format
     return this.convertToRAGKnowledgeItems(results)
@@ -116,7 +115,6 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
       .orderBy((t) => desc(t.similarity))
       .limit(limit)
 
-    /* eslint-enable @typescript-eslint/no-unsafe-member-access */
     return this.convertToRAGKnowledgeItems(results)
   }
 

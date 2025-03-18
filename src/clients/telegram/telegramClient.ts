@@ -1,8 +1,19 @@
 import { getOrCreateRecommenderInBe } from '@/clients/telegram/getOrCreateRecommenderInBe'
 import { MessageManager } from '@/clients/telegram/messageManager'
+import { isNull } from '@/common/functions'
 import { AgentcoinRuntime } from '@/common/runtime'
 import { elizaLogger } from '@elizaos/core'
 import { type Context, Telegraf } from 'telegraf'
+
+interface TelegramError {
+  response?: {
+    error_code: number
+  }
+}
+
+function isTelegramError(error: unknown): error is TelegramError {
+  return typeof error === 'object' && error !== null && 'response' in error
+}
 
 export class TelegramClient {
   private bot: Telegraf<Context>
@@ -65,6 +76,10 @@ export class TelegramClient {
       return true
     }
 
+    if (isNull(ctx.chat?.id)) {
+      throw new Error('Chat ID is not defined')
+    }
+
     const allowedGroups = config.allowedGroupIds || []
     const currentGroupId = ctx.chat.id.toString()
 
@@ -107,10 +122,9 @@ export class TelegramClient {
         }
 
         await this.messageManager.handleMessage(ctx)
-      } catch (error) {
+      } catch (error: unknown) {
         elizaLogger.error('❌ Error handling message:', error)
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        if (error?.response?.error_code !== 403) {
+        if (isTelegramError(error) && error.response?.error_code !== 403) {
           try {
             await ctx.reply('An error occurred while processing your message.')
           } catch (replyError) {
