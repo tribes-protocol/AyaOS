@@ -61,6 +61,11 @@ export class ConfigService extends Service implements IConfigService {
       const { kind } = req.query
       elizaLogger.info(`Received command request: ${kind}`)
 
+      if (isNull(kind)) {
+        res.status(400).json({ error: 'Kind parameter is required' })
+        return
+      }
+
       try {
         switch (kind) {
           case 'git':
