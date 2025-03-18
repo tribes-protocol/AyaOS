@@ -83,6 +83,11 @@ export class Agent implements IAyaAgent {
   }
 
   async start(): Promise<void> {
+    if (isNull(process.env.POSTGRES_URL)) {
+      elizaLogger.error('POSTGRES_URL is not set, please set it in your .env file')
+      process.exit(1)
+    }
+
     let runtime: AgentcoinRuntime | undefined
 
     try {
@@ -97,11 +102,6 @@ export class Agent implements IAyaAgent {
         this.pathResolver
       )
       await agentcoinService.provisionIfNeeded()
-
-      if (isNull(process.env.POSTGRES_URL)) {
-        elizaLogger.error('POSTGRES_URL is not set, please set it in your .env file')
-        process.exit(1)
-      }
 
       // eagerly start event service
       const agentcoinCookie = await agentcoinService.getCookie()
