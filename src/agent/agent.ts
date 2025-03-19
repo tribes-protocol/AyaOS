@@ -11,9 +11,9 @@ import agentcoinPlugin from '@/plugins/agentcoin'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
 import { EventService } from '@/services/event'
-import { IKnowledgeBaseService, IMemoriesService, IWalletService } from '@/services/interfaces'
+import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
 import { KeychainService } from '@/services/keychain'
-import { KnowledgeBaseService } from '@/services/knowledge-base'
+import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import { ProcessService } from '@/services/process'
 import { WalletService } from '@/services/wallet'
@@ -70,8 +70,8 @@ export class Agent implements IAyaAgent {
     return this.runtime.agentId
   }
 
-  get knowledge(): IKnowledgeBaseService {
-    return this.runtime.getService(KnowledgeBaseService)
+  get knowledge(): IKnowledgeService {
+    return this.runtime.getService(KnowledgeService)
   }
 
   get memories(): IMemoriesService {
@@ -162,7 +162,12 @@ export class Agent implements IAyaAgent {
       })
       this.runtime_ = runtime
 
-      const knowledgeBaseService = new KnowledgeBaseService(runtime)
+      const knowledgeService = new KnowledgeService(
+        runtime,
+        agentcoinAPI,
+        agentcoinCookie,
+        agentcoinIdentity
+      )
       const memoriesService = new MemoriesService(runtime)
       const walletService = new WalletService(
         agentcoinCookie,
@@ -182,8 +187,7 @@ export class Agent implements IAyaAgent {
           isShuttingDown = true
 
           elizaLogger.warn(`Received ${signal} signal. Stopping agent...`)
-          await Promise.all([configService.stop(), eventService.stop()])
-          // , knowledgeService.stop()])
+          await Promise.all([configService.stop(), eventService.stop(), knowledgeService.stop()])
           elizaLogger.success('Agent stopped services successfully!')
 
           if (runtime) {
@@ -221,7 +225,7 @@ export class Agent implements IAyaAgent {
       })
 
       this.runtime.clients = await initializeClients(this.runtime.character, this.runtime)
-      this.register('service', knowledgeBaseService)
+      this.register('service', knowledgeService)
       this.register('service', memoriesService)
       this.register('service', walletService)
       // no need to await these. it'll lock up the main process

@@ -1,7 +1,7 @@
 import { formatKnowledge, isNull } from '@/common/functions'
 import { PathResolver } from '@/common/path-resolver'
 import { Context, SdkEventKind } from '@/common/types'
-import { KnowledgeBaseService } from '@/services/knowledge-base'
+import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import {
   Action,
@@ -175,7 +175,7 @@ export class AgentcoinRuntime extends AgentRuntime {
 
     // Since ElizaOS rag knowledge is currently broken on postgres adapter, we're just going
     // to override the knowledge state with our own kb service results
-    const kbService = this.getService(KnowledgeBaseService)
+    const kbService = this.getService(KnowledgeService)
     const memService = this.getService(MemoriesService)
     // Run both searches in parallel
     const [kbItems, memItems] = await Promise.all([
