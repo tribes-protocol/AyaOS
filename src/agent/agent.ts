@@ -256,11 +256,11 @@ export class Agent implements IAyaAgent {
     )
   }
 
-  register(kind: 'service', handler: Service): Promise<void>
-  register(kind: 'provider', handler: Provider): Promise<void>
-  register(kind: 'action', handler: Action): Promise<void>
-  register(kind: 'plugin', handler: Plugin): Promise<void>
-  register(kind: 'evaluator', handler: Evaluator): Promise<void>
+  async register(kind: 'service', handler: Service): Promise<void>
+  async register(kind: 'provider', handler: Provider): Promise<void>
+  async register(kind: 'action', handler: Action): Promise<void>
+  async register(kind: 'plugin', handler: Plugin): Promise<void>
+  async register(kind: 'evaluator', handler: Evaluator): Promise<void>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async register(kind: string, handler: any): Promise<void> {
     switch (kind) {
