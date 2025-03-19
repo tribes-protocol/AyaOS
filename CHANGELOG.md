@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.27
+
+### Patch Changes
+
+- 6182e96: add async to register
+
 ## 0.0.26
 
 ### Patch Changes
