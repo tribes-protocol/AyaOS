@@ -221,12 +221,16 @@ export class Agent implements IAyaAgent {
       })
 
       this.runtime.clients = await initializeClients(this.runtime.character, this.runtime)
-      this.register('service', knowledgeBaseService)
-      this.register('service', memoriesService)
-      this.register('service', walletService)
+      await Promise.all([
+        this.register('service', knowledgeBaseService),
+        this.register('service', memoriesService),
+        this.register('service', walletService)
+      ])
       // no need to await these. it'll lock up the main process
-      // void knowledgeService.start()
-      void configService.start()
+      void Promise.all([
+        configService.start()
+        // void knowledgeService.start()
+      ])
 
       elizaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
@@ -252,18 +256,18 @@ export class Agent implements IAyaAgent {
     )
   }
 
-  register(kind: 'service', handler: Service): void
-  register(kind: 'provider', handler: Provider): void
-  register(kind: 'action', handler: Action): void
-  register(kind: 'plugin', handler: Plugin): void
-  register(kind: 'evaluator', handler: Evaluator): void
+  register(kind: 'service', handler: Service): Promise<void>
+  register(kind: 'provider', handler: Provider): Promise<void>
+  register(kind: 'action', handler: Action): Promise<void>
+  register(kind: 'plugin', handler: Plugin): Promise<void>
+  register(kind: 'evaluator', handler: Evaluator): Promise<void>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  register(kind: string, handler: any): void {
+  async register(kind: string, handler: any): Promise<void> {
     switch (kind) {
       case 'service':
         this.services.push(handler)
         if (this.runtime_) {
-          void this.runtime.registerService(handler)
+          await this.runtime.registerService(handler)
         }
         break
       case 'action':
