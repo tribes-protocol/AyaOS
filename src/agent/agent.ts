@@ -229,7 +229,7 @@ export class Agent implements IAyaAgent {
       this.register('service', memoriesService)
       this.register('service', walletService)
       // no need to await these. it'll lock up the main process
-      // void knowledgeService.start()
+      void knowledgeService.start()
       void configService.start()
 
       elizaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)

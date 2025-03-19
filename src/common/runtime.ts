@@ -171,8 +171,6 @@ export class AgentcoinRuntime extends AgentRuntime {
       return state
     }
 
-    // const ragEnabled = this.character.settings?.ragKnowledge ?? false
-
     // Since ElizaOS rag knowledge is currently broken on postgres adapter, we're just going
     // to override the knowledge state with our own kb service results
     const kbService = this.getService(KnowledgeService)
@@ -182,7 +180,7 @@ export class AgentcoinRuntime extends AgentRuntime {
       kbService.search({
         q: message.content.text,
         limit: 6,
-        matchThreshold: 0.4
+        matchThreshold: 0.25
       }),
       memService.search({
         q: message.content.text,

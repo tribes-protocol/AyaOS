@@ -14,7 +14,6 @@ import {
   RAGKnowledgeManager,
   Service,
   ServiceType,
-  splitChunks,
   stringToUuid,
   UUID
 } from '@elizaos/core'
@@ -22,7 +21,6 @@ import { CSVLoader } from '@langchain/community/document_loaders/fs/csv'
 import { DocxLoader } from '@langchain/community/document_loaders/fs/docx'
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf'
 import axios from 'axios'
-import crypto from 'crypto'
 import { and, cosineDistance, desc, eq, gt, sql } from 'drizzle-orm'
 import fs from 'fs/promises'
 import { TextLoader } from 'langchain/document_loaders/fs/text'
@@ -128,9 +126,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     try {
       const [knowledges, existingKnowledges] = await Promise.all([
         this.getAllKnowledge(),
-        this.runtime.databaseAdapter.getKnowledge({
-          agentId: this.runtime.agentId
-        })
+        this.listAll()
       ])
 
       const existingParentKnowledges = existingKnowledges.filter(
@@ -156,7 +152,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       for (const knowledge of knowledgesToRemove) {
         elizaLogger.info(`Removing knowledge: ${knowledge.content.metadata?.source}`)
 
-        await this.runtime.databaseAdapter.removeKnowledge(knowledge.id)
+        await this.remove(knowledge.id)
 
         await fs.unlink(path.join(this.knowledgeRoot, knowledge.content.metadata?.source))
         await this.runtime.ragKnowledgeManager.cleanupDeletedKnowledgeFiles()
@@ -179,44 +175,12 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     try {
       const content = await this.downloadFile(data)
 
-      await this.runtime.databaseAdapter.createKnowledge({
-        id: itemId,
-        agentId: this.runtime.agentId,
-        content: {
-          text: '',
-          metadata: { source: data.name }
-        },
-        embedding: new Float32Array(getEmbeddingZeroVector()),
-        createdAt: Date.now()
+      await this.add(itemId, {
+        text: content,
+        metadata: {
+          source: data.name
+        }
       })
-
-      const chunks = await splitChunks(content, 750, 250)
-
-      await Promise.all(
-        chunks.map(async (chunk, index) => {
-          const chunkEmbeddingArray = await embed(this.runtime, chunk)
-          const chunkEmbedding = new Float32Array(chunkEmbeddingArray)
-
-          const md5Hash = crypto.createHash('md5').update(`${itemId}-chunk-${index}`).digest('hex')
-          const chunkId: UUID = `${md5Hash}-chunk-chunk-chunk-${index}`
-
-          await this.runtime.databaseAdapter.createKnowledge({
-            id: chunkId,
-            agentId: this.runtime.agentId,
-            content: {
-              text: chunk,
-              metadata: {
-                isChunk: true,
-                source: data.name,
-                originalId: itemId,
-                chunkIndex: index
-              }
-            },
-            embedding: chunkEmbedding,
-            createdAt: Date.now()
-          })
-        })
-      )
     } catch (error) {
       elizaLogger.error(`Error processing file metadata for ${data.name}:`, error)
     }
@@ -271,13 +235,19 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     }
   }
 
-  // Begin merged methods from KnowledgeBaseService
+  async listAll(): Promise<RAGKnowledgeItem[]> {
+    const results = await drizzleDB
+      .select()
+      .from(Knowledges)
+      .where(eq(Knowledges.agentId, this.runtime.agentId))
+    return this.convertToRAGKnowledgeItems(results)
+  }
+
   async list(options?: {
     limit?: number
     contentType?: string
     sortDirection?: 'asc' | 'desc'
   }): Promise<RAGKnowledgeItem[]> {
-    /* eslint-disable @typescript-eslint/no-unsafe-member-access */
     const { limit = 10, contentType, sortDirection = 'desc' } = options ?? {}
 
     // Build the query conditions
@@ -305,7 +275,6 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       .where(and(...conditions))
       .orderBy(sortDirection === 'desc' ? desc(Knowledges.createdAt) : Knowledges.createdAt)
       .limit(limit)
-    /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 
     // Convert the database results to RAGKnowledgeItem format
     return this.convertToRAGKnowledgeItems(results)
@@ -318,7 +287,6 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }): Promise<RAGKnowledgeItem[]> {
     const { q, limit, matchThreshold = 0.5 } = options
     const embedding = await embed(this.runtime, q)
-    /* eslint-disable @typescript-eslint/no-unsafe-member-access */
     const similarity = sql<number>`1 - (${cosineDistance(Knowledges.embedding, embedding)})`
 
     const results = await drizzleDB
@@ -345,80 +313,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       .orderBy((t) => desc(t.similarity))
       .limit(limit)
 
-    /* eslint-enable @typescript-eslint/no-unsafe-member-access */
     return this.convertToRAGKnowledgeItems(results)
-  }
-
-  /**
-   * Converts database query results to RAGKnowledgeItem objects
-   * @param results - The database query results
-   * @returns An array of RAGKnowledgeItem objects
-   * @private
-   */
-  private convertToRAGKnowledgeItems(
-    results: Array<{
-      id: string
-      agentId: string
-      content: RagKnowledgeItemContent
-      embedding?: number[]
-      createdAt?: Date
-      isMain?: boolean
-      originalId?: string
-      chunkIndex?: number
-      isShared?: boolean
-      similarity?: number
-    }>
-  ): RAGKnowledgeItem[] {
-    return results.map((result) => {
-      // Extract content text
-      let text = ''
-      if (typeof result.content === 'object' && result.content && 'text' in result.content) {
-        text = String(result.content.text)
-      } else {
-        text = JSON.stringify(result.content)
-      }
-
-      // Extract or create metadata
-      const metadata: Record<string, unknown> = {}
-
-      // Add properties from result
-      if (result.isMain !== null && result.isMain !== undefined) {
-        metadata.isMain = result.isMain
-      }
-      if (result.originalId) {
-        metadata.originalId = result.originalId
-      }
-      if (result.chunkIndex !== null && result.chunkIndex !== undefined) {
-        metadata.chunkIndex = result.chunkIndex
-      }
-      if (result.isShared !== null && result.isShared !== undefined) {
-        metadata.isShared = result.isShared
-      }
-
-      // Add metadata from content if available
-      if (
-        typeof result.content === 'object' &&
-        result.content &&
-        'metadata' in result.content &&
-        typeof result.content.metadata === 'object' &&
-        result.content.metadata
-      ) {
-        Object.assign(metadata, result.content.metadata)
-      }
-
-      const item: RAGKnowledgeItem = {
-        id: ensureUUID(result.id),
-        agentId: ensureUUID(result.agentId),
-        content: {
-          text,
-          metadata
-        },
-        ...(result.similarity !== undefined ? { similarity: result.similarity } : {}),
-        ...(result.embedding ? { embedding: new Float32Array(result.embedding) } : {}),
-        ...(result.createdAt ? { createdAt: result.createdAt.getTime() } : {})
-      }
-      return item
-    })
   }
 
   async get(id: UUID): Promise<RAGKnowledgeItem | undefined> {
@@ -526,5 +421,71 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   async remove(id: UUID): Promise<void> {
     await this.runtime.databaseAdapter.removeKnowledge(id)
+  }
+
+  private convertToRAGKnowledgeItems(
+    results: Array<{
+      id: string
+      agentId: string
+      content: RagKnowledgeItemContent
+      embedding?: number[]
+      createdAt?: Date
+      isMain?: boolean
+      originalId?: string
+      chunkIndex?: number
+      isShared?: boolean
+      similarity?: number
+    }>
+  ): RAGKnowledgeItem[] {
+    return results.map((result) => {
+      // Extract content text
+      let text = ''
+      if (typeof result.content === 'object' && result.content && 'text' in result.content) {
+        text = String(result.content.text)
+      } else {
+        text = JSON.stringify(result.content)
+      }
+
+      // Extract or create metadata
+      const metadata: Record<string, unknown> = {}
+
+      // Add properties from result
+      if (result.isMain !== null && result.isMain !== undefined) {
+        metadata.isMain = result.isMain
+      }
+      if (result.originalId) {
+        metadata.originalId = result.originalId
+      }
+      if (result.chunkIndex !== null && result.chunkIndex !== undefined) {
+        metadata.chunkIndex = result.chunkIndex
+      }
+      if (result.isShared !== null && result.isShared !== undefined) {
+        metadata.isShared = result.isShared
+      }
+
+      // Add metadata from content if available
+      if (
+        typeof result.content === 'object' &&
+        result.content &&
+        'metadata' in result.content &&
+        typeof result.content.metadata === 'object' &&
+        result.content.metadata
+      ) {
+        Object.assign(metadata, result.content.metadata)
+      }
+
+      const item: RAGKnowledgeItem = {
+        id: ensureUUID(result.id),
+        agentId: ensureUUID(result.agentId),
+        content: {
+          text,
+          metadata
+        },
+        ...(result.similarity !== undefined ? { similarity: result.similarity } : {}),
+        ...(result.embedding ? { embedding: new Float32Array(result.embedding) } : {}),
+        ...(result.createdAt ? { createdAt: result.createdAt.getTime() } : {})
+      }
+      return item
+    })
   }
 }
