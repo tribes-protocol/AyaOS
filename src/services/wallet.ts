@@ -1,6 +1,6 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { isNull } from '@/common/functions'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { AyaRuntime } from '@/common/runtime'
 import {
   AgentWallet,
   AgentWalletKind,
@@ -29,7 +29,7 @@ export class WalletService extends Service implements IWalletService {
     private readonly agentcoinCookie: string,
     private readonly agentcoinIdentity: Identity,
     private readonly agentcoinAPI: AgentcoinAPI,
-    private readonly runtime: AgentcoinRuntime,
+    private readonly runtime: AyaRuntime,
     apiKeyStamper: ApiKeyStamper
   ) {
     super()

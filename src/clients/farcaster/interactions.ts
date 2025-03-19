@@ -10,7 +10,7 @@ import {
 import type { Cast, Profile } from '@/clients/farcaster/types'
 import { castUuid } from '@/clients/farcaster/utils'
 import { hasActions } from '@/common/functions'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { IAyaRuntime } from '@/common/iruntime'
 import {
   composeContext,
   type Content,
@@ -28,7 +28,7 @@ export class FarcasterInteractionManager {
   private timeout: NodeJS.Timeout | undefined
   constructor(
     public client: FarcasterClient,
-    public runtime: AgentcoinRuntime,
+    public runtime: IAyaRuntime,
     private signerUuid: string,
     public cache: Map<string, unknown>
   ) {}

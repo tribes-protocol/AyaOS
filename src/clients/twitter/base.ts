@@ -531,9 +531,7 @@ export class ClientBase extends EventEmitter {
     })
     // Create a Set to store the existing memory IDs
     const existingMemoryIds = new Set<UUID>(
-      existingMemories
-        .map((memory) => memory.id)
-        .filter((id): id is `${string}-${string}-${string}-${string}-${string}` => id !== undefined)
+      existingMemories.map((memory) => memory.id).filter((id) => !isNull(id))
     )
 
     // Filter out the tweets that already exist in the database

@@ -1,7 +1,7 @@
 import type { ClientBase } from '@/clients/twitter/base'
 import { buildConversationThread, sendTweet, wait } from '@/clients/twitter/utils'
 import { hasActions, isNull } from '@/common/functions'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { IAyaRuntime } from '@/common/iruntime'
 import {
   composeContext,
   type Content,
@@ -106,11 +106,11 @@ should stop participating in the conversation.
 
 export class TwitterInteractionClient {
   client: ClientBase
-  runtime: AgentcoinRuntime
+  runtime: IAyaRuntime
 
   private isDryRun: boolean
 
-  constructor(client: ClientBase, runtime: AgentcoinRuntime) {
+  constructor(client: ClientBase, runtime: IAyaRuntime) {
     this.client = client
     this.runtime = runtime
     this.isDryRun = this.client.twitterConfig.TWITTER_DRY_RUN

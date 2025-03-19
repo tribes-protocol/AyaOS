@@ -3,8 +3,8 @@ import { validateTwitterConfig, type TwitterConfig } from '@/clients/twitter/env
 import { TwitterInteractionClient } from '@/clients/twitter/interactions'
 import { TwitterPostClient } from '@/clients/twitter/post'
 import { TwitterSearchClient } from '@/clients/twitter/search'
-import { AgentcoinRuntime } from '@/common/runtime'
-import { elizaLogger, IAgentRuntime, type Client } from '@elizaos/core'
+import { Client, IAyaRuntime } from '@/common/iruntime'
+import { elizaLogger } from '@elizaos/core'
 
 /**
  * A manager that orchestrates all specialized Twitter logic:
@@ -14,13 +14,15 @@ import { elizaLogger, IAgentRuntime, type Client } from '@elizaos/core'
  * - interaction: handling mentions, replies
  * - space: launching and managing Twitter Spaces (optional)
  */
-class TwitterManager {
+export class TwitterManager implements Client {
   client: ClientBase
   post: TwitterPostClient
   search: TwitterSearchClient | undefined
   interaction: TwitterInteractionClient
+  runtime: IAyaRuntime
 
-  constructor(runtime: AgentcoinRuntime, twitterConfig: TwitterConfig) {
+  constructor(runtime: IAyaRuntime, twitterConfig: TwitterConfig) {
+    this.runtime = runtime
     // Pass twitterConfig to the base client
     this.client = new ClientBase(runtime, twitterConfig)
 
@@ -42,17 +44,47 @@ class TwitterManager {
 
     elizaLogger.info('🐦 Twitter client initialized')
   }
-}
 
-export const TwitterClientInterface: Client = {
-  async start(runtime: IAgentRuntime) {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const runtime_ = runtime as AgentcoinRuntime
-    const twitterConfig: TwitterConfig = await validateTwitterConfig(runtime_)
+  async start(runtime: IAyaRuntime): Promise<TwitterManager> {
+    if (this.runtime.agentId !== runtime.agentId) {
+      throw new Error('Twitter client runtime mismatch')
+    }
 
     elizaLogger.log('Twitter client started')
 
-    const manager = new TwitterManager(runtime_, twitterConfig)
+    // Initialize login/session
+    await this.client.init()
+
+    // Start the posting loop
+    await this.post.start()
+
+    // Start the search logic if it exists
+    if (this.search) {
+      await this.search.start()
+    }
+
+    // Start interactions (mentions, replies)
+    await this.interaction.start()
+
+    return this
+  }
+
+  async stop(runtime: IAyaRuntime): Promise<void> {
+    if (this.runtime.agentId !== runtime.agentId) {
+      throw new Error('Twitter client runtime mismatch')
+    }
+
+    elizaLogger.warn('Twitter client does not support stopping yet')
+  }
+}
+
+export const TwitterClientInterface: Client = {
+  async start(runtime: IAyaRuntime) {
+    const twitterConfig: TwitterConfig = await validateTwitterConfig(runtime)
+
+    elizaLogger.log('Twitter client started')
+
+    const manager = new TwitterManager(runtime, twitterConfig)
 
     // Initialize login/session
     await manager.client.init()
@@ -71,7 +103,7 @@ export const TwitterClientInterface: Client = {
     return manager
   },
 
-  async stop(_runtime: IAgentRuntime) {
+  async stop(_runtime: IAyaRuntime) {
     elizaLogger.warn('Twitter client does not support stopping yet')
   }
 }

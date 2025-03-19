@@ -1,45 +1,55 @@
-import { AgentcoinClientInterface } from '@/clients/agentcoin'
-import FarcasterClientInterface from '@/clients/farcaster'
-import TelegramClientInterface from '@/clients/telegram'
-import TwitterClientInterface from '@/clients/twitter'
-import { AgentRuntime, Character, Client, Clients } from '@elizaos/core'
+import { AgentcoinClient } from '@/clients/agentcoin'
+import { FarcasterManager } from '@/clients/farcaster'
+import { validateFarcasterConfig } from '@/clients/farcaster/environment'
+import { TelegramClient } from '@/clients/telegram/telegramClient'
+import { TwitterManager } from '@/clients/twitter'
+import { validateTwitterConfig } from '@/clients/twitter/environment'
+import { Client, IAyaRuntime } from '@/common/iruntime'
+import { Character, Clients } from '@elizaos/core'
 
 export async function initializeClients(
   character: Character,
-  runtime: AgentRuntime
-): Promise<Client[]> {
-  const clients: Client[] = []
+  runtime: IAyaRuntime
+): Promise<Record<string, Client>> {
+  const clients: Record<string, Client> = {}
   const clientTypes = character.clients?.map((str) => str.toLowerCase()) || []
 
   if (clientTypes.includes(Clients.TELEGRAM)) {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const telegramClient = (await TelegramClientInterface.start(runtime)) as Client
-    if (telegramClient) clients.push(telegramClient)
+    const tg = new TelegramClient(
+      runtime,
+      runtime.ensureSetting('TELEGRAM_BOT_TOKEN', 'TELEGRAM_BOT_TOKEN is not set')
+    )
+    await tg.start(runtime)
+    clients.telegram = tg
   }
 
   if (clientTypes.includes(Clients.TWITTER)) {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const twitterClients = (await TwitterClientInterface.start(runtime)) as Client
-    clients.push(twitterClients)
+    const twitterConfig = await validateTwitterConfig(runtime)
+    const twitterManager = new TwitterManager(runtime, twitterConfig)
+    await twitterManager.start(runtime)
+    clients.twitter = twitterManager
   }
 
   if (clientTypes.includes(Clients.FARCASTER)) {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const farcasterClient = (await FarcasterClientInterface.start(runtime)) as Client
-    if (farcasterClient) clients.push(farcasterClient)
+    const farcasterConfig = await validateFarcasterConfig(runtime)
+    const farcasterClient = new FarcasterManager(runtime, farcasterConfig)
+    await farcasterClient.start(runtime)
+    clients.farcaster = farcasterClient
   }
 
   // add the agentcoin client
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  const agentcoinClient = (await AgentcoinClientInterface.start(runtime)) as Client
-  if (agentcoinClient) clients.push(agentcoinClient)
+  const agentcoinClient = new AgentcoinClient(runtime)
+  await agentcoinClient.start(runtime)
+  clients.agentcoin = agentcoinClient
 
   if (character.plugins?.length > 0) {
     for (const plugin of character.plugins) {
       if (plugin.clients) {
-        for (const client of plugin.clients) {
+        for (let i = 0; i < plugin.clients.length; i++) {
+          const client = plugin.clients[i]
+          const clientInstance = await client.start(runtime)
           // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          clients.push((await client.start(runtime)) as Client)
+          if (clientInstance) clients[`${plugin.name}_${i}`] = clientInstance as Client
         }
       }
     }

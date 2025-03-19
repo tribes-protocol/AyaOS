@@ -4,7 +4,7 @@ import { twitterMessageHandlerTemplate } from '@/clients/twitter/interactions'
 import { MediaData, RawTweetType } from '@/clients/twitter/types'
 import { buildConversationThread, fetchMediaData } from '@/clients/twitter/utils'
 import { isNull } from '@/common/functions'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { IAyaRuntime } from '@/common/iruntime'
 import {
   ActionResponse,
   cleanJsonResponse,
@@ -95,7 +95,7 @@ type PendingTweetApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
 export class TwitterPostClient {
   client: ClientBase
-  runtime: AgentcoinRuntime
+  runtime: IAyaRuntime
   twitterUsername: string
   private isProcessing = false
   private lastProcessTime = 0
@@ -106,7 +106,7 @@ export class TwitterPostClient {
   private discordApprovalChannelId: string | undefined
   private approvalCheckInterval: number | undefined
 
-  constructor(client: ClientBase, runtime: AgentcoinRuntime) {
+  constructor(client: ClientBase, runtime: IAyaRuntime) {
     this.client = client
     this.runtime = runtime
     this.twitterUsername = this.client.twitterConfig.TWITTER_USERNAME
@@ -148,14 +148,16 @@ export class TwitterPostClient {
 
     // Initialize Discord webhook
     const approvalRequired: boolean =
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       this.runtime.getSetting('TWITTER_APPROVAL_ENABLED')?.toLocaleLowerCase() === 'true'
+
     if (approvalRequired) {
       const discordToken = this.runtime.getSetting('TWITTER_APPROVAL_DISCORD_BOT_TOKEN')
       const approvalChannelId = this.runtime.getSetting('TWITTER_APPROVAL_DISCORD_CHANNEL_ID')
 
-      const APPROVAL_CHECK_INTERVAL =
-        Number.parseInt(this.runtime.getSetting('TWITTER_APPROVAL_CHECK_INTERVAL')) || 5 * 60 * 1000 // 5 minutes
+      const optionalInterval = this.runtime.getSetting('TWITTER_APPROVAL_CHECK_INTERVAL')
+      const APPROVAL_CHECK_INTERVAL = optionalInterval
+        ? Number.parseInt(optionalInterval)
+        : 5 * 60 * 1000 // 5 minutes
 
       this.approvalCheckInterval = APPROVAL_CHECK_INTERVAL
 
@@ -200,7 +202,10 @@ export class TwitterPostClient {
     })
     // Login to Discord
     void this.discordClientForApproval.login(
-      this.runtime.getSetting('TWITTER_APPROVAL_DISCORD_BOT_TOKEN')
+      this.runtime.ensureSetting(
+        'TWITTER_APPROVAL_DISCORD_BOT_TOKEN',
+        'TWITTER_APPROVAL_DISCORD_BOT_TOKEN is not set'
+      )
     )
   }
 
@@ -301,7 +306,7 @@ export class TwitterPostClient {
   }
 
   async processAndCacheTweet(
-    runtime: AgentcoinRuntime,
+    runtime: IAyaRuntime,
     client: ClientBase,
     tweet: Tweet,
     roomId: UUID,
@@ -407,7 +412,7 @@ export class TwitterPostClient {
   }
 
   async postTweet(
-    runtime: AgentcoinRuntime,
+    runtime: IAyaRuntime,
     client: ClientBase,
     tweetTextForPosting: string,
     roomId: UUID,

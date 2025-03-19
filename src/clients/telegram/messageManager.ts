@@ -34,8 +34,9 @@ import type { Context, Telegraf } from 'telegraf'
 
 import { hasActions, isNull } from '@/common/functions'
 import { convertMarkdownToTelegram } from '@/common/markdown'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { AyaRuntime } from '@/common/runtime'
 import fs from 'fs'
+import { IAyaRuntime } from '@/common/iruntime'
 
 enum MediaType {
   PHOTO = 'photo',
@@ -74,7 +75,7 @@ export type InterestChats = {
 
 export class MessageManager {
   public bot: Telegraf<Context>
-  private runtime: AgentcoinRuntime
+  private runtime: IAyaRuntime
   private interestChats: InterestChats = {}
   private teamMemberUsernames: Map<string, string> = new Map()
 
@@ -82,7 +83,7 @@ export class MessageManager {
   private lastChannelActivity: { [channelId: string]: number } = {}
   private autoPostInterval: NodeJS.Timeout | undefined
 
-  constructor(bot: Telegraf<Context>, runtime: AgentcoinRuntime) {
+  constructor(bot: Telegraf<Context>, runtime: IAyaRuntime) {
     this.bot = bot
     this.runtime = runtime
 

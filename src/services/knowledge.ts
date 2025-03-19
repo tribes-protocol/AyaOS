@@ -1,5 +1,5 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { AyaRuntime } from '@/common/runtime'
 import { Identity, Knowledge, ServiceKind } from '@/common/types'
 import {
   elizaLogger,
@@ -35,7 +35,7 @@ export class KnowledgeService extends Service {
   async initialize(_: IAgentRuntime): Promise<void> {}
 
   constructor(
-    private readonly runtime: AgentcoinRuntime,
+    private readonly runtime: AyaRuntime,
     private readonly agentCoinApi: AgentcoinAPI,
     private readonly agentCoinCookie: string,
     private readonly agentCoinIdentity: Identity

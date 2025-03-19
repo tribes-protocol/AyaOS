@@ -3,19 +3,19 @@ import type { FarcasterClient } from '@/clients/farcaster/client'
 import { createCastMemory } from '@/clients/farcaster/memory'
 import { formatTimeline, postTemplate } from '@/clients/farcaster/prompts'
 import { castUuid, MAX_CAST_LENGTH } from '@/clients/farcaster/utils'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { IAyaRuntime } from '@/common/iruntime'
 import { composeContext, elizaLogger, generateText, ModelClass, stringToUuid } from '@elizaos/core'
 
 export class FarcasterPostManager {
   client: FarcasterClient
-  runtime: AgentcoinRuntime
+  runtime: IAyaRuntime
   fid: number
   isDryRun: boolean
   private timeout: NodeJS.Timeout | undefined
 
   constructor(
     client: FarcasterClient,
-    runtime: AgentcoinRuntime,
+    runtime: IAyaRuntime,
     private signerUuid: string,
     public cache: Map<string, unknown>
   ) {

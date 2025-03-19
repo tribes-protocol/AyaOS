@@ -1,4 +1,5 @@
-import { formatKnowledge, isNull } from '@/common/functions'
+import { ensure, formatKnowledge, isNull } from '@/common/functions'
+import { AgentEventHandler, IAyaRuntime } from '@/common/iruntime'
 import { PathResolver } from '@/common/path-resolver'
 import { Context, SdkEventKind } from '@/common/types'
 import { KnowledgeBaseService } from '@/services/knowledge-base'
@@ -23,9 +24,7 @@ import {
   UUID
 } from '@elizaos/core'
 
-type AgentEventHandler = (event: SdkEventKind, params: Context) => Promise<boolean>
-
-export class AgentcoinRuntime extends AgentRuntime {
+export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
   private eventHandler: AgentEventHandler | undefined
   public pathResolver: PathResolver
 
@@ -90,6 +89,18 @@ export class AgentcoinRuntime extends AgentRuntime {
     // Handle existing case where ServiceType or string is passed
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return super.getService(service as ServiceType) as T
+  }
+
+  ensureSetting(key: string, message?: string): string {
+    return ensure(super.getSetting(key), message)
+  }
+
+  ensureService<T extends Service>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    service: ServiceType | string | ((new (...args: any[]) => T) & { serviceType: ServiceType }),
+    message?: string
+  ): T {
+    return ensure(this.getService(service), message)
   }
 
   async ensureUserRoomConnection(options: {
@@ -175,14 +186,8 @@ export class AgentcoinRuntime extends AgentRuntime {
 
     // Since ElizaOS rag knowledge is currently broken on postgres adapter, we're just going
     // to override the knowledge state with our own kb service results
-    const kbService = this.getService(KnowledgeBaseService)
-    if (isNull(kbService)) {
-      throw new Error('Knowledge base service not found')
-    }
-    const memService = this.getService(MemoriesService)
-    if (isNull(memService)) {
-      throw new Error('Memories service not found')
-    }
+    const kbService = this.ensureService(KnowledgeBaseService, 'Knowledge base service not found')
+    const memService = this.ensureService(MemoriesService, 'Memories service not found')
     // Run both searches in parallel
     const [kbItems, memItems] = await Promise.all([
       kbService.search({

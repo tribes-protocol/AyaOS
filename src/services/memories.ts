@@ -1,6 +1,6 @@
 import { drizzleDB } from '@/common/db'
 import { ensureUUID } from '@/common/functions'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { AyaRuntime } from '@/common/runtime'
 import { Memories } from '@/common/schema'
 import { ServiceKind } from '@/common/types'
 import { IMemoriesService } from '@/services/interfaces'
@@ -8,7 +8,7 @@ import { embed, IAgentRuntime, Memory, Service, ServiceType } from '@elizaos/cor
 import { and, cosineDistance, desc, eq, gt, sql, SQL } from 'drizzle-orm'
 
 export class MemoriesService extends Service implements IMemoriesService {
-  constructor(private readonly runtime: AgentcoinRuntime) {
+  constructor(private readonly runtime: AyaRuntime) {
     super()
   }
 

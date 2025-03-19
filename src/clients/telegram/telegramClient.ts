@@ -1,7 +1,7 @@
 import { getOrCreateRecommenderInBe } from '@/clients/telegram/getOrCreateRecommenderInBe'
 import { MessageManager } from '@/clients/telegram/messageManager'
 import { isNull } from '@/common/functions'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { Client, IAyaRuntime } from '@/common/iruntime'
 import { elizaLogger } from '@elizaos/core'
 import { type Context, Telegraf } from 'telegraf'
 
@@ -15,16 +15,16 @@ function isTelegramError(error: unknown): error is TelegramError {
   return typeof error === 'object' && error !== null && 'response' in error
 }
 
-export class TelegramClient {
+export class TelegramClient implements Client {
   private bot: Telegraf<Context>
-  private runtime: AgentcoinRuntime
+  private runtime: IAyaRuntime
   private messageManager: MessageManager
-  private backend
-  private backendToken
-  private tgTrader
-  private options
+  private backend: string | null
+  private backendToken: string | null
+  private tgTrader: string | null
+  private options?: Partial<Telegraf.Options<Context>>
 
-  constructor(runtime: AgentcoinRuntime, botToken: string) {
+  constructor(runtime: IAyaRuntime, botToken: string) {
     elizaLogger.log('📱 Constructing new TelegramClient...')
     this.options = {
       telegram: {
@@ -43,7 +43,11 @@ export class TelegramClient {
     elizaLogger.log('✅ TelegramClient constructor completed')
   }
 
-  public async start(): Promise<void> {
+  public async start(runtime: IAyaRuntime): Promise<void> {
+    if (this.runtime.agentId !== runtime.agentId) {
+      throw new Error('Telegram client runtime mismatch')
+    }
+
     elizaLogger.log('🚀 Starting Telegram bot...')
     try {
       await this.initializeBot()
@@ -107,7 +111,7 @@ export class TelegramClient {
           return
         }
 
-        if (this.tgTrader) {
+        if (this.tgTrader && this.backendToken && this.backend) {
           const userId = ctx.from?.id.toString()
           const username = ctx.from?.username || ctx.from?.first_name || 'Unknown'
           if (!userId) {
@@ -152,7 +156,7 @@ export class TelegramClient {
     const shutdownHandler = async (signal: string): Promise<void> => {
       elizaLogger.log(`⚠️ Received ${signal}. Shutting down Telegram bot gracefully...`)
       try {
-        await this.stop()
+        await this.stop(this.runtime)
         elizaLogger.log('🛑 Telegram bot stopped gracefully')
       } catch (error) {
         elizaLogger.error('❌ Error during Telegram bot shutdown:', error)
@@ -165,7 +169,11 @@ export class TelegramClient {
     process.once('SIGHUP', () => shutdownHandler('SIGHUP'))
   }
 
-  public async stop(): Promise<void> {
+  public async stop(runtime: IAyaRuntime): Promise<void> {
+    if (this.runtime.agentId !== runtime.agentId) {
+      throw new Error('Telegram client runtime mismatch')
+    }
+
     elizaLogger.log('Stopping Telegram bot...')
     // await
     this.bot.stop()

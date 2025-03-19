@@ -1,6 +1,6 @@
 import { drizzleDB } from '@/common/db'
 import { calculateChecksum, ensureUUID } from '@/common/functions'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { AyaRuntime } from '@/common/runtime'
 import { Knowledges, RagKnowledgeItemContent } from '@/common/schema'
 import { ServiceKind } from '@/common/types'
 import { IKnowledgeBaseService } from '@/services/interfaces'
@@ -24,7 +24,7 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
     separators: ['\n## ', '\n### ', '\n#### ', '\n', ' ', '']
   })
 
-  constructor(private readonly runtime: AgentcoinRuntime) {
+  constructor(private readonly runtime: AyaRuntime) {
     super()
   }
 
@@ -33,7 +33,7 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
     return ServiceKind.knowledgeBase as unknown as ServiceType
   }
 
-  async initialize(_: AgentcoinRuntime): Promise<void> {
+  async initialize(_: AyaRuntime): Promise<void> {
     elizaLogger.info('Initializing knowledge base service')
     // Create index on knowledge.content.type
     await drizzleDB.execute(

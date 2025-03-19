@@ -3,9 +3,9 @@ import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { initializeClients } from '@/clients'
 import { getTokenForProvider } from '@/common/config'
 import { initializeDatabase } from '@/common/db'
-import { isNull } from '@/common/functions'
+import { ensure, isNull } from '@/common/functions'
 import { PathResolver } from '@/common/path-resolver'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { AyaRuntime } from '@/common/runtime'
 import { Context, ContextHandler, ModelConfig, SdkEventKind } from '@/common/types'
 import agentcoinPlugin from '@/plugins/agentcoin'
 import { AgentcoinService } from '@/services/agentcoinfun'
@@ -46,9 +46,9 @@ export class Agent implements IAyaAgent {
   private actions: Action[] = []
   private plugins: Plugin[] = []
   private evaluators: Evaluator[] = []
-  private runtime_: AgentcoinRuntime | undefined
+  private runtime_: AyaRuntime | undefined
   private pathResolver: PathResolver
-  private keychainService: KeychainService | undefined
+  private keychainService: KeychainService
 
   constructor(options?: { modelConfig?: ModelConfig; dataDir?: string }) {
     this.modelConfig = options?.modelConfig
@@ -57,9 +57,10 @@ export class Agent implements IAyaAgent {
     }
     reservedAgentDirs.add(options?.dataDir)
     this.pathResolver = new PathResolver(options?.dataDir)
+    this.keychainService = new KeychainService(this.pathResolver.keypairFile)
   }
 
-  get runtime(): AgentcoinRuntime {
+  get runtime(): AyaRuntime {
     if (!this.runtime_) {
       throw new Error('Runtime not initialized. Call start() first.')
     }
@@ -72,36 +73,26 @@ export class Agent implements IAyaAgent {
 
   get knowledge(): IKnowledgeBaseService {
     const service = this.runtime.getService(KnowledgeBaseService)
-    if (isNull(service)) {
-      throw new Error('Knowledge base service not found')
-    }
-    return service
+    return ensure(service, 'Knowledge base service not found')
   }
 
   get memories(): IMemoriesService {
     const service = this.runtime.getService(MemoriesService)
-    if (isNull(service)) {
-      throw new Error('Memories service not found')
-    }
-    return service
+    return ensure(service, 'Memories service not found')
   }
 
   get wallet(): IWalletService {
     const service = this.runtime.getService(WalletService)
-    if (isNull(service)) {
-      throw new Error('Wallet service not found')
-    }
-    return service
+    return ensure(service, 'Wallet service not found')
   }
 
   async start(): Promise<void> {
-    let runtime: AgentcoinRuntime | undefined
+    let runtime: AyaRuntime | undefined
 
     try {
       elizaLogger.info('Starting agent...')
 
       // step 1: provision the hardware if needed.
-      this.keychainService = new KeychainService(this.pathResolver.keypairFile)
       const agentcoinAPI = new AgentcoinAPI()
       const agentcoinService = new AgentcoinService(
         this.keychainService,
@@ -161,7 +152,7 @@ export class Agent implements IAyaAgent {
 
       elizaLogger.info(elizaLogger.successesTitle, 'Creating runtime for character', character.name)
 
-      runtime = new AgentcoinRuntime({
+      runtime = new AyaRuntime({
         eliza: {
           databaseAdapter: db,
           token,
@@ -400,15 +391,9 @@ export class Agent implements IAyaAgent {
   }
 
   private processCharacterSecrets(character: Character): Character {
-    const keychainService = this.keychainService
-
-    if (isNull(keychainService)) {
-      throw new Error('Keychain service not initialized')
-    }
-
     Object.entries(character.settings?.secrets || {}).forEach(([key, value]) => {
       if (key.startsWith('AGENTCOIN_ENC_') && value) {
-        const decryptedValue = keychainService.decrypt(value)
+        const decryptedValue = this.keychainService.decrypt(value)
         const newKey = key.substring(14)
         elizaLogger.info('Decrypted secret', newKey)
         if (character.settings && character.settings.secrets) {
