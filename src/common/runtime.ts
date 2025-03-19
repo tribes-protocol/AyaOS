@@ -28,6 +28,8 @@ type AgentEventHandler = (event: SdkEventKind, params: Context) => Promise<boole
 export class AgentcoinRuntime extends AgentRuntime {
   private eventHandler: AgentEventHandler | undefined
   public pathResolver: PathResolver
+  public matchThreshold: number
+  public matchLimit: number
 
   public constructor(opts: {
     eliza: {
@@ -50,9 +52,13 @@ export class AgentcoinRuntime extends AgentRuntime {
       logging?: boolean
     }
     pathResolver: PathResolver
+    matchThreshold?: number
+    matchLimit?: number
   }) {
     super(opts.eliza)
     this.pathResolver = opts.pathResolver
+    this.matchThreshold = opts.matchThreshold ?? 0.4
+    this.matchLimit = opts.matchLimit ?? 6
   }
 
   async initialize(options?: { eventHandler: AgentEventHandler }): Promise<void> {
@@ -181,14 +187,14 @@ export class AgentcoinRuntime extends AgentRuntime {
     const [kbItems, memItems] = await Promise.all([
       kbService.search({
         q: message.content.text,
-        limit: 6,
-        matchThreshold: 0.4
+        limit: this.matchLimit,
+        matchThreshold: this.matchThreshold
       }),
       memService.search({
         q: message.content.text,
-        limit: 6,
+        limit: this.matchLimit,
         type: 'fragments',
-        matchThreshold: 0.4
+        matchThreshold: this.matchThreshold
       })
     ])
 
