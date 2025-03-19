@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.26
+
+### Patch Changes
+
+- 0d30690: convert register to async
+
 ## 0.0.25
 
 ### Patch Changes
