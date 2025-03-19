@@ -49,14 +49,22 @@ export class Agent implements IAyaAgent {
   private runtime_: AgentcoinRuntime | undefined
   private pathResolver: PathResolver
   private keychainService: KeychainService
+  public matchThreshold?: number
+  public matchLimit?: number
 
-  constructor(options?: { modelConfig?: ModelConfig; dataDir?: string }) {
+  constructor(options?: {
+    modelConfig?: ModelConfig
+    dataDir?: string
+    knowledge?: { matchThreshold?: number; matchLimit?: number }
+  }) {
     this.modelConfig = options?.modelConfig
     if (reservedAgentDirs.has(options?.dataDir)) {
       throw new Error('Data directory already used. Please provide a unique data directory.')
     }
     reservedAgentDirs.add(options?.dataDir)
     this.pathResolver = new PathResolver(options?.dataDir)
+    this.matchThreshold = options?.knowledge?.matchThreshold
+    this.matchLimit = options?.knowledge?.matchLimit
   }
 
   get runtime(): AgentcoinRuntime {
@@ -158,7 +166,9 @@ export class Agent implements IAyaAgent {
           cacheManager: cache,
           agentId: character.id
         },
-        pathResolver: this.pathResolver
+        pathResolver: this.pathResolver,
+        matchThreshold: this.matchThreshold,
+        matchLimit: this.matchLimit
       })
       this.runtime_ = runtime
 
