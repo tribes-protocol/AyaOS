@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.29
+
+### Patch Changes
+
+- 02bd269: pass the match limit/threshold throught agent
+
 ## 0.0.28
 
 ### Patch Changes
