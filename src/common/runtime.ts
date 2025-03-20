@@ -2,13 +2,12 @@ import { ensure, formatKnowledge, isNull } from '@/common/functions'
 import { AgentEventHandler, IAyaRuntime } from '@/common/iruntime'
 import { PathResolver } from '@/common/path-resolver'
 import { Context, SdkEventKind } from '@/common/types'
-import { KnowledgeService } from '@/services/knowledge'
-import { MemoriesService } from '@/services/memories'
 import {
   Action,
   AgentRuntime,
   Character,
   elizaLogger,
+  embed,
   Evaluator,
   ICacheManager,
   IDatabaseAdapter,
@@ -188,22 +187,23 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
       return state
     }
 
-    // Since ElizaOS rag knowledge is currently broken on postgres adapter, we're just going
-    // to override the knowledge state with our own kb service results
-    const kbService = this.ensureService(KnowledgeService, 'Knowledge base service not found')
-    const memService = this.ensureService(MemoriesService, 'Memories service not found')
-    // Run both searches in parallel
+    const embedding = await embed(this, message.content.text)
     const [kbItems, memItems] = await Promise.all([
-      kbService.search({
-        q: message.content.text,
-        limit: this.matchLimit,
-        matchThreshold: this.matchThreshold
+      this.databaseAdapter.searchKnowledge({
+        agentId: this.agentId,
+        embedding: new Float32Array(embedding),
+        match_threshold: this.matchThreshold,
+        match_count: this.matchLimit,
+        searchText: message.content.text
       }),
-      memService.search({
-        q: message.content.text,
-        limit: this.matchLimit,
-        type: 'fragments',
-        matchThreshold: this.matchThreshold
+      this.databaseAdapter.searchMemories({
+        tableName: 'fragments',
+        agentId: this.agentId,
+        roomId: message.roomId,
+        embedding,
+        match_threshold: this.matchThreshold,
+        match_count: this.matchLimit,
+        unique: true
       })
     ])
 

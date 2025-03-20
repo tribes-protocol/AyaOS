@@ -11,10 +11,9 @@ import agentcoinPlugin from '@/plugins/agentcoin'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
 import { EventService } from '@/services/event'
-import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
+import { IWalletService } from '@/services/interfaces'
 import { KeychainService } from '@/services/keychain'
 import { KnowledgeService } from '@/services/knowledge'
-import { MemoriesService } from '@/services/memories'
 import { ProcessService } from '@/services/process'
 import { WalletService } from '@/services/wallet'
 import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
@@ -73,16 +72,6 @@ export class Agent implements IAyaAgent {
 
   get agentId(): UUID {
     return this.runtime.agentId
-  }
-
-  get knowledge(): IKnowledgeService {
-    const service = this.runtime.getService(KnowledgeService)
-    return ensure(service, 'Knowledge base service not found')
-  }
-
-  get memories(): IMemoriesService {
-    const service = this.runtime.getService(MemoriesService)
-    return ensure(service, 'Memories service not found')
   }
 
   get wallet(): IWalletService {
@@ -182,7 +171,6 @@ export class Agent implements IAyaAgent {
         agentcoinCookie,
         agentcoinIdentity
       )
-      const memoriesService = new MemoriesService(runtime)
       const walletService = new WalletService(
         agentcoinCookie,
         agentcoinIdentity,
@@ -239,11 +227,7 @@ export class Agent implements IAyaAgent {
       })
 
       this.runtime.clients = await initializeClients(this.runtime.character, this.runtime)
-      await Promise.all([
-        this.register('service', knowledgeService),
-        this.register('service', memoriesService),
-        this.register('service', walletService)
-      ])
+      await Promise.all([this.register('service', walletService)])
       // no need to await these. it'll lock up the main process
       void Promise.all([configService.start(), knowledgeService.start()])
 
