@@ -364,7 +364,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       content: {
         text: '',
         metadata: {
-          ...knowledge.metadata,
+          ...Object.fromEntries(
+            Object.entries(knowledge.metadata || {}).filter(([_, v]) => v !== null)
+          ),
           // Move checksum and other properties to metadata
           isMain: true,
           isChunk: false,
@@ -400,7 +402,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         content: {
           text: chunk.pageContent,
           metadata: {
-            ...knowledge.metadata,
+            ...Object.fromEntries(
+              Object.entries(knowledge.metadata || {}).filter(([_, v]) => v !== null)
+            ),
             isMain: false,
             isChunk: true,
             originalId: id,
@@ -425,15 +429,15 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   private convertToRAGKnowledgeItems(
     results: Array<{
       id: string
-      agentId: string
+      agentId: string | null
       content: RagKnowledgeItemContent
-      embedding?: number[]
-      createdAt?: Date
-      isMain?: boolean
-      originalId?: string
-      chunkIndex?: number
-      isShared?: boolean
-      similarity?: number
+      embedding?: number[] | null
+      createdAt?: Date | null
+      isMain?: boolean | null
+      originalId?: string | null
+      chunkIndex?: number | null
+      isShared?: boolean | null
+      similarity?: number | null
     }>
   ): RAGKnowledgeItem[] {
     return results.map((result) => {
@@ -480,7 +484,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           text,
           metadata
         },
-        ...(result.similarity !== undefined ? { similarity: result.similarity } : {}),
+        ...(result.similarity !== undefined && result.similarity !== null
+          ? { similarity: result.similarity }
+          : {}),
         ...(result.embedding ? { embedding: new Float32Array(result.embedding) } : {}),
         ...(result.createdAt ? { createdAt: result.createdAt.getTime() } : {})
       }
