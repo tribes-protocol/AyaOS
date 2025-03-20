@@ -1,5 +1,29 @@
 # @tribesxyz/ayaos
 
+## 0.0.29
+
+### Patch Changes
+
+- 02bd269: pass the match limit/threshold throught agent
+
+## 0.0.28
+
+### Patch Changes
+
+- f3459bb: allow custom threshold/limit
+
+## 0.0.27
+
+### Patch Changes
+
+- 6182e96: add async to register
+
+## 0.0.26
+
+### Patch Changes
+
+- 0d30690: convert register to async
+
 ## 0.0.25
 
 ### Patch Changes

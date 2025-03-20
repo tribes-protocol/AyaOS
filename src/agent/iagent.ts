@@ -22,8 +22,8 @@ export interface IAyaAgent {
   off(event: 'pre:action', handler: ContextHandler): void
   off(event: 'post:action', handler: ContextHandler): void
 
-  register(kind: 'service', handler: Service): void
-  register(kind: 'provider', handler: Provider): void
-  register(kind: 'action', handler: Action): void
-  register(kind: 'plugin', handler: Plugin): void
+  register(kind: 'service', handler: Service): Promise<void>
+  register(kind: 'provider', handler: Provider): Promise<void>
+  register(kind: 'action', handler: Action): Promise<void>
+  register(kind: 'plugin', handler: Plugin): Promise<void>
 }
