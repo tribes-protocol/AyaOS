@@ -2,7 +2,8 @@ import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { drizzleDB } from '@/common/db'
 import { calculateChecksum, ensureUUID } from '@/common/functions'
 import { AyaRuntime } from '@/common/runtime'
-import { Identity, Knowledge, ServiceKind } from '@/common/types'
+import { Identity, Knowledge, RagKnowledgeItemContent, ServiceKind } from '@/common/types'
+import { Knowledges } from '@/databases/postgres/schema'
 import { IKnowledgeService } from '@/services/interfaces'
 import {
   elizaLogger,

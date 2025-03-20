@@ -5,11 +5,11 @@ import {
   HexString,
   HydratedMessage,
   Identity,
+  RagKnowledgeItemContent,
   Transaction,
   User
 } from '@/common/types'
 
-import { RagKnowledgeItemContent } from '@/common/schema'
 import { Memory, RAGKnowledgeItem, UUID } from '@elizaos/core'
 
 export interface IWalletService {

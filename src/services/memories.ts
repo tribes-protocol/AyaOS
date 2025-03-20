@@ -1,8 +1,8 @@
 import { drizzleDB } from '@/common/db'
 import { ensureUUID } from '@/common/functions'
 import { AyaRuntime } from '@/common/runtime'
-import { Memories } from '@/common/schema'
 import { ServiceKind } from '@/common/types'
+import { Memories } from '@/databases/postgres/schema'
 import { IMemoriesService } from '@/services/interfaces'
 import { embed, IAgentRuntime, Memory, Service, ServiceType } from '@elizaos/core'
 import { and, cosineDistance, desc, eq, gt, sql, SQL } from 'drizzle-orm'
@@ -69,7 +69,7 @@ export class MemoriesService extends Service implements IMemoriesService {
           ...(mem.content.inReplyTo ? { inReplyTo: ensureUUID(mem.content.inReplyTo) } : {}),
           ...Object.fromEntries(Object.entries(mem.content).filter(([key]) => key !== 'inReplyTo'))
         },
-        createdAt: mem.createdAt?.getTime(),
+        createdAt: mem.createdAt,
         unique: mem.unique,
         similarity: result.similarity,
         ...(mem.embedding ? { embedding: Array.from(new Float32Array(mem.embedding)) } : {})
