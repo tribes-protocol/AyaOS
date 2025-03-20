@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.30
+
+### Patch Changes
+
+- 114e0b4: improve type safety
+
 ## 0.0.29
 
 ### Patch Changes
