@@ -33,7 +33,7 @@
     "agent-twitter-client": "0.0.18",
     "amqplib": "0.10.5",
     "axios": "1.7.9",
-    "better-sqlite3": "^11.9.1",
+    "better-sqlite3": "11.9.1",
     "d3-dsv": "2",
     "discord.js": "14.16.3",
     "dotenv": "16.4.7",
