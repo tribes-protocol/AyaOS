@@ -1,6 +1,6 @@
 import { drizzleDB } from '@/common/db'
 import { calculateChecksum, ensureUUID } from '@/common/functions'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { AyaRuntime } from '@/common/runtime'
 import { Knowledges, RagKnowledgeItemContent } from '@/common/schema'
 import { ServiceKind } from '@/common/types'
 import { IKnowledgeBaseService } from '@/services/interfaces'
@@ -24,7 +24,7 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
     separators: ['\n## ', '\n### ', '\n#### ', '\n', ' ', '']
   })
 
-  constructor(private readonly runtime: AgentcoinRuntime) {
+  constructor(private readonly runtime: AyaRuntime) {
     super()
   }
 
@@ -33,8 +33,8 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
     return ServiceKind.knowledgeBase as unknown as ServiceType
   }
 
-  async initialize(_: AgentcoinRuntime): Promise<void> {
-    elizaLogger.info('initializing knowledge base service')
+  async initialize(_: AyaRuntime): Promise<void> {
+    elizaLogger.info('Initializing knowledge base service')
     // Create index on knowledge.content.type
     await drizzleDB.execute(
       sql`CREATE INDEX IF NOT EXISTS idx_knowledge_content_type 
@@ -76,7 +76,6 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
       .where(and(...conditions))
       .orderBy(sortDirection === 'desc' ? desc(Knowledges.createdAt) : Knowledges.createdAt)
       .limit(limit)
-    /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 
     // Convert the database results to RAGKnowledgeItem format
     return this.convertToRAGKnowledgeItems(results)
@@ -116,7 +115,6 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
       .orderBy((t) => desc(t.similarity))
       .limit(limit)
 
-    /* eslint-enable @typescript-eslint/no-unsafe-member-access */
     return this.convertToRAGKnowledgeItems(results)
   }
 
@@ -129,14 +127,14 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
   private convertToRAGKnowledgeItems(
     results: Array<{
       id: string
-      agentId: string
+      agentId: string | null
       content: RagKnowledgeItemContent
-      embedding?: number[]
-      createdAt?: Date
-      isMain?: boolean
-      originalId?: string
-      chunkIndex?: number
-      isShared?: boolean
+      embedding?: number[] | null
+      createdAt?: Date | null
+      isMain?: boolean | null
+      originalId?: string | null
+      chunkIndex?: number | null
+      isShared?: boolean | null
       similarity?: number
     }>
   ): RAGKnowledgeItem[] {
@@ -156,7 +154,7 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
       if (result.isMain !== null && result.isMain !== undefined) {
         metadata.isMain = result.isMain
       }
-      if (result.originalId) {
+      if (result.originalId && result.originalId !== null) {
         metadata.originalId = result.originalId
       }
       if (result.chunkIndex !== null && result.chunkIndex !== undefined) {
@@ -179,14 +177,18 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
 
       const item: RAGKnowledgeItem = {
         id: ensureUUID(result.id),
-        agentId: ensureUUID(result.agentId),
+        agentId: ensureUUID(result.agentId ?? this.runtime.agentId),
         content: {
           text,
           metadata
         },
         ...(result.similarity !== undefined ? { similarity: result.similarity } : {}),
-        ...(result.embedding ? { embedding: new Float32Array(result.embedding) } : {}),
-        ...(result.createdAt ? { createdAt: result.createdAt.getTime() } : {})
+        ...(result.embedding && result.embedding !== null
+          ? { embedding: new Float32Array(result.embedding) }
+          : {}),
+        ...(result.createdAt && result.createdAt !== null
+          ? { createdAt: result.createdAt.getTime() }
+          : {})
       }
       return item
     })
@@ -241,8 +243,9 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
       content: {
         text: '',
         metadata: {
-          ...knowledge.metadata,
-          // Move checksum and other properties to metadata
+          ...Object.fromEntries(
+            Object.entries(knowledge.metadata || {}).filter(([_, v]) => v !== null)
+          ),
           isMain: true,
           isChunk: false,
           originalId: undefined,
@@ -277,7 +280,9 @@ export class KnowledgeBaseService extends Service implements IKnowledgeBaseServi
         content: {
           text: chunk.pageContent,
           metadata: {
-            ...knowledge.metadata,
+            ...Object.fromEntries(
+              Object.entries(knowledge.metadata || {}).filter(([_, v]) => v !== null)
+            ),
             isMain: false,
             isChunk: true,
             originalId: id,

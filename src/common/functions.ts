@@ -82,9 +82,8 @@ export function toJsonTree(obj: any): any {
   return Object.fromEntries(Object.entries(obj).map(([key, val]) => [key, toJsonTree(val)]))
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function ensureString(value: any, message: string | undefined = undefined): string {
-  if (!value) {
+export function ensure<T>(value: T | null | undefined, message: string | undefined = undefined): T {
+  if (isNull(value)) {
     throw new Error(message || 'Value is undefined')
   }
   return value
@@ -244,7 +243,11 @@ export function formatKnowledge(knowledge: KnowledgeItem[]): string {
  * @returns The validated UUID
  * @throws Error if the input is not a valid UUID
  */
-export function ensureUUID(input: string): UUID {
+export function ensureUUID(input?: string | null | undefined): UUID {
+  if (isNull(input)) {
+    throw new Error('Input is undefined')
+  }
+
   if (!UUID_PATTERN.test(input)) {
     throw new Error(`Invalid UUID format: ${input}`)
   }

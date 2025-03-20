@@ -12,6 +12,6 @@ export class ProcessService {
       console.log('No shutdown function set. killing process...')
       process.kill(process.pid, 'SIGTERM')
     }
-    await this.shutdownFunc()
+    await this.shutdownFunc?.()
   }
 }

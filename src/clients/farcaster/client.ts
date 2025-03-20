@@ -7,6 +7,7 @@ import type {
   NeynarCastResponseRaw,
   Profile
 } from '@/clients/farcaster/types'
+import { isNull } from '@/common/functions'
 import { type IAgentRuntime, elizaLogger } from '@elizaos/core'
 import { type NeynarAPIClient, isApiErrorResponse } from '@neynar/nodejs-sdk'
 
@@ -37,6 +38,9 @@ export class FarcasterClient {
 
   async loadCastFromNeynarResponse(neynarResponse: NeynarCastResponseRaw): Promise<Cast> {
     const profile = await this.getProfile(neynarResponse.author.fid)
+    if (isNull(neynarResponse.parent_author)) {
+      throw new Error('Parent author not found')
+    }
     return {
       hash: neynarResponse.hash,
       authorFid: neynarResponse.author.fid,
@@ -162,6 +166,9 @@ export class FarcasterClient {
     const mentions: Cast[] = []
 
     neynarMentionsResponse.notifications.forEach((notification) => {
+      if (isNull(notification.cast)) {
+        throw new Error('Cast not found')
+      }
       const cast = {
         hash: notification.cast.hash,
         authorFid: notification.cast.author.fid,
@@ -221,6 +228,9 @@ export class FarcasterClient {
             // 9: "github",
         } as const;
         */
+    if (isNull(neynarUserProfile.display_name)) {
+      throw new Error('Display name not found')
+    }
 
     profile.name = neynarUserProfile.display_name
     profile.username = neynarUserProfile.username

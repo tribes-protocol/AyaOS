@@ -461,3 +461,10 @@ export type ModelConfig = ModelConfiguration & {
   endpoint?: string
   apiKey?: string
 }
+
+// type Client = {
+//   /** Start client connection */
+//   start: (runtime: AgentcoinRuntime) => Promise<unknown>;
+//   /** Stop client connection */
+//   stop: (runtime: AgentcoinRuntime) => Promise<unknown>;
+// };

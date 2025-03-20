@@ -1,9 +1,8 @@
 import { isNull } from '@/common/functions'
-import { AgentcoinRuntime } from '@/common/runtime'
-import { Memory, Provider, State } from '@elizaos/core'
+import { IAgentRuntime, Memory, Provider, State } from '@elizaos/core'
 
 const conversationProvider: Provider = {
-  get: async (runtime: AgentcoinRuntime, memory: Memory, _state?: State): Promise<string> => {
+  get: async (runtime: IAgentRuntime, memory: Memory, _state?: State): Promise<string> => {
     const isSelf = memory.userId === runtime.agentId
 
     if (isSelf) {

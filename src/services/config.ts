@@ -17,7 +17,6 @@ export class ConfigService extends Service implements IConfigService {
   private readonly operationQueue = new OperationQueue(1)
   private isRunning = false
   private gitCommitHash: string | undefined
-  private envvarsChecksum: string | undefined
   private characterChecksum: string | undefined
   private server: net.Server | undefined
 
@@ -61,6 +60,11 @@ export class ConfigService extends Service implements IConfigService {
     app.get('/command/new', async (req, res) => {
       const { kind } = req.query
       elizaLogger.info(`Received command request: ${kind}`)
+
+      if (isNull(kind)) {
+        res.status(400).json({ error: 'Kind parameter is required' })
+        return
+      }
 
       try {
         switch (kind) {

@@ -86,7 +86,8 @@ export interface RawTweetType {
   name?: string
   permanentUrl?: string
   photos?: { id: string; url: string; alt_text: string }[]
-  place?: unknown
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  place?: any
   poll?: {
     options: {
       label: string
@@ -150,8 +151,8 @@ export const CreateTweetResponseSchema = z.object({
 export interface TwitterCookie {
   key: string
   value: string
-  domain: string
-  path: string
+  domain: string | null
+  path: string | null
   secure: boolean
   httpOnly: boolean
   sameSite?: 'Lax' | 'Strict' | 'None' | string

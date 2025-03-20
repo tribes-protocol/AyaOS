@@ -1,9 +1,9 @@
 import { FarcasterClient } from '@/clients/farcaster/client'
-import { validateFarcasterConfig, type FarcasterConfig } from '@/clients/farcaster/environment'
+import { type FarcasterConfig } from '@/clients/farcaster/environment'
 import { FarcasterInteractionManager } from '@/clients/farcaster/interactions'
 import { FarcasterPostManager } from '@/clients/farcaster/post'
-import { AgentcoinRuntime } from '@/common/runtime'
-import { elizaLogger, type Client, type IAgentRuntime } from '@elizaos/core'
+import { Client, IAyaRuntime } from '@/common/iruntime'
+import { elizaLogger } from '@elizaos/core'
 import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk'
 
 /**
@@ -12,18 +12,25 @@ import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk'
  * - posts: autonomous posting logic
  * - interactions: handling mentions, replies, likes, etc.
  */
-class FarcasterManager {
+export class FarcasterManager implements Client {
   client: FarcasterClient
   posts: FarcasterPostManager
   interactions: FarcasterInteractionManager
   private signerUuid: string
-
-  constructor(runtime: AgentcoinRuntime, farcasterConfig: FarcasterConfig) {
+  private runtime: IAyaRuntime
+  constructor(runtime: IAyaRuntime, farcasterConfig: FarcasterConfig) {
+    this.runtime = runtime
     const cache = new Map<string, unknown>()
-    this.signerUuid = runtime.getSetting('FARCASTER_NEYNAR_SIGNER_UUID')
+    this.signerUuid = runtime.ensureSetting(
+      'FARCASTER_NEYNAR_SIGNER_UUID',
+      'FARCASTER_NEYNAR_SIGNER_UUID is not set'
+    )
 
     const neynarConfig = new Configuration({
-      apiKey: runtime.getSetting('FARCASTER_NEYNAR_API_KEY')
+      apiKey: runtime.ensureSetting(
+        'FARCASTER_NEYNAR_API_KEY',
+        'FARCASTER_NEYNAR_API_KEY is not set'
+      )
     })
 
     const neynarClient = new NeynarAPIClient(neynarConfig)
@@ -52,40 +59,19 @@ class FarcasterManager {
     elizaLogger.info('✅ Farcaster client initialized.')
   }
 
-  async start(): Promise<void> {
+  async start(runtime: IAyaRuntime): Promise<void> {
+    if (this.runtime.agentId !== runtime.agentId) {
+      throw new Error('Farcaster client runtime mismatch')
+    }
+
     await Promise.all([this.posts.start(), this.interactions.start()])
   }
 
-  async stop(): Promise<void> {
+  async stop(runtime: IAyaRuntime): Promise<void> {
+    if (this.runtime.agentId !== runtime.agentId) {
+      throw new Error('Farcaster client runtime mismatch')
+    }
+
     await Promise.all([this.posts.stop(), this.interactions.stop()])
   }
 }
-
-export const FarcasterClientInterface: Client = {
-  async start(runtime: AgentcoinRuntime) {
-    const farcasterConfig = await validateFarcasterConfig(runtime)
-
-    elizaLogger.log('Farcaster client started')
-
-    const manager = new FarcasterManager(runtime, farcasterConfig)
-
-    // Start all services
-    await manager.start()
-    return manager
-  },
-
-  async stop(runtime: IAgentRuntime) {
-    try {
-      // stop it
-      elizaLogger.log('Stopping farcaster client', runtime.agentId)
-      if (runtime.clients.farcaster) {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        await (runtime.clients.farcaster as FarcasterManager).stop()
-      }
-    } catch (e) {
-      elizaLogger.error('client-farcaster interface stop error', e)
-    }
-  }
-}
-
-export default FarcasterClientInterface

@@ -1,5 +1,6 @@
 import type { ClientBase } from '@/clients/twitter/base'
 import { buildConversationThread, sendTweet, wait } from '@/clients/twitter/utils'
+import { isNull } from '@/common/functions'
 import {
   composeContext,
   type Content,
@@ -138,7 +139,8 @@ export class TwitterSearchClient {
 
       const tweetId = mostInterestingTweetResponse.trim()
       const selectedTweet = slicedTweets.find(
-        (tweet) => tweet.id.toString().includes(tweetId) || tweetId.includes(tweet.id.toString())
+        (tweet) =>
+          tweet.id?.toString().includes(tweetId) || tweetId.includes(tweet.id?.toString() ?? '')
       )
 
       if (!selectedTweet) {
@@ -157,7 +159,7 @@ export class TwitterSearchClient {
       const conversationId = selectedTweet.conversationId
       const roomId = stringToUuid(conversationId + '-' + this.runtime.agentId)
 
-      const userIdUUID = stringToUuid(selectedTweet.userId)
+      const userIdUUID = stringToUuid(selectedTweet.userId ?? '')
 
       await this.runtime.ensureConnection(
         userIdUUID,
@@ -174,7 +176,7 @@ export class TwitterSearchClient {
         id: stringToUuid(selectedTweet.id + '-' + this.runtime.agentId),
         agentId: this.runtime.agentId,
         content: {
-          text: selectedTweet.text,
+          text: selectedTweet.text ?? '',
           url: selectedTweet.permanentUrl,
           inReplyTo: selectedTweet.inReplyToStatusId
             ? stringToUuid(selectedTweet.inReplyToStatusId + '-' + this.runtime.agentId)
@@ -183,7 +185,7 @@ export class TwitterSearchClient {
         userId: userIdUUID,
         roomId,
         // Timestamps are in seconds, but we need them in milliseconds
-        createdAt: selectedTweet.timestamp * 1000
+        createdAt: selectedTweet.timestamp ? selectedTweet.timestamp * 1000 : Date.now()
       }
 
       if (!message.content.text) {
@@ -201,18 +203,20 @@ export class TwitterSearchClient {
       let tweetBackground = ''
       if (selectedTweet.isRetweet) {
         const originalTweet = await this.client.requestQueue.add(() =>
-          this.client.twitterClient.getTweet(selectedTweet.id)
+          this.client.twitterClient.getTweet(selectedTweet.id ?? '')
         )
-        tweetBackground = `Retweeting @${originalTweet.username}: ${originalTweet.text}`
+        tweetBackground = `Retweeting @${originalTweet?.username}: ${originalTweet?.text}`
       }
 
       // Generate image descriptions using GPT-4 vision API
-      const imageDescriptions = []
+      const imageDescriptions: { title: string; description: string }[] = []
       for (const photo of selectedTweet.photos) {
         const description = await this.runtime
           .getService<IImageDescriptionService>(ServiceType.IMAGE_DESCRIPTION)
-          .describeImage(photo.url)
-        imageDescriptions.push(description)
+          ?.describeImage(photo.url)
+        if (description) {
+          imageDescriptions.push(description)
+        }
       }
 
       let state = await this.runtime.composeState(message, {
@@ -254,6 +258,10 @@ export class TwitterSearchClient {
       elizaLogger.log(`Bot would respond to tweet ${selectedTweet.id} with: ${response.text}`)
       try {
         const callback: HandlerCallback = async (response: Content) => {
+          if (isNull(selectedTweet.id)) {
+            throw new Error('Tweet ID is not set')
+          }
+
           const memories = await sendTweet(
             this.client,
             response,
@@ -277,6 +285,10 @@ export class TwitterSearchClient {
         await this.runtime.evaluate(message, state)
 
         await this.runtime.processActions(message, responseMessages, state, callback)
+
+        if (isNull(selectedTweet.id)) {
+          throw new Error('Tweet ID is not set')
+        }
 
         this.respondedTweets.add(selectedTweet.id)
         const responseInfo = `Context:\n\n${context}\n\nSelected Post: 
