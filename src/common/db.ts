@@ -1,19 +1,13 @@
-import { PostgresDatabaseAdapter } from '@elizaos/adapter-postgres'
+import { isNull } from '@/common/functions'
+import { AyaPostgresDatabaseAdapter } from '@/databases/postgres/adapter'
 import { IDatabaseAdapter, IDatabaseCacheAdapter } from '@elizaos/core'
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
-
-// FIXME: Aditya - please remove default ''
-export const drizzleDB = drizzle(
-  postgres(process.env.POSTGRES_URL || '', {
-    max: 10,
-    idle_timeout: 20,
-    connect_timeout: 10
-  })
-)
 
 export async function initializeDatabase(): Promise<IDatabaseAdapter & IDatabaseCacheAdapter> {
-  const db = new PostgresDatabaseAdapter({
+  if (isNull(process.env.POSTGRES_URL)) {
+    throw new Error('POSTGRES_URL is not set')
+  }
+
+  const db = new AyaPostgresDatabaseAdapter({
     connectionString: process.env.POSTGRES_URL
   })
   await db.init()
