@@ -9,7 +9,8 @@ import {
   Memories,
   Participants,
   Relationships,
-  Rooms
+  Rooms,
+  schema
 } from '@/databases/postgres/schema'
 import {
   Account,
@@ -24,6 +25,7 @@ import {
   Relationship,
   UUID
 } from '@elizaos/core'
+import { pushSchema } from 'drizzle-kit/api'
 import { cosineDistance, sql } from 'drizzle-orm'
 import { and, desc, eq, gt, inArray, or } from 'drizzle-orm/expressions'
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
@@ -46,10 +48,10 @@ export class PostgresDrizzleDatabaseAdapter
     this.db = db
   }
 
-  // Test connection (for example purposes, we just run a simple query)
   async init(): Promise<void> {
     await this.withCircuitBreaker(async () => {
-      await this.db.execute('SELECT NOW()')
+      const { apply } = await pushSchema(schema, this.db)
+      await apply()
     }, 'init')
   }
 

@@ -3,6 +3,7 @@ import { GoalStatus, Objective, UUID } from '@elizaos/core'
 import { sql } from 'drizzle-orm'
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -153,17 +154,33 @@ export const Cache = pgTable(
 )
 
 // Define Knowledges table with references
-export const Knowledges = pgTable('knowledge', {
-  id: uuid('id').$type<UUID>().primaryKey(),
-  agentId: uuid('agentId')
-    .$type<UUID>()
-    .references(() => Accounts.id)
-    .notNull(),
-  content: jsonb('content').$type<RagKnowledgeItemContent>().notNull(),
-  embedding: vector('embedding', { dimensions: 1536 }),
-  createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
-  isMain: boolean('isMain').default(false),
-  originalId: uuid('originalId'),
-  chunkIndex: integer('chunkIndex'),
-  isShared: boolean('isShared').default(false)
-})
+export const Knowledges = pgTable(
+  'knowledge',
+  {
+    id: uuid('id').$type<UUID>().primaryKey(),
+    agentId: uuid('agentId')
+      .$type<UUID>()
+      .references(() => Accounts.id)
+      .notNull(),
+    content: jsonb('content').$type<RagKnowledgeItemContent>().notNull(),
+    embedding: vector('embedding', { dimensions: 1536 }),
+    createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
+    isMain: boolean('isMain').default(false),
+    originalId: uuid('originalId'),
+    chunkIndex: integer('chunkIndex'),
+    isShared: boolean('isShared').default(false)
+  },
+  (_table) => {
+    return {
+      contentTypeIndex: index('content_type_idx').on(sql`(content->>'metadata'->>'type')`)
+    }
+  }
+)
+
+export const schema = {
+  Accounts,
+  Rooms,
+  Memories,
+  Goals,
+  Logs
+}
