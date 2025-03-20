@@ -37,14 +37,17 @@ export class PostgresDrizzleDatabaseAdapter
 {
   db: PostgresJsDatabase
 
-  constructor(
-    connectionString: string,
+  constructor({
+    connectionString,
+    circuitBreakerConfig
+  }: {
+    connectionString: string
     circuitBreakerConfig?: {
       failureThreshold?: number
       resetTimeout?: number
       halfOpenMaxAttempts?: number
     }
-  ) {
+  }) {
     super(circuitBreakerConfig)
     this.db = drizzle(
       postgres(connectionString, {
