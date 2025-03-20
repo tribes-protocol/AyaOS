@@ -465,5 +465,8 @@ export type ModelConfig = ModelConfiguration & {
 export interface AyaOSOptions {
   dataDir?: string
   modelConfig?: ModelConfig
-  matchThreshold?: number
+  knowledge?: {
+    matchThreshold?: number
+    matchLimit?: number
+  }
 }

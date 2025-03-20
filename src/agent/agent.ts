@@ -6,7 +6,7 @@ import { initializeDatabase } from '@/common/db'
 import { isNull } from '@/common/functions'
 import { PathResolver } from '@/common/path-resolver'
 import { AgentcoinRuntime } from '@/common/runtime'
-import { Context, ContextHandler, ModelConfig, SdkEventKind } from '@/common/types'
+import { AyaOSOptions, Context, ContextHandler, ModelConfig, SdkEventKind } from '@/common/types'
 import agentcoinPlugin from '@/plugins/agentcoin'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
@@ -52,11 +52,7 @@ export class Agent implements IAyaAgent {
   public matchThreshold?: number
   public matchLimit?: number
 
-  constructor(options?: {
-    modelConfig?: ModelConfig
-    dataDir?: string
-    knowledge?: { matchThreshold?: number; matchLimit?: number }
-  }) {
+  constructor(options?: AyaOSOptions) {
     this.modelConfig = options?.modelConfig
     if (reservedAgentDirs.has(options?.dataDir)) {
       throw new Error('Data directory already used. Please provide a unique data directory.')
