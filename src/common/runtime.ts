@@ -2,7 +2,7 @@ import { ensure, formatKnowledge, isNull } from '@/common/functions'
 import { AgentEventHandler, IAyaRuntime } from '@/common/iruntime'
 import { PathResolver } from '@/common/path-resolver'
 import { Context, SdkEventKind } from '@/common/types'
-import { KnowledgeBaseService } from '@/services/knowledge-base'
+import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import {
   Action,
@@ -188,11 +188,9 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
       return state
     }
 
-    // const ragEnabled = this.character.settings?.ragKnowledge ?? false
-
     // Since ElizaOS rag knowledge is currently broken on postgres adapter, we're just going
     // to override the knowledge state with our own kb service results
-    const kbService = this.ensureService(KnowledgeBaseService, 'Knowledge base service not found')
+    const kbService = this.ensureService(KnowledgeService, 'Knowledge base service not found')
     const memService = this.ensureService(MemoriesService, 'Memories service not found')
     // Run both searches in parallel
     const [kbItems, memItems] = await Promise.all([

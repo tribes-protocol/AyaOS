@@ -30,7 +30,7 @@ export interface IConfigService {
   checkCharacterUpdate(): Promise<void>
 }
 
-export interface IKnowledgeBaseService {
+export interface IKnowledgeService {
   list(options: {
     limit?: number
     contentType?: string

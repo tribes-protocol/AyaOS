@@ -462,9 +462,11 @@ export type ModelConfig = ModelConfiguration & {
   apiKey?: string
 }
 
-// type Client = {
-//   /** Start client connection */
-//   start: (runtime: AgentcoinRuntime) => Promise<unknown>;
-//   /** Stop client connection */
-//   stop: (runtime: AgentcoinRuntime) => Promise<unknown>;
-// };
+export interface AyaOSOptions {
+  dataDir?: string
+  modelConfig?: ModelConfig
+  knowledge?: {
+    matchThreshold?: number
+    matchLimit?: number
+  }
+}

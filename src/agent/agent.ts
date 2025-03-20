@@ -6,14 +6,14 @@ import { initializeDatabase } from '@/common/db'
 import { ensure, isNull } from '@/common/functions'
 import { PathResolver } from '@/common/path-resolver'
 import { AyaRuntime } from '@/common/runtime'
-import { Context, ContextHandler, ModelConfig, SdkEventKind } from '@/common/types'
+import { AyaOSOptions, Context, ContextHandler, ModelConfig, SdkEventKind } from '@/common/types'
 import agentcoinPlugin from '@/plugins/agentcoin'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
 import { EventService } from '@/services/event'
-import { IKnowledgeBaseService, IMemoriesService, IWalletService } from '@/services/interfaces'
+import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
 import { KeychainService } from '@/services/keychain'
-import { KnowledgeBaseService } from '@/services/knowledge-base'
+import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import { ProcessService } from '@/services/process'
 import { WalletService } from '@/services/wallet'
@@ -52,11 +52,7 @@ export class Agent implements IAyaAgent {
   public matchThreshold?: number
   public matchLimit?: number
 
-  constructor(options?: {
-    modelConfig?: ModelConfig
-    dataDir?: string
-    knowledge?: { matchThreshold?: number; matchLimit?: number }
-  }) {
+  constructor(options?: AyaOSOptions) {
     this.modelConfig = options?.modelConfig
     if (reservedAgentDirs.has(options?.dataDir)) {
       throw new Error('Data directory already used. Please provide a unique data directory.')
@@ -79,8 +75,8 @@ export class Agent implements IAyaAgent {
     return this.runtime.agentId
   }
 
-  get knowledge(): IKnowledgeBaseService {
-    const service = this.runtime.getService(KnowledgeBaseService)
+  get knowledge(): IKnowledgeService {
+    const service = this.runtime.getService(KnowledgeService)
     return ensure(service, 'Knowledge base service not found')
   }
 
@@ -180,7 +176,12 @@ export class Agent implements IAyaAgent {
       })
       this.runtime_ = runtime
 
-      const knowledgeBaseService = new KnowledgeBaseService(runtime)
+      const knowledgeService = new KnowledgeService(
+        runtime,
+        agentcoinAPI,
+        agentcoinCookie,
+        agentcoinIdentity
+      )
       const memoriesService = new MemoriesService(runtime)
       const walletService = new WalletService(
         agentcoinCookie,
@@ -200,8 +201,7 @@ export class Agent implements IAyaAgent {
           isShuttingDown = true
 
           elizaLogger.warn(`Received ${signal} signal. Stopping agent...`)
-          await Promise.all([configService.stop(), eventService.stop()])
-          // , knowledgeService.stop()])
+          await Promise.all([configService.stop(), eventService.stop(), knowledgeService.stop()])
           elizaLogger.success('Agent stopped services successfully!')
 
           if (runtime) {
@@ -240,15 +240,12 @@ export class Agent implements IAyaAgent {
 
       this.runtime.clients = await initializeClients(this.runtime.character, this.runtime)
       await Promise.all([
-        this.register('service', knowledgeBaseService),
+        this.register('service', knowledgeService),
         this.register('service', memoriesService),
         this.register('service', walletService)
       ])
       // no need to await these. it'll lock up the main process
-      void Promise.all([
-        configService.start()
-        // void knowledgeService.start()
-      ])
+      void Promise.all([configService.start(), knowledgeService.start()])
 
       elizaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
