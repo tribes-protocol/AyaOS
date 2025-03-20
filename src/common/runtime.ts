@@ -27,6 +27,8 @@ import {
 export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
   private eventHandler: AgentEventHandler | undefined
   public pathResolver: PathResolver
+  public matchThreshold: number
+  public matchLimit: number
 
   public constructor(opts: {
     eliza: {
@@ -49,9 +51,13 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
       logging?: boolean
     }
     pathResolver: PathResolver
+    matchThreshold?: number
+    matchLimit?: number
   }) {
     super(opts.eliza)
     this.pathResolver = opts.pathResolver
+    this.matchThreshold = opts.matchThreshold ?? 0.4
+    this.matchLimit = opts.matchLimit ?? 6
   }
 
   async initialize(options?: { eventHandler: AgentEventHandler }): Promise<void> {
@@ -192,14 +198,14 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     const [kbItems, memItems] = await Promise.all([
       kbService.search({
         q: message.content.text,
-        limit: 6,
-        matchThreshold: 0.4
+        limit: this.matchLimit,
+        matchThreshold: this.matchThreshold
       }),
       memService.search({
         q: message.content.text,
-        limit: 6,
+        limit: this.matchLimit,
         type: 'fragments',
-        matchThreshold: 0.4
+        matchThreshold: this.matchThreshold
       })
     ])
 

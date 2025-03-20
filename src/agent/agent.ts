@@ -49,8 +49,14 @@ export class Agent implements IAyaAgent {
   private runtime_: AyaRuntime | undefined
   private pathResolver: PathResolver
   private keychainService: KeychainService
+  public matchThreshold?: number
+  public matchLimit?: number
 
-  constructor(options?: { modelConfig?: ModelConfig; dataDir?: string }) {
+  constructor(options?: {
+    modelConfig?: ModelConfig
+    dataDir?: string
+    knowledge?: { matchThreshold?: number; matchLimit?: number }
+  }) {
     this.modelConfig = options?.modelConfig
     if (reservedAgentDirs.has(options?.dataDir)) {
       throw new Error('Data directory already used. Please provide a unique data directory.')
@@ -58,6 +64,8 @@ export class Agent implements IAyaAgent {
     reservedAgentDirs.add(options?.dataDir)
     this.pathResolver = new PathResolver(options?.dataDir)
     this.keychainService = new KeychainService(this.pathResolver.keypairFile)
+    this.matchThreshold = options?.knowledge?.matchThreshold
+    this.matchLimit = options?.knowledge?.matchLimit
   }
 
   get runtime(): AyaRuntime {
@@ -88,6 +96,10 @@ export class Agent implements IAyaAgent {
 
   async start(): Promise<void> {
     let runtime: AyaRuntime | undefined
+    if (isNull(process.env.POSTGRES_URL)) {
+      elizaLogger.error('POSTGRES_URL is not set, please set it in your .env file')
+      process.exit(1)
+    }
 
     try {
       elizaLogger.info('Starting agent...')
@@ -100,11 +112,6 @@ export class Agent implements IAyaAgent {
         this.pathResolver
       )
       await agentcoinService.provisionIfNeeded()
-
-      if (isNull(process.env.POSTGRES_URL)) {
-        elizaLogger.error('POSTGRES_URL is not set, please set it in your .env file')
-        process.exit(1)
-      }
 
       // eagerly start event service
       const agentcoinCookie = await agentcoinService.getCookie()
@@ -167,7 +174,9 @@ export class Agent implements IAyaAgent {
           cacheManager: cache,
           agentId: character.id
         },
-        pathResolver: this.pathResolver
+        pathResolver: this.pathResolver,
+        matchThreshold: this.matchThreshold,
+        matchLimit: this.matchLimit
       })
       this.runtime_ = runtime
 
@@ -230,12 +239,16 @@ export class Agent implements IAyaAgent {
       })
 
       this.runtime.clients = await initializeClients(this.runtime.character, this.runtime)
-      this.register('service', knowledgeBaseService)
-      this.register('service', memoriesService)
-      this.register('service', walletService)
+      await Promise.all([
+        this.register('service', knowledgeBaseService),
+        this.register('service', memoriesService),
+        this.register('service', walletService)
+      ])
       // no need to await these. it'll lock up the main process
-      // void knowledgeService.start()
-      void configService.start()
+      void Promise.all([
+        configService.start()
+        // void knowledgeService.start()
+      ])
 
       elizaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
@@ -261,18 +274,18 @@ export class Agent implements IAyaAgent {
     )
   }
 
-  register(kind: 'service', handler: Service): void
-  register(kind: 'provider', handler: Provider): void
-  register(kind: 'action', handler: Action): void
-  register(kind: 'plugin', handler: Plugin): void
-  register(kind: 'evaluator', handler: Evaluator): void
+  async register(kind: 'service', handler: Service): Promise<void>
+  async register(kind: 'provider', handler: Provider): Promise<void>
+  async register(kind: 'action', handler: Action): Promise<void>
+  async register(kind: 'plugin', handler: Plugin): Promise<void>
+  async register(kind: 'evaluator', handler: Evaluator): Promise<void>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  register(kind: string, handler: any): void {
+  async register(kind: string, handler: any): Promise<void> {
     switch (kind) {
       case 'service':
         this.services.push(handler)
         if (this.runtime_) {
-          void this.runtime.registerService(handler)
+          await this.runtime.registerService(handler)
         }
         break
       case 'action':
