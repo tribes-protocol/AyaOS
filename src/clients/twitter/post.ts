@@ -3,7 +3,8 @@ import { DEFAULT_MAX_TWEET_LENGTH } from '@/clients/twitter/environment'
 import { twitterMessageHandlerTemplate } from '@/clients/twitter/interactions'
 import { MediaData, RawTweetType } from '@/clients/twitter/types'
 import { buildConversationThread, fetchMediaData } from '@/clients/twitter/utils'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { isNull } from '@/common/functions'
+import { IAyaRuntime } from '@/common/iruntime'
 import {
   ActionResponse,
   cleanJsonResponse,
@@ -94,18 +95,18 @@ type PendingTweetApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
 export class TwitterPostClient {
   client: ClientBase
-  runtime: AgentcoinRuntime
+  runtime: IAyaRuntime
   twitterUsername: string
   private isProcessing = false
   private lastProcessTime = 0
   private stopProcessingActions = false
   private isDryRun: boolean
-  private discordClientForApproval: Client
+  private discordClientForApproval: Client | undefined
   private approvalRequired = false
-  private discordApprovalChannelId: string
-  private approvalCheckInterval: number
+  private discordApprovalChannelId: string | undefined
+  private approvalCheckInterval: number | undefined
 
-  constructor(client: ClientBase, runtime: AgentcoinRuntime) {
+  constructor(client: ClientBase, runtime: IAyaRuntime) {
     this.client = client
     this.runtime = runtime
     this.twitterUsername = this.client.twitterConfig.TWITTER_USERNAME
@@ -147,14 +148,16 @@ export class TwitterPostClient {
 
     // Initialize Discord webhook
     const approvalRequired: boolean =
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       this.runtime.getSetting('TWITTER_APPROVAL_ENABLED')?.toLocaleLowerCase() === 'true'
+
     if (approvalRequired) {
       const discordToken = this.runtime.getSetting('TWITTER_APPROVAL_DISCORD_BOT_TOKEN')
       const approvalChannelId = this.runtime.getSetting('TWITTER_APPROVAL_DISCORD_CHANNEL_ID')
 
-      const APPROVAL_CHECK_INTERVAL =
-        Number.parseInt(this.runtime.getSetting('TWITTER_APPROVAL_CHECK_INTERVAL')) || 5 * 60 * 1000 // 5 minutes
+      const optionalInterval = this.runtime.getSetting('TWITTER_APPROVAL_CHECK_INTERVAL')
+      const APPROVAL_CHECK_INTERVAL = optionalInterval
+        ? Number.parseInt(optionalInterval)
+        : 5 * 60 * 1000 // 5 minutes
 
       this.approvalCheckInterval = APPROVAL_CHECK_INTERVAL
 
@@ -199,7 +202,10 @@ export class TwitterPostClient {
     })
     // Login to Discord
     void this.discordClientForApproval.login(
-      this.runtime.getSetting('TWITTER_APPROVAL_DISCORD_BOT_TOKEN')
+      this.runtime.ensureSetting(
+        'TWITTER_APPROVAL_DISCORD_BOT_TOKEN',
+        'TWITTER_APPROVAL_DISCORD_BOT_TOKEN is not set'
+      )
     )
   }
 
@@ -279,14 +285,16 @@ export class TwitterPostClient {
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return {
       id: tweetResult.rest_id,
-      name: client.profile.screenName,
-      username: client.profile.username,
-      text: tweetResult.legacy.full_text,
-      conversationId: tweetResult.legacy.conversation_id_str,
-      createdAt: tweetResult.legacy.created_at,
-      timestamp: new Date(tweetResult.legacy.created_at).getTime(),
-      userId: client.profile.id,
-      inReplyToStatusId: tweetResult.legacy.in_reply_to_status_id_str,
+      name: client.profile?.screenName,
+      username: client.profile?.username,
+      text: tweetResult.legacy?.full_text,
+      conversationId: tweetResult.legacy?.conversation_id_str,
+      createdAt: tweetResult.legacy?.created_at ?? undefined,
+      timestamp: tweetResult.legacy?.created_at
+        ? new Date(tweetResult.legacy?.created_at).getTime()
+        : undefined,
+      userId: client.profile?.id,
+      inReplyToStatusId: tweetResult.legacy?.in_reply_to_status_id_str,
       permanentUrl: `https://twitter.com/${twitterUsername}/status/${tweetResult.rest_id}`,
       hashtags: [],
       mentions: [],
@@ -298,14 +306,14 @@ export class TwitterPostClient {
   }
 
   async processAndCacheTweet(
-    runtime: AgentcoinRuntime,
+    runtime: IAyaRuntime,
     client: ClientBase,
     tweet: Tweet,
     roomId: UUID,
     rawTweetContent: string
   ): Promise<void> {
     // Cache the last post details
-    await runtime.cacheManager.set(`twitter/${client.profile.username}/lastPost`, {
+    await runtime.cacheManager.set(`twitter/${client.profile?.username}/lastPost`, {
       id: tweet.id,
       timestamp: Date.now()
     })
@@ -341,7 +349,7 @@ export class TwitterPostClient {
     content: string,
     tweetId?: string,
     mediaData?: MediaData[]
-  ): Promise<Tweet> {
+  ): Promise<Tweet | null> {
     try {
       const noteTweetResult: {
         errors: {
@@ -378,7 +386,7 @@ export class TwitterPostClient {
     content: string,
     tweetId?: string,
     mediaData?: MediaData[]
-  ): Promise<Tweet> {
+  ): Promise<Tweet | null> {
     try {
       const standardTweetResult = await client.requestQueue.add(
         async () => await client.twitterClient.sendTweet(content, tweetId, mediaData)
@@ -404,14 +412,14 @@ export class TwitterPostClient {
   }
 
   async postTweet(
-    runtime: AgentcoinRuntime,
+    runtime: IAyaRuntime,
     client: ClientBase,
     tweetTextForPosting: string,
     roomId: UUID,
     rawTweetContent: string,
     twitterUsername: string,
     mediaData?: MediaData[]
-  ): Promise<Tweet> {
+  ): Promise<Tweet | null> {
     try {
       elizaLogger.log(`Posting new tweet:\n`)
 
@@ -426,6 +434,8 @@ export class TwitterPostClient {
       const tweet = this.createTweetObject(result, client, twitterUsername)
 
       await this.processAndCacheTweet(runtime, client, tweet, roomId, rawTweetContent)
+
+      return tweet
     } catch (error) {
       elizaLogger.error('Error sending tweet:', error)
       return null
@@ -439,6 +449,11 @@ export class TwitterPostClient {
     elizaLogger.log('Generating new tweet')
 
     try {
+      if (isNull(this.client.profile)) {
+        elizaLogger.error('Client profile is not set')
+        return
+      }
+
       const roomId = stringToUuid('user_twitter_feed:' + this.client.profile.username)
 
       await this.runtime.ensureUserRoomConnection({
@@ -470,7 +485,7 @@ export class TwitterPostClient {
       let shouldContinue = await this.runtime.handle('pre:llm', {
         state,
         responses: [],
-        memory: null
+        memory: undefined
       })
 
       if (!shouldContinue) {
@@ -494,7 +509,7 @@ export class TwitterPostClient {
       shouldContinue = await this.runtime.handle('post:llm', {
         state,
         responses: [],
-        memory: null,
+        memory: undefined,
         content: { text: response }
       })
 
@@ -506,8 +521,8 @@ export class TwitterPostClient {
       const rawTweetContent = cleanJsonResponse(response)
 
       // First attempt to clean content
-      let tweetTextForPosting = null
-      let mediaData = null
+      let tweetTextForPosting: string | null = null
+      let mediaData: MediaData[] | null = null
 
       // Try parsing as JSON first
       const parsedResponse = parseJSONObjectFromText(rawTweetContent)
@@ -525,7 +540,7 @@ export class TwitterPostClient {
         const parsingText = extractAttributes(rawTweetContent, ['text']).text
         if (parsingText) {
           tweetTextForPosting = truncateToCompleteSentence(
-            extractAttributes(rawTweetContent, ['text']).text,
+            extractAttributes(rawTweetContent, ['text'])?.text ?? '',
             this.client.twitterConfig.MAX_TWEET_LENGTH
           )
         }
@@ -567,7 +582,7 @@ export class TwitterPostClient {
             roomId,
             rawTweetContent,
             this.twitterUsername,
-            mediaData
+            mediaData ?? undefined
           )
         }
       } catch (error) {
@@ -607,7 +622,7 @@ export class TwitterPostClient {
 
     // Try to parse as JSON first
     const jsonResponse = parseJSONObjectFromText(cleanedResponse)
-    if (jsonResponse.text) {
+    if (jsonResponse?.text) {
       const truncateContent = truncateToCompleteSentence(
         jsonResponse.text,
         this.client.twitterConfig.MAX_TWEET_LENGTH
@@ -615,7 +630,8 @@ export class TwitterPostClient {
       return truncateContent
     }
     if (typeof jsonResponse === 'object') {
-      const possibleContent = jsonResponse.content || jsonResponse.message || jsonResponse.response
+      const possibleContent =
+        jsonResponse?.content || jsonResponse?.message || jsonResponse?.response
       if (possibleContent) {
         const truncateContent = truncateToCompleteSentence(
           possibleContent,
@@ -625,9 +641,9 @@ export class TwitterPostClient {
       }
     }
 
-    let truncateContent = null
+    let truncateContent: string | null = null
     // Try extracting text attribute
-    const parsingText = extractAttributes(cleanedResponse, ['text']).text
+    const parsingText = extractAttributes(cleanedResponse, ['text'])?.text ?? ''
     if (parsingText) {
       truncateContent = truncateToCompleteSentence(
         parsingText,
@@ -800,38 +816,47 @@ export class TwitterPostClient {
       executedActions: string[]
     }[]
   > {
-    const results = []
+    const results: {
+      tweetId: string
+      actionResponse: ActionResponse
+      executedActions: string[]
+    }[] = []
     for (const timeline of timelines) {
       const { actionResponse, tweetState, roomId, tweet } = timeline
+      const tweetId = tweet.id
+      if (isNull(tweetId)) {
+        elizaLogger.error('Tweet ID is not set')
+        continue
+      }
       try {
         const executedActions: string[] = []
         // Execute actions
         if (actionResponse.like) {
           if (this.isDryRun) {
-            elizaLogger.info(`Dry run: would have liked tweet ${tweet.id}`)
+            elizaLogger.info(`Dry run: would have liked tweet ${tweetId}`)
             executedActions.push('like (dry run)')
           } else {
             try {
-              await this.client.twitterClient.likeTweet(tweet.id)
+              await this.client.twitterClient.likeTweet(tweetId)
               executedActions.push('like')
-              elizaLogger.log(`Liked tweet ${tweet.id}`)
+              elizaLogger.log(`Liked tweet ${tweetId}`)
             } catch (error) {
-              elizaLogger.error(`Error liking tweet ${tweet.id}:`, error)
+              elizaLogger.error(`Error liking tweet ${tweetId}:`, error)
             }
           }
         }
 
         if (actionResponse.retweet) {
           if (this.isDryRun) {
-            elizaLogger.info(`Dry run: would have retweeted tweet ${tweet.id}`)
+            elizaLogger.info(`Dry run: would have retweeted tweet ${tweetId}`)
             executedActions.push('retweet (dry run)')
           } else {
             try {
-              await this.client.twitterClient.retweet(tweet.id)
+              await this.client.twitterClient.retweet(tweetId)
               executedActions.push('retweet')
-              elizaLogger.log(`Retweeted tweet ${tweet.id}`)
+              elizaLogger.log(`Retweeted tweet ${tweetId}`)
             } catch (error) {
-              elizaLogger.error(`Error retweeting tweet ${tweet.id}:`, error)
+              elizaLogger.error(`Error retweeting tweet ${tweetId}:`, error)
             }
           }
         }
@@ -843,19 +868,21 @@ export class TwitterPostClient {
             const formattedConversation = thread
               .map(
                 (t) =>
-                  `@${t.username} (${new Date(t.timestamp * 1000).toLocaleString()}): ${t.text}`
+                  `@${t.username} (${t.timestamp ? new Date(t.timestamp * 1000).toLocaleString() : ''}): ${t.text}`
               )
               .join('\n\n')
 
             // Generate image descriptions if present
-            const imageDescriptions = []
+            const imageDescriptions: { title: string; description: string }[] = []
             if (tweet.photos?.length > 0) {
               elizaLogger.log('Processing images in tweet for context')
               for (const photo of tweet.photos) {
                 const description = await this.runtime
                   .getService<IImageDescriptionService>(ServiceType.IMAGE_DESCRIPTION)
-                  .describeImage(photo.url)
-                imageDescriptions.push(description)
+                  ?.describeImage(photo.url)
+                if (description) {
+                  imageDescriptions.push(description)
+                }
               }
             }
 
@@ -880,7 +907,7 @@ export class TwitterPostClient {
                 roomId: stringToUuid(tweet.conversationId + '-' + this.runtime.agentId),
                 agentId: this.runtime.agentId,
                 content: {
-                  text: tweet.text,
+                  text: tweet.text ?? '',
                   action: 'QUOTE'
                 }
               },
@@ -906,7 +933,7 @@ export class TwitterPostClient {
 
             if (!quoteContent) {
               elizaLogger.error('Failed to generate valid quote tweet content')
-              return
+              return []
             }
 
             elizaLogger.log('Generated quote tweet content:', quoteContent)
@@ -920,7 +947,7 @@ export class TwitterPostClient {
             } else {
               // Send the tweet through request queue
               const result = await this.client.requestQueue.add(
-                async () => await this.client.twitterClient.sendQuoteTweet(quoteContent, tweet.id)
+                async () => await this.client.twitterClient.sendQuoteTweet(quoteContent, tweetId)
               )
 
               const body: {
@@ -961,9 +988,9 @@ export class TwitterPostClient {
         // Add these checks before creating memory
         await this.runtime.ensureRoomExists(roomId)
         await this.runtime.ensureUserExists(
-          stringToUuid(tweet.userId),
-          tweet.username,
-          tweet.name,
+          stringToUuid(tweet.userId ?? ''),
+          tweet.username ?? null,
+          tweet.name ?? null,
           'twitter'
         )
         await this.runtime.ensureParticipantInRoom(this.runtime.agentId, roomId)
@@ -972,9 +999,9 @@ export class TwitterPostClient {
           // Then create the memory
           await this.runtime.messageManager.createMemory({
             id: stringToUuid(tweet.id + '-' + this.runtime.agentId),
-            userId: stringToUuid(tweet.userId),
+            userId: stringToUuid(tweet.userId ?? ''),
             content: {
-              text: tweet.text,
+              text: tweet.text ?? '',
               url: tweet.permanentUrl,
               source: 'twitter',
               action: executedActions.join(',')
@@ -982,12 +1009,12 @@ export class TwitterPostClient {
             agentId: this.runtime.agentId,
             roomId,
             embedding: getEmbeddingZeroVector(),
-            createdAt: tweet.timestamp * 1000
+            createdAt: tweet.timestamp ? tweet.timestamp * 1000 : Date.now()
           })
         }
 
         results.push({
-          tweetId: tweet.id,
+          tweetId: tweetId ?? '',
           actionResponse,
           executedActions
         })
@@ -1013,18 +1040,23 @@ export class TwitterPostClient {
       // Build conversation thread for context
       const thread = await buildConversationThread(tweet, this.client)
       const formattedConversation = thread
-        .map((t) => `@${t.username} (${new Date(t.timestamp * 1000).toLocaleString()}): ${t.text}`)
+        .map(
+          (t) =>
+            `@${t.username} (${t.timestamp ? new Date(t.timestamp * 1000).toLocaleString() : ''}): ${t.text}`
+        )
         .join('\n\n')
 
       // Generate image descriptions if present
-      const imageDescriptions = []
+      const imageDescriptions: { title: string; description: string }[] = []
       if (tweet.photos?.length > 0) {
         elizaLogger.log('Processing images in tweet for context')
         for (const photo of tweet.photos) {
           const description = await this.runtime
             .getService<IImageDescriptionService>(ServiceType.IMAGE_DESCRIPTION)
-            .describeImage(photo.url)
-          imageDescriptions.push(description)
+            ?.describeImage(photo.url)
+          if (description) {
+            imageDescriptions.push(description)
+          }
         }
       }
 
@@ -1047,7 +1079,7 @@ export class TwitterPostClient {
           userId: this.runtime.agentId,
           roomId: stringToUuid(tweet.conversationId + '-' + this.runtime.agentId),
           agentId: this.runtime.agentId,
-          content: { text: tweet.text, action: '' }
+          content: { text: tweet.text ?? '', action: '' }
         },
         {
           twitterUserName: this.twitterUsername,
@@ -1124,7 +1156,7 @@ export class TwitterPostClient {
         fields: [
           {
             name: 'Character',
-            value: this.client.profile.username,
+            value: this.client.profile?.username ?? '',
             inline: true
           },
           {
@@ -1139,8 +1171,8 @@ export class TwitterPostClient {
         timestamp: new Date().toISOString()
       }
 
-      const channel = await this.discordClientForApproval.channels.fetch(
-        this.discordApprovalChannelId
+      const channel = await this.discordClientForApproval?.channels.fetch(
+        this.discordApprovalChannelId ?? ''
       )
 
       if (!channel || !(channel instanceof TextChannel)) {
@@ -1150,7 +1182,7 @@ export class TwitterPostClient {
       const message = await channel.send({ embeds: [embed] })
 
       // Store the pending tweet
-      const pendingTweetsKey = `twitter/${this.client.profile.username}/pendingTweet`
+      const pendingTweetsKey = `twitter/${this.client.profile?.username}/pendingTweet`
       const currentPendingTweets =
         (await this.runtime.cacheManager.get<PendingTweet[]>(pendingTweetsKey)) || []
       // Add new pending tweet
@@ -1159,7 +1191,7 @@ export class TwitterPostClient {
         roomId,
         rawTweetContent,
         discordMessageId: message.id,
-        channelId: this.discordApprovalChannelId,
+        channelId: this.discordApprovalChannelId ?? '',
         timestamp: Date.now()
       })
 
@@ -1176,8 +1208,8 @@ export class TwitterPostClient {
   private async checkApprovalStatus(discordMessageId: string): Promise<PendingTweetApprovalStatus> {
     try {
       // Fetch message and its replies from Discord
-      const channel = await this.discordClientForApproval.channels.fetch(
-        this.discordApprovalChannelId
+      const channel = await this.discordClientForApproval?.channels.fetch(
+        this.discordApprovalChannelId ?? ''
       )
 
       elizaLogger.log(`channel ${JSON.stringify(channel)}`)
@@ -1226,7 +1258,7 @@ export class TwitterPostClient {
   }
 
   private async cleanupPendingTweet(discordMessageId: string): Promise<void> {
-    const pendingTweetsKey = `twitter/${this.client.profile.username}/pendingTweet`
+    const pendingTweetsKey = `twitter/${this.client.profile?.username}/pendingTweet`
     const currentPendingTweets =
       (await this.runtime.cacheManager.get<PendingTweet[]>(pendingTweetsKey)) || []
 
@@ -1244,7 +1276,7 @@ export class TwitterPostClient {
 
   private async handlePendingTweet(): Promise<void> {
     elizaLogger.log('Checking Pending Tweets...')
-    const pendingTweetsKey = `twitter/${this.client.profile.username}/pendingTweet`
+    const pendingTweetsKey = `twitter/${this.client.profile?.username}/pendingTweet`
     const pendingTweets =
       (await this.runtime.cacheManager.get<PendingTweet[]>(pendingTweetsKey)) || []
 
@@ -1257,7 +1289,9 @@ export class TwitterPostClient {
 
         // Notify on Discord about expiration
         try {
-          const channel = await this.discordClientForApproval.channels.fetch(pendingTweet.channelId)
+          const channel = await this.discordClientForApproval?.channels.fetch(
+            pendingTweet.channelId
+          )
           if (channel instanceof TextChannel) {
             const originalMessage = await channel.messages.fetch(pendingTweet.discordMessageId)
             await originalMessage.reply('This tweet approval request has expired (24h timeout).')
@@ -1289,7 +1323,9 @@ export class TwitterPostClient {
 
         // Notify on Discord about posting
         try {
-          const channel = await this.discordClientForApproval.channels.fetch(pendingTweet.channelId)
+          const channel = await this.discordClientForApproval?.channels.fetch(
+            pendingTweet.channelId
+          )
           if (channel instanceof TextChannel) {
             const originalMessage = await channel.messages.fetch(pendingTweet.discordMessageId)
             await originalMessage.reply('Tweet has been posted successfully! ✅')
@@ -1304,7 +1340,9 @@ export class TwitterPostClient {
         await this.cleanupPendingTweet(pendingTweet.discordMessageId)
         // Notify about Rejection of Tweet
         try {
-          const channel = await this.discordClientForApproval.channels.fetch(pendingTweet.channelId)
+          const channel = await this.discordClientForApproval?.channels.fetch(
+            pendingTweet.channelId
+          )
           if (channel instanceof TextChannel) {
             const originalMessage = await channel.messages.fetch(pendingTweet.discordMessageId)
             await originalMessage.reply('Tweet has been rejected! ❌')

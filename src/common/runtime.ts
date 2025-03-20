@@ -1,4 +1,5 @@
-import { formatKnowledge, isNull } from '@/common/functions'
+import { ensure, formatKnowledge, isNull } from '@/common/functions'
+import { AgentEventHandler, IAyaRuntime } from '@/common/iruntime'
 import { PathResolver } from '@/common/path-resolver'
 import { Context, SdkEventKind } from '@/common/types'
 import { KnowledgeService } from '@/services/knowledge'
@@ -23,9 +24,7 @@ import {
   UUID
 } from '@elizaos/core'
 
-type AgentEventHandler = (event: SdkEventKind, params: Context) => Promise<boolean>
-
-export class AgentcoinRuntime extends AgentRuntime {
+export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
   private eventHandler: AgentEventHandler | undefined
   public pathResolver: PathResolver
   public matchThreshold: number
@@ -98,6 +97,18 @@ export class AgentcoinRuntime extends AgentRuntime {
     return super.getService(service as ServiceType) as T
   }
 
+  ensureSetting(key: string, message?: string): string {
+    return ensure(super.getSetting(key), message)
+  }
+
+  ensureService<T extends Service>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    service: ServiceType | string | ((new (...args: any[]) => T) & { serviceType: ServiceType }),
+    message?: string
+  ): T {
+    return ensure(this.getService(service), message)
+  }
+
   async ensureUserRoomConnection(options: {
     roomId: UUID
     userId: UUID
@@ -140,8 +151,8 @@ export class AgentcoinRuntime extends AgentRuntime {
 
   async ensureAccountExists(params: {
     userId: UUID
-    username: string | null
-    name: string | null
+    username: string
+    name: string
     email?: string | null
     source?: string | null
     image?: string | null
@@ -155,8 +166,8 @@ export class AgentcoinRuntime extends AgentRuntime {
         id: userId,
         name,
         username,
-        email,
-        avatarUrl: image,
+        email: email || undefined,
+        avatarUrl: image || undefined,
         details: { bio, source, ethAddress }
       })
 
@@ -179,8 +190,8 @@ export class AgentcoinRuntime extends AgentRuntime {
 
     // Since ElizaOS rag knowledge is currently broken on postgres adapter, we're just going
     // to override the knowledge state with our own kb service results
-    const kbService = this.getService(KnowledgeService)
-    const memService = this.getService(MemoriesService)
+    const kbService = this.ensureService(KnowledgeService, 'Knowledge base service not found')
+    const memService = this.ensureService(MemoriesService, 'Memories service not found')
     // Run both searches in parallel
     const [kbItems, memItems] = await Promise.all([
       kbService.search({
@@ -201,10 +212,17 @@ export class AgentcoinRuntime extends AgentRuntime {
     state.ragKnowledge = formatKnowledge(kbItems).trim()
 
     // Set regular knowledge from memService
-    const knowledgeItems: KnowledgeItem[] = memItems.map((item) => ({
-      id: item.id,
-      content: item.content
-    }))
+    const knowledgeItems: KnowledgeItem[] = memItems
+      .map((item) => {
+        if (isNull(item.id)) {
+          return undefined
+        }
+        return {
+          id: item.id,
+          content: item.content
+        }
+      })
+      .filter((item) => !isNull(item))
     state.knowledge = formatKnowledge(knowledgeItems).trim()
     state.knowledgeData = knowledgeItems
 

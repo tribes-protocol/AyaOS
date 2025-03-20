@@ -11,7 +11,6 @@ import {
   serializeChannel,
   serializeIdentity
 } from '@/common/functions'
-import { AgentcoinRuntime } from '@/common/runtime'
 import {
   AgentIdentitySchema,
   Character,
@@ -27,16 +26,15 @@ import {
 } from '@/common/types'
 import * as fs from 'fs'
 
+import { Client, IAyaRuntime } from '@/common/iruntime'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
 import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
 import {
-  Client,
   composeContext,
   Content,
   elizaLogger,
   generateMessageResponse,
-  IAgentRuntime,
   Memory,
   ModelClass,
   stringToUuid,
@@ -48,18 +46,22 @@ function messageIdToUuid(messageId: number): UUID {
   return stringToUuid('agentcoin:' + messageId.toString())
 }
 
-export class AgentcoinClient {
+export class AgentcoinClient implements Client {
   private socket?: Socket
   private agentcoinService: AgentcoinService
   private configService: ConfigService
 
-  constructor(private readonly runtime: AgentcoinRuntime) {
+  constructor(private readonly runtime: IAyaRuntime) {
     elizaLogger.info('Connecting to Agentcoin API', AGENTCOIN_FUN_API_URL)
-    this.agentcoinService = runtime.getService(AgentcoinService)
-    this.configService = runtime.getService(ConfigService)
+    this.agentcoinService = runtime.ensureService(AgentcoinService, 'Agentcoin service not found')
+    this.configService = runtime.ensureService(ConfigService, 'Config service not found')
   }
 
-  public async start(): Promise<void> {
+  public async start(runtime: IAyaRuntime): Promise<void> {
+    if (this.runtime.agentId !== runtime.agentId) {
+      throw new Error('Agentcoin client runtime mismatch')
+    }
+
     if (!isNull(this.socket)) {
       elizaLogger.info('Agentcoin client already started')
       return
@@ -161,7 +163,7 @@ export class AgentcoinClient {
   }
 
   private async handleAdminCommand(command: SentinelCommand): Promise<void> {
-    elizaLogger.info('handling admin command', command.kind)
+    elizaLogger.info('Handling admin command', command.kind)
     switch (command.kind) {
       case 'set_git':
         elizaLogger.info('ignoring set_git. sentinel service is handling this', command)
@@ -191,7 +193,11 @@ export class AgentcoinClient {
     await this.configService.checkCharacterUpdate()
   }
 
-  public stop(): void {
+  public async stop(runtime: IAyaRuntime): Promise<void> {
+    if (this.runtime.agentId !== runtime.agentId) {
+      throw new Error('Agentcoin client runtime mismatch')
+    }
+
     this.socket?.disconnect()
     this.socket = undefined
   }
@@ -215,7 +221,8 @@ export class AgentcoinClient {
       text: imageUrl ? text + ` ${imageUrl}` : text,
       sender: identity,
       channel,
-      clientUuid: crypto.randomUUID()
+      clientUuid: crypto.randomUUID(),
+      openGraphId: null
     })
 
     return this.saveMessage({
@@ -289,7 +296,7 @@ export class AgentcoinClient {
       username: user.username,
       name: user.username,
       email: user.identity,
-      bio: user.bio,
+      bio: user.bio || undefined,
       ethAddress: EthAddressSchema.safeParse(user.identity).success ? user.identity : undefined,
       source: 'agentcoin'
     })
@@ -397,7 +404,7 @@ export class AgentcoinClient {
 
         if (!shouldContinue) {
           elizaLogger.info('AgentcoinClient received postaction event but it was suppressed')
-          return
+          return []
         }
 
         const newMemory = await this.sendMessageAsAgent({
@@ -405,8 +412,6 @@ export class AgentcoinClient {
           content: newMessage,
           channel
         })
-
-        await this.runtime.evaluate(newMemory, state, true)
 
         return [newMemory]
       } catch (e) {
@@ -417,15 +422,15 @@ export class AgentcoinClient {
   }
 }
 
-export const AgentcoinClientInterface: Client = {
-  start: async (_runtime: AgentcoinRuntime) => {
-    const client = new AgentcoinClient(_runtime)
-    await client.start()
-    return client
-  },
-  stop: async (_runtime: IAgentRuntime, client?: Client) => {
-    if (client instanceof AgentcoinClient) {
-      client.stop()
-    }
-  }
-}
+// export const AgentcoinClientInterface: Client = {
+//   start: async (runtime: IAyaRuntime) => {
+//     const client = new AgentcoinClient(runtime)
+//     await client.start()
+//     return client
+//   },
+//   stop: async (_runtime: IAyaRuntime, client?: Client) => {
+//     if (client instanceof AgentcoinClient) {
+//       client.stop()
+//     }
+//   }
+// }

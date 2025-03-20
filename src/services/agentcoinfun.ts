@@ -269,6 +269,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
       if (character.id) {
         return true
       }
+      return false
     } catch (error) {
       console.log('Error parsing character file:', error)
       return false

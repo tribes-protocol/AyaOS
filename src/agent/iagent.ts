@@ -1,11 +1,11 @@
-import { AgentcoinRuntime } from '@/common/runtime'
+import { AyaRuntime } from '@/common/runtime'
 import { ContextHandler } from '@/common/types'
 import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
 import { Action, Plugin, Provider, Service, UUID } from '@elizaos/core'
 
 export interface IAyaAgent {
   readonly agentId: UUID
-  readonly runtime: AgentcoinRuntime
+  readonly runtime: AyaRuntime
   readonly knowledge: IKnowledgeService
   readonly memories: IMemoriesService
   readonly wallet: IWalletService

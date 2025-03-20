@@ -1,6 +1,6 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { isNull } from '@/common/functions'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { AyaRuntime } from '@/common/runtime'
 import {
   AgentWallet,
   AgentWalletKind,
@@ -29,7 +29,7 @@ export class WalletService extends Service implements IWalletService {
     private readonly agentcoinCookie: string,
     private readonly agentcoinIdentity: Identity,
     private readonly agentcoinAPI: AgentcoinAPI,
-    private readonly runtime: AgentcoinRuntime,
+    private readonly runtime: AyaRuntime,
     apiKeyStamper: ApiKeyStamper
   ) {
     super()
@@ -45,9 +45,13 @@ export class WalletService extends Service implements IWalletService {
   async initialize(_: IAgentRuntime): Promise<void> {}
 
   async getDefaultWallet(kind: AgentWalletKind): Promise<AgentWallet> {
-    return this.agentcoinAPI.getDefaultWallet(this.agentcoinIdentity, kind, {
+    const wallet = await this.agentcoinAPI.getDefaultWallet(this.agentcoinIdentity, kind, {
       cookie: this.agentcoinCookie
     })
+    if (isNull(wallet)) {
+      throw new Error('Failed to get default wallet')
+    }
+    return wallet
   }
 
   async signPersonalMessage(wallet: AgentWallet, message: string): Promise<string> {
@@ -78,6 +82,10 @@ export class WalletService extends Service implements IWalletService {
       chain: base,
       transport: http(baseRpcUrl)
     })
+
+    if (isNull(client.account)) {
+      throw new Error('Failed to get account')
+    }
 
     const txHash = await client.sendTransaction({
       to: transaction.to,

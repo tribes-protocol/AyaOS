@@ -1,7 +1,7 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { drizzleDB } from '@/common/db'
 import { calculateChecksum, ensureUUID } from '@/common/functions'
-import { AgentcoinRuntime } from '@/common/runtime'
+import { AyaRuntime } from '@/common/runtime'
 import { Knowledges, RagKnowledgeItemContent } from '@/common/schema'
 import { Identity, Knowledge, ServiceKind } from '@/common/types'
 import { IKnowledgeService } from '@/services/interfaces'
@@ -51,7 +51,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }
 
   constructor(
-    private readonly runtime: AgentcoinRuntime,
+    private readonly runtime: AyaRuntime,
     private readonly agentCoinApi: AgentcoinAPI,
     private readonly agentCoinCookie: string,
     private readonly agentCoinIdentity: Identity
@@ -154,7 +154,6 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
         await this.remove(knowledge.id)
 
-        await fs.unlink(path.join(this.knowledgeRoot, knowledge.content.metadata?.source))
         await this.runtime.ragKnowledgeManager.cleanupDeletedKnowledgeFiles()
       }
       elizaLogger.info(
