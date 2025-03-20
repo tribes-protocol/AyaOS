@@ -307,8 +307,6 @@ export class AgentcoinClient implements Client {
       agentName: this.runtime.character.name
     })
 
-    await this.runtime.evaluate(memory, state)
-
     const context = composeContext({
       state,
       template: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
@@ -414,8 +412,6 @@ export class AgentcoinClient implements Client {
           content: newMessage,
           channel
         })
-
-        await this.runtime.evaluate(newMemory, state, true)
 
         return [newMemory]
       } catch (e) {
