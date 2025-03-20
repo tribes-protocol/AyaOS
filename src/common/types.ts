@@ -461,3 +461,9 @@ export type ModelConfig = ModelConfiguration & {
   endpoint?: string
   apiKey?: string
 }
+
+export interface AyaOSOptions {
+  dataDir?: string
+  modelConfig?: ModelConfig
+  matchThreshold?: number
+}
