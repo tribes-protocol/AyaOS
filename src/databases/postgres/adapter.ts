@@ -28,7 +28,8 @@ import {
 import { pushSchema } from 'drizzle-kit/api'
 import { cosineDistance, sql } from 'drizzle-orm'
 import { and, desc, eq, gt, inArray, or } from 'drizzle-orm/expressions'
-import { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
+import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
 
 export class PostgresDrizzleDatabaseAdapter
   extends DatabaseAdapter<PostgresJsDatabase>
@@ -37,7 +38,7 @@ export class PostgresDrizzleDatabaseAdapter
   db: PostgresJsDatabase
 
   constructor(
-    db: PostgresJsDatabase,
+    connectionString: string,
     circuitBreakerConfig?: {
       failureThreshold?: number
       resetTimeout?: number
@@ -45,7 +46,13 @@ export class PostgresDrizzleDatabaseAdapter
     }
   ) {
     super(circuitBreakerConfig)
-    this.db = db
+    this.db = drizzle(
+      postgres(connectionString, {
+        max: 10,
+        idle_timeout: 20,
+        connect_timeout: 10
+      })
+    )
   }
 
   async init(): Promise<void> {
