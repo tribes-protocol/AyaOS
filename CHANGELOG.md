@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.31
+
+### Patch Changes
+
+- 2ae402e: Fix PG Adapter + add support to sqlite
+
 ## 0.0.30
 
 ### Patch Changes
