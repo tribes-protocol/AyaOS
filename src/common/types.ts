@@ -1,3 +1,4 @@
+import { UUID_PATTERN } from '@/common/constants'
 import { isRequiredString, sortIdentities } from '@/common/functions'
 import {
   Action,
@@ -5,7 +6,8 @@ import {
   Memory,
   ModelConfiguration,
   ModelProviderName,
-  State
+  State,
+  UUID
 } from '@elizaos/core'
 import { isAddress } from 'viem'
 import { z } from 'zod'
@@ -470,3 +472,60 @@ export interface AyaOSOptions {
     matchLimit?: number
   }
 }
+
+export const RagKnowledgeItemContentSchema = z.object({
+  text: z.string(),
+  metadata: z
+    .object({
+      isMain: z.boolean().optional().nullable(),
+      isChunk: z.boolean().optional().nullable(),
+      originalId: z.string().optional().nullable(),
+      chunkIndex: z.number().optional().nullable(),
+      source: z.string().optional().nullable(),
+      type: z.string().optional().nullable(),
+      isShared: z.boolean().optional().nullable()
+    })
+    .passthrough()
+    .optional()
+    .nullable()
+})
+
+export type RagKnowledgeItemContent = z.infer<typeof RagKnowledgeItemContentSchema>
+
+// Define a Zod schema for UUID validation
+// UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+export const UUIDSchema = z
+  .string()
+  .refine((val) => UUID_PATTERN.test(val), {
+    message: 'Invalid UUID format. Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+  })
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  .transform((val) => val as UUID)
+
+// Represents a media attachment
+export const MediaSchema = z.object({
+  id: z.string(),
+  url: z.string(),
+  title: z.string(),
+  source: z.string(),
+  description: z.string(),
+  text: z.string(),
+  contentType: z.string().optional()
+})
+
+// Create a Zod schema for Content
+export const MemoryContentSchema = z
+  .object({
+    // Required field
+    text: z.string(),
+    // Optional fields from the Content interface
+    action: z.string().optional(),
+    source: z.string().optional(),
+    url: z.string().optional(),
+    inReplyTo: UUIDSchema.optional(), // UUID of parent message if this is a reply/thread
+    attachments: z.array(MediaSchema).optional()
+    // Allow additional dynamic properties
+  })
+  .passthrough()
+
+export type MemoryContent = z.infer<typeof MemoryContentSchema>

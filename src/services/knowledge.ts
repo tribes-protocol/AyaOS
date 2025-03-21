@@ -1,9 +1,7 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
-import { drizzleDB } from '@/common/db'
 import { calculateChecksum, ensureUUID } from '@/common/functions'
 import { AyaRuntime } from '@/common/runtime'
-import { Knowledges, RagKnowledgeItemContent } from '@/common/schema'
-import { Identity, Knowledge, ServiceKind } from '@/common/types'
+import { Identity, Knowledge, RagKnowledgeItemContent, ServiceKind } from '@/common/types'
 import { IKnowledgeService } from '@/services/interfaces'
 import {
   elizaLogger,
@@ -21,7 +19,6 @@ import { CSVLoader } from '@langchain/community/document_loaders/fs/csv'
 import { DocxLoader } from '@langchain/community/document_loaders/fs/docx'
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf'
 import axios from 'axios'
-import { and, cosineDistance, desc, eq, gt, sql } from 'drizzle-orm'
 import fs from 'fs/promises'
 import { TextLoader } from 'langchain/document_loaders/fs/text'
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
@@ -43,11 +40,6 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   async initialize(_: IAgentRuntime): Promise<void> {
     elizaLogger.info('initializing knowledge service')
-    // Create index on knowledge.content.type
-    await drizzleDB.execute(
-      sql`CREATE INDEX IF NOT EXISTS idx_knowledge_content_type 
-          ON knowledge((content->'metadata'->>'type'));`
-    )
   }
 
   constructor(
@@ -126,7 +118,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     try {
       const [knowledges, existingKnowledges] = await Promise.all([
         this.getAllKnowledge(),
-        this.listAll()
+        this.runtime.databaseAdapter.getKnowledge({
+          agentId: this.runtime.agentId
+        })
       ])
 
       const existingParentKnowledges = existingKnowledges.filter(
@@ -234,49 +228,13 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     }
   }
 
-  async listAll(): Promise<RAGKnowledgeItem[]> {
-    const results = await drizzleDB
-      .select()
-      .from(Knowledges)
-      .where(eq(Knowledges.agentId, this.runtime.agentId))
-    return this.convertToRAGKnowledgeItems(results)
-  }
+  async list(options?: { limit?: number }): Promise<RAGKnowledgeItem[]> {
+    const { limit } = options ?? {}
 
-  async list(options?: {
-    limit?: number
-    contentType?: string
-    sortDirection?: 'asc' | 'desc'
-  }): Promise<RAGKnowledgeItem[]> {
-    const { limit = 10, contentType, sortDirection = 'desc' } = options ?? {}
-
-    // Build the query conditions
-    const conditions = [eq(Knowledges.agentId, this.runtime.agentId)]
-
-    // Add content type filter if specified
-    if (contentType) {
-      conditions.push(sql`${Knowledges.content}->'metadata'->>'type' = ${contentType}`)
-    }
-
-    // Execute the query with proper sorting
-    const results = await drizzleDB
-      .select({
-        id: Knowledges.id,
-        agentId: Knowledges.agentId,
-        content: Knowledges.content,
-        embedding: Knowledges.embedding,
-        createdAt: Knowledges.createdAt,
-        isMain: Knowledges.isMain,
-        originalId: Knowledges.originalId,
-        chunkIndex: Knowledges.chunkIndex,
-        isShared: Knowledges.isShared
-      })
-      .from(Knowledges)
-      .where(and(...conditions))
-      .orderBy(sortDirection === 'desc' ? desc(Knowledges.createdAt) : Knowledges.createdAt)
-      .limit(limit)
-
-    // Convert the database results to RAGKnowledgeItem format
-    return this.convertToRAGKnowledgeItems(results)
+    return this.runtime.databaseAdapter.getKnowledge({
+      agentId: this.runtime.agentId,
+      limit
+    })
   }
 
   async search(options: {
@@ -285,58 +243,21 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     matchThreshold?: number
   }): Promise<RAGKnowledgeItem[]> {
     const { q, limit, matchThreshold = 0.5 } = options
-    const embedding = await embed(this.runtime, q)
-    const similarity = sql<number>`1 - (${cosineDistance(Knowledges.embedding, embedding)})`
-
-    const results = await drizzleDB
-      .select({
-        id: Knowledges.id,
-        agentId: Knowledges.agentId,
-        content: Knowledges.content,
-        embedding: Knowledges.embedding,
-        createdAt: Knowledges.createdAt,
-        isMain: Knowledges.isMain,
-        originalId: Knowledges.originalId,
-        chunkIndex: Knowledges.chunkIndex,
-        isShared: Knowledges.isShared,
-        similarity
-      })
-      .from(Knowledges)
-      .where(
-        and(
-          gt(similarity, matchThreshold),
-          eq(Knowledges.agentId, this.runtime.agentId),
-          eq(Knowledges.isMain, false)
-        )
-      )
-      .orderBy((t) => desc(t.similarity))
-      .limit(limit)
-
-    return this.convertToRAGKnowledgeItems(results)
+    return this.runtime.databaseAdapter.searchKnowledge({
+      agentId: this.runtime.agentId,
+      embedding: new Float32Array(await embed(this.runtime, q)),
+      match_threshold: matchThreshold,
+      match_count: limit
+    })
   }
 
   async get(id: UUID): Promise<RAGKnowledgeItem | undefined> {
-    const results = await drizzleDB
-      .select({
-        id: Knowledges.id,
-        agentId: Knowledges.agentId,
-        content: Knowledges.content,
-        embedding: Knowledges.embedding,
-        createdAt: Knowledges.createdAt,
-        isMain: Knowledges.isMain,
-        originalId: Knowledges.originalId,
-        chunkIndex: Knowledges.chunkIndex,
-        isShared: Knowledges.isShared
-      })
-      .from(Knowledges)
-      .where(and(eq(Knowledges.id, id), eq(Knowledges.agentId, this.runtime.agentId)))
-      .limit(1)
-
-    if (results.length === 0) {
-      return undefined
-    }
-
-    return this.convertToRAGKnowledgeItems(results)[0]
+    const knowledge = await this.runtime.databaseAdapter.getKnowledge({
+      agentId: this.runtime.agentId,
+      id,
+      limit: 1
+    })
+    return knowledge[0]
   }
 
   async add(id: UUID, knowledge: RagKnowledgeItemContent): Promise<void> {

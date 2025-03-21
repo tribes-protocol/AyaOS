@@ -1,19 +1,20 @@
-import { PostgresDatabaseAdapter } from '@elizaos/adapter-postgres'
+import { isNull } from '@/common/functions'
+import { AyaPostgresDatabaseAdapter } from '@/databases/postgres/adapter'
+import { SqliteDatabaseAdapter } from '@elizaos/adapter-sqlite'
 import { IDatabaseAdapter, IDatabaseCacheAdapter } from '@elizaos/core'
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
+import Database from 'better-sqlite3'
 
-// FIXME: Aditya - please remove default ''
-export const drizzleDB = drizzle(
-  postgres(process.env.POSTGRES_URL || '', {
-    max: 10,
-    idle_timeout: 20,
-    connect_timeout: 10
-  })
-)
+export async function initializeDatabase(
+  dbFile: string
+): Promise<IDatabaseAdapter & IDatabaseCacheAdapter> {
+  if (isNull(process.env.POSTGRES_URL)) {
+    const db = new Database(dbFile)
+    const adapter = new SqliteDatabaseAdapter(db)
+    await adapter.init()
+    return adapter
+  }
 
-export async function initializeDatabase(): Promise<IDatabaseAdapter & IDatabaseCacheAdapter> {
-  const db = new PostgresDatabaseAdapter({
+  const db = new AyaPostgresDatabaseAdapter({
     connectionString: process.env.POSTGRES_URL
   })
   await db.init()

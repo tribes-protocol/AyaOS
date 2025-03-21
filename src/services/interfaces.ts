@@ -5,11 +5,11 @@ import {
   HexString,
   HydratedMessage,
   Identity,
+  RagKnowledgeItemContent,
   Transaction,
   User
 } from '@/common/types'
 
-import { RagKnowledgeItemContent } from '@/common/schema'
 import { Memory, RAGKnowledgeItem, UUID } from '@elizaos/core'
 
 export interface IWalletService {
@@ -31,11 +31,7 @@ export interface IConfigService {
 }
 
 export interface IKnowledgeService {
-  list(options: {
-    limit?: number
-    contentType?: string
-    sortDirection?: 'asc' | 'desc'
-  }): Promise<RAGKnowledgeItem[]>
+  list(options: { limit?: number }): Promise<RAGKnowledgeItem[]>
   get(id: UUID): Promise<RAGKnowledgeItem | undefined>
   add(id: UUID, knowledge: RagKnowledgeItemContent): Promise<void>
   remove(id: UUID): Promise<void>
@@ -50,7 +46,7 @@ export interface IMemoriesService {
   search(options: {
     q: string
     limit: number
-    type?: string
+    type: string
     matchThreshold?: number
   }): Promise<Memory[]>
 }
