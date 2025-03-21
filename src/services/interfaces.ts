@@ -46,7 +46,7 @@ export interface IMemoriesService {
   search(options: {
     q: string
     limit: number
-    type?: string
+    type: string
     matchThreshold?: number
   }): Promise<Memory[]>
 }

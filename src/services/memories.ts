@@ -18,16 +18,16 @@ export class MemoriesService extends Service implements IMemoriesService {
   async search(options: {
     q: string
     limit: number
-    type?: string
+    type: string
     matchThreshold?: number
   }): Promise<Memory[]> {
-    const { q, limit, type, matchThreshold = 0.5 } = options
+    const { q, limit, type, matchThreshold = this.runtime.matchThreshold } = options
     const embedding = await embed(this.runtime, q)
 
     return this.runtime.databaseAdapter.searchMemoriesByEmbedding(embedding, {
       match_threshold: matchThreshold,
       count: limit,
-      tableName: type ?? 'fragments'
+      tableName: type
     })
   }
 }

@@ -28,7 +28,7 @@ export class PathResolver {
     this.gitStateFile = path.join(this.rootDir, 'agent-git.json')
     this.codeDir = path.join(this.rootDir, 'code')
     this.runtimeServerSocketFile = path.join(this.rootDir, 'runtime-server.sock')
-    this.dbFile = path.join(this.rootDir, 'data.db')
+    this.dbFile = path.join(this.rootDir, 'sqlite.db')
   }
 
   private ensureRootDirExists(): void {

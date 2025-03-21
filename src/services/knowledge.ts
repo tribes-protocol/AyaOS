@@ -229,7 +229,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }
 
   async list(options?: { limit?: number }): Promise<RAGKnowledgeItem[]> {
-    const { limit = 10 } = options ?? {}
+    const { limit } = options ?? {}
 
     return this.runtime.databaseAdapter.getKnowledge({
       agentId: this.runtime.agentId,
