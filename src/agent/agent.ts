@@ -92,10 +92,6 @@ export class Agent implements IAyaAgent {
 
   async start(): Promise<void> {
     let runtime: AyaRuntime | undefined
-    if (isNull(process.env.POSTGRES_URL)) {
-      elizaLogger.error('POSTGRES_URL is not set, please set it in your .env file')
-      process.exit(1)
-    }
 
     try {
       elizaLogger.info('Starting agent...')
@@ -121,7 +117,7 @@ export class Agent implements IAyaAgent {
       // step 2: load character and initialize database
       elizaLogger.info('Loading character...')
       const [db, charString] = await Promise.all([
-        initializeDatabase(),
+        initializeDatabase(this.pathResolver.dbFile),
         fs.promises.readFile(this.pathResolver.characterFile, 'utf8')
       ])
 
