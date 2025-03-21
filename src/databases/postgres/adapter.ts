@@ -108,36 +108,43 @@ export class AyaPostgresDatabaseAdapter extends PostgresDatabaseAdapter {
     match_count: number
     searchText?: string
   }): Promise<RAGKnowledgeItem[]> {
-    const { agentId, embedding, match_threshold: matchThreshold, match_count: matchCount } = params
+    return this.withCircuitBreaker(async () => {
+      const {
+        agentId,
+        embedding,
+        match_threshold: matchThreshold,
+        match_count: matchCount
+      } = params
 
-    // eslint-disable-next-line max-len
-    const similarity = sql<number>`1 - (${cosineDistance(Knowledges.embedding, Array.from(embedding))})`
+      // eslint-disable-next-line max-len
+      const similarity = sql<number>`1 - (${cosineDistance(Knowledges.embedding, Array.from(embedding))})`
 
-    const results = await this.drizzleDb
-      .select({
-        id: Knowledges.id,
-        agentId: Knowledges.agentId,
-        content: Knowledges.content,
-        embedding: Knowledges.embedding,
-        createdAt: Knowledges.createdAt,
-        isMain: Knowledges.isMain,
-        originalId: Knowledges.originalId,
-        chunkIndex: Knowledges.chunkIndex,
-        isShared: Knowledges.isShared,
-        similarity
-      })
-      .from(Knowledges)
-      .where(
-        and(
-          gt(similarity, matchThreshold),
-          eq(Knowledges.agentId, agentId),
-          eq(Knowledges.isMain, false)
+      const results = await this.drizzleDb
+        .select({
+          id: Knowledges.id,
+          agentId: Knowledges.agentId,
+          content: Knowledges.content,
+          embedding: Knowledges.embedding,
+          createdAt: Knowledges.createdAt,
+          isMain: Knowledges.isMain,
+          originalId: Knowledges.originalId,
+          chunkIndex: Knowledges.chunkIndex,
+          isShared: Knowledges.isShared,
+          similarity
+        })
+        .from(Knowledges)
+        .where(
+          and(
+            gt(similarity, matchThreshold),
+            eq(Knowledges.agentId, agentId),
+            eq(Knowledges.isMain, false)
+          )
         )
-      )
-      .orderBy((t) => desc(t.similarity))
-      .limit(matchCount)
+        .orderBy((t) => desc(t.similarity))
+        .limit(matchCount)
 
-    return this.convertToRAGKnowledgeItems(results)
+      return this.convertToRAGKnowledgeItems(results)
+    }, 'searchKnowledge')
   }
 
   private convertToRAGKnowledgeItems(
