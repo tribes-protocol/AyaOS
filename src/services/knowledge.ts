@@ -1,10 +1,10 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { calculateChecksum, ensureUUID } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { AyaRuntime } from '@/common/runtime'
 import { Identity, Knowledge, RagKnowledgeItemContent, ServiceKind } from '@/common/types'
 import { IKnowledgeService } from '@/services/interfaces'
 import {
-  elizaLogger,
   embed,
   getEmbeddingZeroVector,
   IAgentRuntime,
@@ -24,6 +24,8 @@ import { TextLoader } from 'langchain/document_loaders/fs/text'
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 import path from 'path'
 
+const AGENTCOIN_SOURCE = 'agentcoin'
+
 export class KnowledgeService extends Service implements IKnowledgeService {
   private readonly knowledgeRoot: string
   private isRunning = false
@@ -39,7 +41,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }
 
   async initialize(_: IAgentRuntime): Promise<void> {
-    elizaLogger.info('initializing knowledge service')
+    ayaLogger.info('initializing knowledge service')
   }
 
   constructor(
@@ -57,34 +59,37 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }
 
   async start(): Promise<void> {
-    if (this.isRunning) {
-      return
-    }
-
-    elizaLogger.info('📌 Knowledge sync job started...')
-    this.isRunning = true
-
-    while (this.isRunning) {
-      try {
-        await this.syncKnowledge()
-      } catch (error) {
-        if (error instanceof Error) {
-          elizaLogger.error('⚠️ Error in sync job:', error.message)
-        } else {
-          elizaLogger.error('⚠️ Error in sync job:', error)
-        }
-      }
-
-      // Wait for 1 minute before the next run
-      await new Promise((resolve) => setTimeout(resolve, 60_000))
-    }
-
-    elizaLogger.info('✅ Sync job stopped gracefully.')
+    // TODO: we have to disable this for now.
+    // 1. It's deleting knowledge page from different `source`
+    // 2. It's calling ` this.runtime.databaseAdapter.getKnowledge` which is super heavy
+    //    call without any paging. i.e. JFK agent I have > 300K records
+    // 3. We'll need to implement paging for `getKnowledge`. (using drizzle)
+    //
+    //
+    // if (this.isRunning) {
+    //   return
+    // }
+    // ayaLogger.info('📌 Knowledge sync job started...')
+    // this.isRunning = true
+    // while (this.isRunning) {
+    //   try {
+    //     await this.syncKnowledge()
+    //   } catch (error) {
+    //     if (error instanceof Error) {
+    //       ayaLogger.error('⚠️ Error in sync job:', error.message)
+    //     } else {
+    //       ayaLogger.error('⚠️ Error in sync job:', error)
+    //     }
+    //   }
+    //   // Wait for 1 minute before the next run
+    //   await new Promise((resolve) => setTimeout(resolve, 60_000))
+    // }
+    // ayaLogger.info('✅ Sync job stopped gracefully.')
   }
 
   async stop(): Promise<void> {
     this.isRunning = false
-    elizaLogger.info('Knowledge sync service stopped')
+    ayaLogger.info('Knowledge sync service stopped')
   }
 
   private async getAllKnowledge(): Promise<Knowledge[]> {
@@ -108,13 +113,13 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       cursor = knowledges[knowledges.length - 1].id
     }
 
-    elizaLogger.info(`Found ${allKnowledge.length} knowledges`)
+    ayaLogger.info(`Found ${allKnowledge.length} knowledges`)
 
     return allKnowledge
   }
 
   private async syncKnowledge(): Promise<void> {
-    elizaLogger.info('Syncing knowledge...')
+    ayaLogger.info('Syncing knowledge...')
     try {
       const [knowledges, existingKnowledges] = await Promise.all([
         this.getAllKnowledge(),
@@ -124,17 +129,21 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       ])
 
       const existingParentKnowledges = existingKnowledges.filter(
-        (knowledge) => !knowledge.content.metadata?.isChunk
+        (knowledge) =>
+          !knowledge.content.metadata?.isChunk &&
+          knowledge.content.metadata?.source === AGENTCOIN_SOURCE
       )
-      const existingKnowledgeIds = existingParentKnowledges.map((knowledge) => knowledge.id)
+      const existingKnowledgeIds = new Set(
+        existingParentKnowledges.map((knowledge) => knowledge.id)
+      )
 
       const remoteKnowledgeIds: UUID[] = []
       for (const knowledge of knowledges) {
         const itemId = stringToUuid(knowledge.metadata.url)
         remoteKnowledgeIds.push(itemId)
 
-        if (!existingKnowledgeIds.includes(itemId)) {
-          elizaLogger.info(`Processing new knowledge: ${knowledge.name}`)
+        if (!existingKnowledgeIds.has(itemId)) {
+          ayaLogger.info(`Processing new knowledge: ${knowledge.name}`)
           await this.processFileKnowledge(knowledge, itemId)
         }
       }
@@ -144,21 +153,19 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       )
 
       for (const knowledge of knowledgesToRemove) {
-        elizaLogger.info(`Removing knowledge: ${knowledge.content.metadata?.source}`)
-
+        ayaLogger.info(`Removing knowledge: ${knowledge.content.metadata?.source}`)
         await this.remove(knowledge.id)
-
-        await this.runtime.ragKnowledgeManager.cleanupDeletedKnowledgeFiles()
       }
-      elizaLogger.info(
+      await this.runtime.ragKnowledgeManager.cleanupDeletedKnowledgeFiles()
+      ayaLogger.info(
         `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ` +
           `${knowledgesToRemove.length} items removed`
       )
     } catch (error) {
       if (error instanceof Error) {
-        elizaLogger.error('Error processing knowledge files:', error.message)
+        ayaLogger.error('Error processing knowledge files:', error.message)
       } else {
-        elizaLogger.error('Error processing knowledge files:', error)
+        ayaLogger.error('Error processing knowledge files:', error)
       }
       throw error
     }
@@ -171,11 +178,11 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       await this.add(itemId, {
         text: content,
         metadata: {
-          source: data.name
+          source: AGENTCOIN_SOURCE
         }
       })
     } catch (error) {
-      elizaLogger.error(`Error processing file metadata for ${data.name}:`, error)
+      ayaLogger.error(`Error processing file metadata for ${data.name}:`, error)
     }
   }
 
@@ -206,7 +213,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
       const fileExtension = path.extname(file.name).toLowerCase()
       if (!isValidFileExtension(fileExtension)) {
-        elizaLogger.error(`Unsupported file type: ${fileExtension}`)
+        ayaLogger.error(`Unsupported file type: ${fileExtension}`)
         throw new Error(`Unsupported file type: ${fileExtension}`)
       }
 
@@ -216,14 +223,14 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         const loader = new LoaderClass(outputPath)
         const docs = await loader.load()
         const content = docs.map((doc) => doc.pageContent).join('\n')
-        elizaLogger.info(`Successfully processed file: ${file.name}`)
+        ayaLogger.info(`Successfully processed file: ${file.name}`)
         return content
       } catch (error) {
-        elizaLogger.error(`Error parsing ${fileExtension} file: ${file.name}`, error)
+        ayaLogger.error(`Error parsing ${fileExtension} file: ${file.name}`, error)
         return ''
       }
     } catch (error) {
-      elizaLogger.error(`Error processing file from ${file.metadata.url}:`, error)
+      ayaLogger.error(`Error processing file from ${file.metadata.url}:`, error)
       throw error
     }
   }
@@ -274,7 +281,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     )[0]
 
     if (storedKB?.content.metadata?.checksum === checksum) {
-      elizaLogger.debug(`[${kbType}] knowledge=[${id}] already exists. skipping...`)
+      ayaLogger.debug(`[${kbType}] knowledge=[${id}] already exists. skipping...`)
       return
     }
 
@@ -314,7 +321,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       const chunk = chunks[i]
       const chunkId: UUID = stringToUuid(`${id}-${i}`)
 
-      elizaLogger.info(`processing chunk id=${chunkId} page=${i} id=${id}`)
+      ayaLogger.info(`processing chunk id=${chunkId} page=${i} id=${id}`)
 
       const embeddings = await embed(this.runtime, chunk.pageContent)
       const knowledgeItem: RAGKnowledgeItem = {

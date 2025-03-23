@@ -27,13 +27,13 @@ import {
 import * as fs from 'fs'
 
 import { Client, IAyaRuntime } from '@/common/iruntime'
+import { ayaLogger } from '@/common/logger'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
 import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
 import {
   composeContext,
   Content,
-  elizaLogger,
   generateMessageResponse,
   Memory,
   ModelClass,
@@ -52,7 +52,7 @@ export class AgentcoinClient implements Client {
   private configService: ConfigService
 
   constructor(private readonly runtime: IAyaRuntime) {
-    elizaLogger.info('Connecting to Agentcoin API', AGENTCOIN_FUN_API_URL)
+    ayaLogger.info('Connecting to Agentcoin API', AGENTCOIN_FUN_API_URL)
     this.agentcoinService = runtime.ensureService(AgentcoinService, 'Agentcoin service not found')
     this.configService = runtime.ensureService(ConfigService, 'Config service not found')
   }
@@ -63,7 +63,7 @@ export class AgentcoinClient implements Client {
     }
 
     if (!isNull(this.socket)) {
-      elizaLogger.info('Agentcoin client already started')
+      ayaLogger.info('Agentcoin client already started')
       return
     }
 
@@ -85,41 +85,41 @@ export class AgentcoinClient implements Client {
           const jwtToken = await this.agentcoinService.getJwtAuthToken()
           cb({ jwtToken })
         } catch (error) {
-          elizaLogger.error('Error getting JWT token', error)
+          ayaLogger.error('Error getting JWT token', error)
           cb({})
         }
       }
     })
 
     this.socket.on('connect', () => {
-      elizaLogger.info('Connected to Agentcoin API')
+      ayaLogger.info('Connected to Agentcoin API')
     })
     this.socket.on('disconnect', () => {
-      elizaLogger.info('Disconnected from Agentcoin API')
+      ayaLogger.info('Disconnected from Agentcoin API')
     })
 
     const identity = await this.agentcoinService.getIdentity()
     const eventName = `user:${serializeIdentity(identity)}`
-    elizaLogger.info(
+    ayaLogger.info(
       `agentcoin.fun (${process.env.npm_package_version}) client listening for event`,
       eventName
     )
 
     // listen on DMs
     this.socket.on(eventName, async (data: unknown) => {
-      // elizaLogger.info('Agentcoin client received event', data)
+      // ayaLogger.info('Agentcoin client received event', data)
       try {
         const event = MessageEventSchema.parse(data)
         const channel = event.channel
 
         if (channel.kind !== ChatChannelKind.DM) {
-          elizaLogger.info('Agentcoin client received msg for unknown channel', channel)
+          ayaLogger.info('Agentcoin client received msg for unknown channel', channel)
           return
         }
 
         // validate channel
         if (channel.firstIdentity !== identity && channel.secondIdentity !== identity) {
-          elizaLogger.info('Agentcoin client received msg for unknown channel', channel)
+          ayaLogger.info('Agentcoin client received msg for unknown channel', channel)
           return
         }
 
@@ -130,12 +130,12 @@ export class AgentcoinClient implements Client {
             break
           }
           case 'status':
-            elizaLogger.info('Received status', event.data.status)
+            ayaLogger.info('Received status', event.data.status)
             break
         }
       } catch (error) {
         console.error('Error processing message from agentcoin client', error)
-        elizaLogger.error('Error processing message from agentcoin client', error)
+        ayaLogger.error('Error processing message from agentcoin client', error)
       }
     })
 
@@ -163,19 +163,19 @@ export class AgentcoinClient implements Client {
   }
 
   private async handleAdminCommand(command: SentinelCommand): Promise<void> {
-    elizaLogger.info('Handling admin command', command.kind)
+    ayaLogger.info('Handling admin command', command.kind)
     switch (command.kind) {
       case 'set_git':
-        elizaLogger.info('ignoring set_git. sentinel service is handling this', command)
+        ayaLogger.info('ignoring set_git. sentinel service is handling this', command)
         break
       case 'set_character':
         await this.handleSetCharacter(command.character)
         break
       case 'set_knowledge':
-        elizaLogger.info('ignoring set_knowledge', command)
+        ayaLogger.info('ignoring set_knowledge', command)
         break
       case 'delete_knowledge':
-        elizaLogger.info('ignoring delete_knowledge', command)
+        ayaLogger.info('ignoring delete_knowledge', command)
         break
       default:
         throw new Error('Invalid command')
@@ -275,7 +275,7 @@ export class AgentcoinClient implements Client {
     const { message, user } = messages[0]
 
     if (isNull(message)) {
-      elizaLogger.info('AgentcoinClient received empty message')
+      ayaLogger.info('AgentcoinClient received empty message')
       return
     }
 
@@ -320,7 +320,7 @@ export class AgentcoinClient implements Client {
     })
 
     if (!shouldContinue) {
-      elizaLogger.info('AgentcoinClient received prellm event but it was suppressed')
+      ayaLogger.info('AgentcoinClient received prellm event but it was suppressed')
       await this.agentcoinService.sendStatus(channel, 'idle')
       return
     }
@@ -342,7 +342,7 @@ export class AgentcoinClient implements Client {
     })
 
     if (!shouldContinue) {
-      elizaLogger.info('AgentcoinClient received postllm event but it was suppressed')
+      ayaLogger.info('AgentcoinClient received postllm event but it was suppressed')
       await this.agentcoinService.sendStatus(channel, 'idle')
       return
     }
@@ -357,7 +357,7 @@ export class AgentcoinClient implements Client {
 
     const messageResponses: Memory[] = []
     if (shouldSuppressInitialMessage) {
-      elizaLogger.info('Agentcoin response is IGNORE', response)
+      ayaLogger.info('Agentcoin response is IGNORE', response)
     } else {
       const responseMessage = await this.sendMessageAsAgent({
         identity,
@@ -370,7 +370,7 @@ export class AgentcoinClient implements Client {
     }
 
     if (!hasActions(messageResponses)) {
-      elizaLogger.info('AgentcoinClient received message with no actions. done!')
+      ayaLogger.info('AgentcoinClient received message with no actions. done!')
       return
     }
 
@@ -387,7 +387,7 @@ export class AgentcoinClient implements Client {
     })
 
     if (!shouldContinue) {
-      elizaLogger.info('AgentcoinClient received preaction event but it was suppressed')
+      ayaLogger.info('AgentcoinClient received preaction event but it was suppressed')
       await this.agentcoinService.sendStatus(channel, 'idle')
       return
     }
@@ -403,7 +403,7 @@ export class AgentcoinClient implements Client {
         })
 
         if (!shouldContinue) {
-          elizaLogger.info('AgentcoinClient received postaction event but it was suppressed')
+          ayaLogger.info('AgentcoinClient received postaction event but it was suppressed')
           return []
         }
 
@@ -415,7 +415,7 @@ export class AgentcoinClient implements Client {
 
         return [newMemory]
       } catch (e) {
-        elizaLogger.error(`error sending`, e)
+        ayaLogger.error(`error sending`, e)
         throw e
       }
     })

@@ -1,8 +1,9 @@
 import type { ClientBase } from '@/clients/twitter/base'
 import { CreateTweetResponseSchema, MediaData } from '@/clients/twitter/types'
 import { isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import type { Content, Media, Memory, UUID } from '@elizaos/core'
-import { elizaLogger, getEmbeddingZeroVector, stringToUuid } from '@elizaos/core'
+import { getEmbeddingZeroVector, stringToUuid } from '@elizaos/core'
 import type { Tweet } from 'agent-twitter-client'
 import fs from 'fs'
 import path from 'path'
@@ -31,20 +32,20 @@ export async function buildConversationThread(
   const visited: Set<string> = new Set()
 
   async function processThread(currentTweet: Tweet, depth = 0): Promise<void> {
-    elizaLogger.debug('Processing tweet:', {
+    ayaLogger.debug('Processing tweet:', {
       id: currentTweet.id,
       inReplyToStatusId: currentTweet.inReplyToStatusId,
       depth
     })
 
     if (!currentTweet) {
-      elizaLogger.debug('No current tweet found for thread building')
+      ayaLogger.debug('No current tweet found for thread building')
       return
     }
 
     // Stop if we've reached our reply limit
     if (depth >= maxReplies) {
-      elizaLogger.debug('Reached maximum reply depth', depth)
+      ayaLogger.debug('Reached maximum reply depth', depth)
       return
     }
 
@@ -86,19 +87,19 @@ export async function buildConversationThread(
     }
 
     if (isNull(currentTweet.id)) {
-      elizaLogger.warn('Returning: No tweet ID found')
+      ayaLogger.warn('Returning: No tweet ID found')
       return
     }
 
     if (visited.has(currentTweet.id)) {
-      elizaLogger.debug('Already visited tweet:', currentTweet.id)
+      ayaLogger.debug('Already visited tweet:', currentTweet.id)
       return
     }
 
     visited.add(currentTweet.id)
     thread.unshift(currentTweet)
 
-    elizaLogger.debug('Current thread state:', {
+    ayaLogger.debug('Current thread state:', {
       length: thread.length,
       currentDepth: depth,
       tweetId: currentTweet.id
@@ -106,33 +107,33 @@ export async function buildConversationThread(
 
     // If there's a parent tweet, fetch and process it
     if (currentTweet.inReplyToStatusId) {
-      elizaLogger.debug('Fetching parent tweet:', currentTweet.inReplyToStatusId)
+      ayaLogger.debug('Fetching parent tweet:', currentTweet.inReplyToStatusId)
       try {
         const parentTweet = await client.twitterClient.getTweet(currentTweet.inReplyToStatusId)
 
         if (parentTweet) {
-          elizaLogger.debug('Found parent tweet:', {
+          ayaLogger.debug('Found parent tweet:', {
             id: parentTweet.id,
             text: parentTweet.text?.slice(0, 50)
           })
           await processThread(parentTweet, depth + 1)
         } else {
-          elizaLogger.debug('No parent tweet found for:', currentTweet.inReplyToStatusId)
+          ayaLogger.debug('No parent tweet found for:', currentTweet.inReplyToStatusId)
         }
       } catch (error) {
-        elizaLogger.error('Error fetching parent tweet:', {
+        ayaLogger.error('Error fetching parent tweet:', {
           tweetId: currentTweet.inReplyToStatusId,
           error
         })
       }
     } else {
-      elizaLogger.debug('Reached end of reply chain at:', currentTweet.id)
+      ayaLogger.debug('Reached end of reply chain at:', currentTweet.id)
     }
   }
 
   await processThread(tweet, 0)
 
-  elizaLogger.debug('Final thread built:', {
+  ayaLogger.debug('Final thread built:', {
     totalTweets: thread.length,
     tweetIds: thread.map((t) => ({
       id: t.id,
@@ -226,13 +227,13 @@ export async function sendTweet(
         sentTweets.push(finalTweet)
         previousTweetId = finalTweet.id ?? ''
       } else {
-        elizaLogger.error('Error sending tweet chunk: No tweet result found', {
+        ayaLogger.error('Error sending tweet chunk: No tweet result found', {
           chunk,
           response: body
         })
       }
     } else {
-      elizaLogger.error('Error parsing tweet response:', {
+      ayaLogger.error('Error parsing tweet response:', {
         chunk,
         errors: parseResult.error.format(),
         response: rawBody

@@ -108,8 +108,8 @@
           },
           {
             "name": "@elizaos/core",
-            "importNames": ["Client"],
-            "message": "Do not import Client or Provider from @elizaos/core."
+            "importNames": ["Client", "elizaLogger"],
+            "message": "Do not import Client or elizaLogger from @elizaos/core."
           }
         ]
       }

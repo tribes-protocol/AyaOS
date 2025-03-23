@@ -1,5 +1,6 @@
 import { ensure, formatKnowledge, isNull } from '@/common/functions'
 import { AgentEventHandler, IAyaRuntime } from '@/common/iruntime'
+import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { Context, SdkEventKind } from '@/common/types'
 import { KnowledgeService } from '@/services/knowledge'
@@ -8,7 +9,6 @@ import {
   Action,
   AgentRuntime,
   Character,
-  elizaLogger,
   Evaluator,
   ICacheManager,
   IDatabaseAdapter,
@@ -171,7 +171,7 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
         details: { bio, source, ethAddress }
       })
 
-      elizaLogger.success(`User ${username} created successfully.`)
+      ayaLogger.success(`User ${username} created successfully.`)
     }
   }
 
@@ -231,10 +231,10 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
 
   async registerService(service: Service): Promise<void> {
     const serviceType = service.serviceType
-    elizaLogger.log(`${this.character.name}(${this.agentId}) - Registering service:`, serviceType)
+    ayaLogger.log(`${this.character.name}(${this.agentId}) - Registering service:`, serviceType)
 
     if (this.services.has(serviceType)) {
-      elizaLogger.warn(
+      ayaLogger.warn(
         `${this.character.name}(${this.agentId}) - Service ${serviceType}` +
           ` is already registered. Skipping registration.`
       )
@@ -244,11 +244,11 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     try {
       await service.initialize(this)
       this.services.set(serviceType, service)
-      elizaLogger.success(
+      ayaLogger.success(
         `${this.character.name}(${this.agentId}) - Service ${serviceType} initialized successfully`
       )
     } catch (error) {
-      elizaLogger.error(
+      ayaLogger.error(
         `${this.character.name}(${this.agentId}) - Failed to initialize service ${serviceType}:`,
         error
       )

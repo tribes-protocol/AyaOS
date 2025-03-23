@@ -11,11 +11,14 @@ import {
   telegramShouldRespondTemplate
 } from '@/clients/telegram/templates'
 import { cosineSimilarity } from '@/clients/telegram/utils'
+import { hasActions, isNull } from '@/common/functions'
+import { IAyaRuntime } from '@/common/iruntime'
+import { ayaLogger } from '@/common/logger'
+import { convertMarkdownToTelegram } from '@/common/markdown'
 import {
   composeContext,
   composeRandomUser,
   type Content,
-  elizaLogger,
   generateMessageResponse,
   generateShouldRespond,
   getEmbeddingZeroVector,
@@ -30,14 +33,8 @@ import {
   type UUID
 } from '@elizaos/core'
 import type { Message } from '@telegraf/types'
-import type { Context, Telegraf } from 'telegraf'
-
-import { hasActions, isNull } from '@/common/functions'
-import { convertMarkdownToTelegram } from '@/common/markdown'
-import { AyaRuntime } from '@/common/runtime'
 import fs from 'fs'
-import { IAyaRuntime } from '@/common/iruntime'
-
+import type { Context, Telegraf } from 'telegraf'
 enum MediaType {
   PHOTO = 'photo',
   VIDEO = 'video',
@@ -88,7 +85,7 @@ export class MessageManager {
     this.runtime = runtime
 
     this._initializeTeamMemberUsernames().catch((error) =>
-      elizaLogger.error('Error initializing team member usernames:', error)
+      ayaLogger.error('Error initializing team member usernames:', error)
     )
 
     this.autoPostConfig = {
@@ -118,10 +115,10 @@ export class MessageManager {
         const chat = await this.bot.telegram.getChat(id)
         if ('username' in chat && chat.username) {
           this.teamMemberUsernames.set(id, chat.username)
-          elizaLogger.info(`Cached username for team member ${id}: ${chat.username}`)
+          ayaLogger.info(`Cached username for team member ${id}: ${chat.username}`)
         }
       } catch (error) {
-        elizaLogger.error(`Error getting username for team member ${id}:`, error)
+        ayaLogger.error(`Error getting username for team member ${id}:`, error)
       }
     }
   }
@@ -129,18 +126,18 @@ export class MessageManager {
   private _startAutoPostMonitoring(): void {
     // Wait for bot to be ready
     if (this.bot.botInfo) {
-      elizaLogger.info('[AutoPost Telegram] Bot ready, starting monitoring')
+      ayaLogger.info('[AutoPost Telegram] Bot ready, starting monitoring')
       this._initializeAutoPost()
     } else {
-      elizaLogger.info('[AutoPost Telegram] Bot not ready, waiting for ready event')
+      ayaLogger.info('[AutoPost Telegram] Bot not ready, waiting for ready event')
       this.bot.telegram
         .getMe()
         .then(() => {
-          elizaLogger.info('[AutoPost Telegram] Bot ready, starting monitoring')
+          ayaLogger.info('[AutoPost Telegram] Bot ready, starting monitoring')
           this._initializeAutoPost()
         })
         .catch((error) => {
-          elizaLogger.error('[AutoPost Telegram] Bot not ready, waiting for ready event', error)
+          ayaLogger.error('[AutoPost Telegram] Bot not ready, waiting for ready event', error)
         })
     }
   }
@@ -245,19 +242,19 @@ export class MessageManager {
           state = await this.runtime.updateRecentMessageState(state)
           await this.runtime.evaluate(memory, state, true)
         } catch (error) {
-          elizaLogger.warn('[AutoPost Telegram] Error:', error)
+          ayaLogger.warn('[AutoPost Telegram] Error:', error)
         }
       } else {
-        elizaLogger.warn('[AutoPost Telegram] Activity within threshold. Not posting.')
+        ayaLogger.warn('[AutoPost Telegram] Activity within threshold. Not posting.')
       }
     } catch (error) {
-      elizaLogger.warn('[AutoPost Telegram] Error checking channel activity:', error)
+      ayaLogger.warn('[AutoPost Telegram] Error checking channel activity:', error)
     }
   }
 
   private async _monitorPinnedMessages(ctx: Context): Promise<void> {
     if (!this.autoPostConfig.pinnedMessagesGroups.length) {
-      elizaLogger.warn('[AutoPost Telegram] Auto post config no pinned message groups')
+      ayaLogger.warn('[AutoPost Telegram] Auto post config no pinned message groups')
       return
     }
 
@@ -278,7 +275,7 @@ export class MessageManager {
     if (!mainChannel) return
 
     try {
-      elizaLogger.info(`[AutoPost Telegram] Processing pinned message in group ${ctx.chat.id}`)
+      ayaLogger.info(`[AutoPost Telegram] Processing pinned message in group ${ctx.chat.id}`)
 
       // Explicitly type and handle message content
       const messageContent: string =
@@ -350,7 +347,7 @@ export class MessageManager {
       state = await this.runtime.updateRecentMessageState(state)
       await this.runtime.evaluate(memory, state, true)
     } catch (error) {
-      elizaLogger.warn(`[AutoPost Telegram] Error processing pinned message:`, error)
+      ayaLogger.warn(`[AutoPost Telegram] Error processing pinned message:`, error)
     }
   }
 
@@ -551,7 +548,7 @@ export class MessageManager {
     try {
       let imageUrl: string | null = null
 
-      elizaLogger.info(`Telegram Message: ${JSON.stringify(message)}`)
+      ayaLogger.info(`Telegram Message: ${JSON.stringify(message)}`)
 
       if ('photo' in message && message.photo?.length > 0) {
         const photo = message.photo[message.photo.length - 1]
@@ -567,13 +564,13 @@ export class MessageManager {
           ServiceType.IMAGE_DESCRIPTION
         )
         if (isNull(imageDescriptionService)) {
-          throw new Error('Image description service is not defined')
+          return null
         }
         const { title, description } = await imageDescriptionService.describeImage(imageUrl)
         return { description: `[Image: ${title}\n${description}]` }
       }
     } catch (error) {
-      elizaLogger.error('❌ Error processing image:', error)
+      ayaLogger.error('❌ Error processing image:', error)
     }
 
     return null
@@ -590,7 +587,7 @@ export class MessageManager {
       'text' in message &&
       message.text?.toLowerCase().includes(`@${this.bot.botInfo?.username.toLowerCase()}`)
     ) {
-      elizaLogger.info(`Bot mentioned`)
+      ayaLogger.info(`Bot mentioned`)
       return true
     }
 
@@ -858,11 +855,11 @@ export class MessageManager {
         }
       }
 
-      elizaLogger.info(
+      ayaLogger.info(
         `${type.charAt(0).toUpperCase() + type.slice(1)} sent successfully: ${mediaPath}`
       )
     } catch (error) {
-      elizaLogger.error(`Failed to send ${type}. Path: ${mediaPath}. Error: ${error}`)
+      ayaLogger.error(`Failed to send ${type}. Path: ${mediaPath}. Error: ${error}`)
       throw error
     }
   }
@@ -901,7 +898,7 @@ export class MessageManager {
     })
 
     if (!response) {
-      elizaLogger.error('❌ No response from generateMessageResponse')
+      ayaLogger.error('❌ No response from generateMessageResponse')
       return { text: '', action: 'IGNORE' }
     }
 
@@ -1207,7 +1204,7 @@ export class MessageManager {
         })
 
         if (!shouldContinue) {
-          elizaLogger.info('TelegramMessageManager received pre:llm event but it was suppressed')
+          ayaLogger.info('TelegramMessageManager received pre:llm event but it was suppressed')
           return
         }
 
@@ -1226,7 +1223,7 @@ export class MessageManager {
         })
 
         if (!shouldContinue) {
-          elizaLogger.info('TelegramMessageManager received post:llm event but it was suppressed')
+          ayaLogger.info('TelegramMessageManager received post:llm event but it was suppressed')
           return
         }
 
@@ -1245,7 +1242,7 @@ export class MessageManager {
         })
 
         if (!shouldContinue) {
-          elizaLogger.info('TelegramMessageManager received pre:action event but it was suppressed')
+          ayaLogger.info('TelegramMessageManager received pre:action event but it was suppressed')
           return
         }
 
@@ -1259,7 +1256,7 @@ export class MessageManager {
           })
 
           if (!shouldContinue) {
-            elizaLogger.info(
+            ayaLogger.info(
               'TelegramMessageManager received post:action event but it was suppressed'
             )
             return []
@@ -1270,8 +1267,8 @@ export class MessageManager {
       }
       await this.runtime.evaluate(memory, state, shouldRespond, callback)
     } catch (error) {
-      elizaLogger.error('❌ Error handling message:', error)
-      elizaLogger.error('Error sending message:', error)
+      ayaLogger.error('❌ Error handling message:', error)
+      ayaLogger.error('Error sending message:', error)
     }
   }
 }

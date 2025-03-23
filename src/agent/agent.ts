@@ -4,6 +4,7 @@ import { initializeClients } from '@/clients'
 import { getTokenForProvider } from '@/common/config'
 import { initializeDatabase } from '@/common/db'
 import { ensure, isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { AyaRuntime } from '@/common/runtime'
 import { AyaOSOptions, Context, ContextHandler, ModelConfig, SdkEventKind } from '@/common/types'
@@ -22,7 +23,6 @@ import {
   Action,
   CacheManager,
   DbCacheAdapter,
-  elizaLogger,
   Evaluator,
   Plugin,
   Provider,
@@ -94,7 +94,7 @@ export class Agent implements IAyaAgent {
     let runtime: AyaRuntime | undefined
 
     try {
-      elizaLogger.info('Starting agent...')
+      ayaLogger.info('Starting agent...')
 
       // step 1: provision the hardware if needed.
       const agentcoinAPI = new AgentcoinAPI()
@@ -115,7 +115,7 @@ export class Agent implements IAyaAgent {
       const configService = new ConfigService(eventService, processService, this.pathResolver)
 
       // step 2: load character and initialize database
-      elizaLogger.info('Loading character...')
+      ayaLogger.info('Loading character...')
       const [db, charString] = await Promise.all([
         initializeDatabase(this.pathResolver.dbFile),
         fs.promises.readFile(this.pathResolver.characterFile, 'utf8')
@@ -140,8 +140,8 @@ export class Agent implements IAyaAgent {
       }
 
       // Set elizaLogger to debug mode
-      // elizaLogger.level = 'debug'
-      // elizaLogger.debug('Logger set to debug mode')
+      // ayaLogger.level = 'debug'
+      // ayaLogger.debug('Logger set to debug mode')
 
       const token = modelConfig?.apiKey ?? getTokenForProvider(character.modelProvider, character)
       if (isNull(token)) {
@@ -149,7 +149,7 @@ export class Agent implements IAyaAgent {
       }
       const cache = new CacheManager(new DbCacheAdapter(db, character.id))
 
-      elizaLogger.info(elizaLogger.successesTitle, 'Creating runtime for character', character.name)
+      ayaLogger.info('Creating runtime for character', character.name)
 
       runtime = new AyaRuntime({
         eliza: {
@@ -196,26 +196,26 @@ export class Agent implements IAyaAgent {
           }
           isShuttingDown = true
 
-          elizaLogger.warn(`Received ${signal} signal. Stopping agent...`)
+          ayaLogger.warn(`Received ${signal} signal. Stopping agent...`)
           await Promise.all([configService.stop(), eventService.stop(), knowledgeService.stop()])
-          elizaLogger.success('Agent stopped services successfully!')
+          ayaLogger.success('Agent stopped services successfully!')
 
           if (runtime) {
             try {
               const agentId = runtime.agentId
-              elizaLogger.warn('Stopping agent runtime...', agentId)
+              ayaLogger.warn('Stopping agent runtime...', agentId)
               await runtime.stop()
-              elizaLogger.success('Agent runtime stopped successfully!', agentId)
+              ayaLogger.success('Agent runtime stopped successfully!', agentId)
             } catch (error) {
-              elizaLogger.error('Error stopping agent:', error)
+              ayaLogger.error('Error stopping agent:', error)
             }
           }
 
-          elizaLogger.success('The End.')
+          ayaLogger.success('The End.')
           process.exit(0)
         } catch (error) {
-          elizaLogger.error('Error shutting down:', error)
-          elizaLogger.success('The End.')
+          ayaLogger.error('Error shutting down:', error)
+          ayaLogger.success('The End.')
           process.exit(1)
         }
       }
@@ -243,10 +243,10 @@ export class Agent implements IAyaAgent {
       // no need to await these. it'll lock up the main process
       void Promise.all([configService.start(), knowledgeService.start()])
 
-      elizaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
+      ayaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
       console.log('sdk error', error)
-      elizaLogger.error(
+      ayaLogger.error(
         'Error creating agent:',
         error instanceof Error
           ? {
@@ -259,12 +259,7 @@ export class Agent implements IAyaAgent {
       throw error
     }
 
-    elizaLogger.success(
-      'agent runtime started id:',
-      runtime.agentId,
-      'name',
-      runtime.character.name
-    )
+    ayaLogger.success('agent runtime started id:', runtime.agentId, 'name', runtime.character.name)
   }
 
   async register(kind: 'service', handler: Service): Promise<void>
@@ -401,7 +396,7 @@ export class Agent implements IAyaAgent {
       if (key.startsWith('AGENTCOIN_ENC_') && value) {
         const decryptedValue = this.keychainService.decrypt(value)
         const newKey = key.substring(14)
-        elizaLogger.info('Decrypted secret', newKey)
+        ayaLogger.info('Decrypted secret', newKey)
         if (character.settings && character.settings.secrets) {
           character.settings.secrets[newKey] = decryptedValue
         }

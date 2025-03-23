@@ -1,4 +1,5 @@
 import { UUID_PATTERN } from '@/common/constants'
+import { ayaLogger } from '@/common/logger'
 import {
   ChatChannel,
   ChatChannelKind,
@@ -10,7 +11,7 @@ import {
   Identity,
   IdentitySchema
 } from '@/common/types'
-import { elizaLogger, KnowledgeItem, Memory, UUID } from '@elizaos/core'
+import { KnowledgeItem, Memory, UUID } from '@elizaos/core'
 import crypto, { createHash } from 'crypto'
 import EC from 'elliptic'
 
@@ -131,7 +132,7 @@ export function retry<T>(
         .then(resolve)
         .catch((error) => {
           if (logError) {
-            elizaLogger.error(`Error: ${error}`)
+            ayaLogger.error(`Error: ${error}`)
           }
           if (retries < maxRetries) {
             retries++
@@ -206,11 +207,11 @@ export function hasActions(responses: Memory[]): boolean {
       continue
     }
 
-    elizaLogger.info(`found action: ${action}`)
+    ayaLogger.info(`found action: ${action}`)
     return true
   }
 
-  elizaLogger.info('no actions to process, done!')
+  ayaLogger.info('no actions to process, done!')
   return false
 }
 

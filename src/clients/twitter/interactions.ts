@@ -2,10 +2,10 @@ import type { ClientBase } from '@/clients/twitter/base'
 import { buildConversationThread, sendTweet, wait } from '@/clients/twitter/utils'
 import { hasActions, isNull } from '@/common/functions'
 import { IAyaRuntime } from '@/common/iruntime'
+import { ayaLogger } from '@/common/logger'
 import {
   composeContext,
   type Content,
-  elizaLogger,
   generateMessageResponse,
   generateShouldRespond,
   getEmbeddingZeroVector,
@@ -129,11 +129,11 @@ export class TwitterInteractionClient {
   }
 
   async handleTwitterInteractions(): Promise<void> {
-    elizaLogger.log('Checking Twitter interactions')
+    ayaLogger.log('Checking Twitter interactions')
 
     const twitterUsername = this.client.profile?.username
     if (isNull(twitterUsername)) {
-      elizaLogger.error('Twitter username is not set')
+      ayaLogger.error('Twitter username is not set')
       return
     }
     try {
@@ -142,13 +142,13 @@ export class TwitterInteractionClient {
         await this.client.fetchSearchTweets(`@${twitterUsername}`, 20, SearchMode.Latest)
       ).tweets
 
-      elizaLogger.log('Completed checking mentioned tweets:', mentionCandidates.length)
+      ayaLogger.log('Completed checking mentioned tweets:', mentionCandidates.length)
       let uniqueTweetCandidates = [...mentionCandidates]
       // Only process target users if configured
       if (this.client.twitterConfig.TWITTER_TARGET_USERS.length) {
         const TARGET_USERS = this.client.twitterConfig.TWITTER_TARGET_USERS
 
-        elizaLogger.log('Processing target users:', TARGET_USERS)
+        ayaLogger.log('Processing target users:', TARGET_USERS)
 
         if (TARGET_USERS.length > 0) {
           // Create a map to store tweets by user
@@ -174,7 +174,7 @@ export class TwitterInteractionClient {
                   ? Date.now() - tweet.timestamp * 1000 < 2 * 60 * 60 * 1000
                   : false
 
-                elizaLogger.log(`Tweet ${tweet.id} checks:`, {
+                ayaLogger.log(`Tweet ${tweet.id} checks:`, {
                   isUnprocessed,
                   isRecent,
                   isReply: tweet.isReply,
@@ -186,10 +186,10 @@ export class TwitterInteractionClient {
 
               if (validTweets.length > 0) {
                 tweetsByUser.set(username, validTweets)
-                elizaLogger.log(`Found ${validTweets.length} valid tweets from ${username}`)
+                ayaLogger.log(`Found ${validTweets.length} valid tweets from ${username}`)
               }
             } catch (error) {
-              elizaLogger.error(`Error fetching tweets for ${username}:`, error)
+              ayaLogger.error(`Error fetching tweets for ${username}:`, error)
               continue
             }
           }
@@ -201,7 +201,7 @@ export class TwitterInteractionClient {
               // Randomly select one tweet from this user
               const randomTweet = tweets[Math.floor(Math.random() * tweets.length)]
               selectedTweets.push(randomTweet)
-              elizaLogger.log(
+              ayaLogger.log(
                 `Selected tweet from ${username}: ${randomTweet.text?.substring(0, 100)}`
               )
             }
@@ -211,7 +211,7 @@ export class TwitterInteractionClient {
           uniqueTweetCandidates = [...mentionCandidates, ...selectedTweets]
         }
       } else {
-        elizaLogger.log('No target users configured, processing only mentions')
+        ayaLogger.log('No target users configured, processing only mentions')
       }
 
       // Sort tweet candidates by ID in ascending order
@@ -222,7 +222,7 @@ export class TwitterInteractionClient {
       // for each tweet candidate, handle the tweet
       for (const tweet of uniqueTweetCandidates) {
         if (isNull(tweet.id)) {
-          elizaLogger.error('Tweet ID is not set', tweet)
+          ayaLogger.error('Tweet ID is not set', tweet)
           continue
         }
 
@@ -234,10 +234,10 @@ export class TwitterInteractionClient {
           const existingResponse = await this.runtime.messageManager.getMemoryById(tweetId)
 
           if (existingResponse) {
-            elizaLogger.log(`Already responded to tweet ${tweet.id}, skipping`)
+            ayaLogger.log(`Already responded to tweet ${tweet.id}, skipping`)
             continue
           }
-          elizaLogger.log('New Tweet found', tweet.permanentUrl)
+          ayaLogger.log('New Tweet found', tweet.permanentUrl)
 
           const roomId = stringToUuid(tweet.conversationId + '-' + this.runtime.agentId)
 
@@ -282,9 +282,9 @@ export class TwitterInteractionClient {
       // Save the latest checked tweet ID to the file
       await this.client.cacheLatestCheckedTweetId()
 
-      elizaLogger.log('Finished checking Twitter interactions')
+      ayaLogger.log('Finished checking Twitter interactions')
     } catch (error) {
-      elizaLogger.error('Error handling Twitter interactions:', error)
+      ayaLogger.error('Error handling Twitter interactions:', error)
     }
   }
 
@@ -307,11 +307,11 @@ export class TwitterInteractionClient {
     }
 
     if (!message.content.text) {
-      elizaLogger.log('Skipping Tweet with no text', tweet.id)
+      ayaLogger.log('Skipping Tweet with no text', tweet.id)
       return { text: '', action: 'IGNORE' }
     }
 
-    elizaLogger.log('Processing Tweet: ', tweet.id)
+    ayaLogger.log('Processing Tweet: ', tweet.id)
     const formatTweet = (tweet: Tweet): string => {
       return `ID: ${tweet.id} From: ${tweet.name} (@${tweet.username})
               Text: ${tweet.text}`
@@ -346,7 +346,7 @@ export class TwitterInteractionClient {
       }
     } catch (error) {
       // Handle the error
-      elizaLogger.error('Error Occured during describing image: ', error)
+      ayaLogger.error('Error Occured during describing image: ', error)
       return { text: '', action: 'IGNORE' }
     }
 
@@ -372,10 +372,10 @@ export class TwitterInteractionClient {
 
     if (!tweetExists) {
       if (isNull(tweet.userId) || isNull(tweet.conversationId)) {
-        elizaLogger.error('Tweet user ID or conversation ID is not set', tweet)
+        ayaLogger.error('Tweet user ID or conversation ID is not set', tweet)
         return { text: '', action: 'IGNORE' }
       }
-      elizaLogger.log('tweet does not exist, saving')
+      ayaLogger.log('tweet does not exist, saving')
       const userIdUUID = stringToUuid(tweet.userId)
       const roomId = stringToUuid(tweet.conversationId)
 
@@ -416,7 +416,7 @@ export class TwitterInteractionClient {
 
     // Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
     if (shouldRespond !== 'RESPOND') {
-      elizaLogger.log('Not responding to message')
+      ayaLogger.log('Not responding to message')
       return { text: 'Response Decision:', action: shouldRespond ?? 'IGNORE' }
     }
 
@@ -455,7 +455,7 @@ export class TwitterInteractionClient {
     })
 
     if (!shouldContinue) {
-      elizaLogger.info('TwitterClient received pre:llm event but it was suppressed')
+      ayaLogger.info('TwitterClient received pre:llm event but it was suppressed')
       return { text: '', action: 'IGNORE' }
     }
 
@@ -481,13 +481,13 @@ export class TwitterInteractionClient {
     })
 
     if (!shouldContinue) {
-      elizaLogger.info('TwitterClient received post:llm event but it was suppressed')
+      ayaLogger.info('TwitterClient received post:llm event but it was suppressed')
       return { text: '', action: 'IGNORE' }
     }
 
     if (response.text) {
       if (this.isDryRun) {
-        elizaLogger.info(
+        ayaLogger.info(
           `Dry run: Selected Post: ${tweet.id} - ${tweet.username}: 
           ${tweet.text}\nAgent's Output:\n${response.text}`
         )
@@ -533,7 +533,7 @@ export class TwitterInteractionClient {
           })
 
           if (!shouldContinue) {
-            elizaLogger.info('TwitterClient received preaction event but it was suppressed')
+            ayaLogger.info('TwitterClient received preaction event but it was suppressed')
             return { text: '', action: 'IGNORE' }
           }
 
@@ -550,7 +550,7 @@ export class TwitterInteractionClient {
               })
 
               if (!shouldContinue) {
-                elizaLogger.info('TwitterClient received postaction event but it was suppressed')
+                ayaLogger.info('TwitterClient received postaction event but it was suppressed')
                 return []
               }
 
@@ -568,7 +568,7 @@ export class TwitterInteractionClient {
           )
           await wait()
         } catch (error) {
-          elizaLogger.error(`Error sending response tweet: ${error}`)
+          ayaLogger.error(`Error sending response tweet: ${error}`)
         }
       }
     }
@@ -581,19 +581,19 @@ export class TwitterInteractionClient {
     const visited: Set<string> = new Set()
 
     const processThread = async (currentTweet: Tweet, depth = 0): Promise<void> => {
-      elizaLogger.log('Processing tweet:', {
+      ayaLogger.log('Processing tweet:', {
         id: currentTweet.id,
         inReplyToStatusId: currentTweet.inReplyToStatusId,
         depth
       })
 
       if (!currentTweet) {
-        elizaLogger.log('No current tweet found for thread building')
+        ayaLogger.log('No current tweet found for thread building')
         return
       }
 
       if (depth >= maxReplies) {
-        elizaLogger.log('Reached maximum reply depth', depth)
+        ayaLogger.log('Reached maximum reply depth', depth)
         return
       }
 
@@ -603,7 +603,7 @@ export class TwitterInteractionClient {
       )
       if (!memory) {
         if (isNull(currentTweet.userId) || isNull(currentTweet.conversationId)) {
-          elizaLogger.error('Tweet user ID or conversation ID is not set', currentTweet)
+          ayaLogger.error('Tweet user ID or conversation ID is not set', currentTweet)
           return
         }
         const roomId = stringToUuid(currentTweet.conversationId + '-' + this.runtime.agentId)
@@ -640,12 +640,12 @@ export class TwitterInteractionClient {
       }
 
       if (isNull(currentTweet.id)) {
-        elizaLogger.error('Tweet ID is not set', currentTweet)
+        ayaLogger.error('Tweet ID is not set', currentTweet)
         return
       }
 
       if (visited.has(currentTweet.id)) {
-        elizaLogger.log('Already visited tweet:', currentTweet.id)
+        ayaLogger.log('Already visited tweet:', currentTweet.id)
         return
       }
 
@@ -653,27 +653,27 @@ export class TwitterInteractionClient {
       thread.unshift(currentTweet)
 
       if (currentTweet.inReplyToStatusId) {
-        elizaLogger.log('Fetching parent tweet:', currentTweet.inReplyToStatusId)
+        ayaLogger.log('Fetching parent tweet:', currentTweet.inReplyToStatusId)
         try {
           const parentTweet = await this.client.getTweet(currentTweet.inReplyToStatusId)
 
           if (parentTweet) {
-            elizaLogger.log('Found parent tweet:', {
+            ayaLogger.log('Found parent tweet:', {
               id: parentTweet.id,
               text: parentTweet.text?.slice(0, 50)
             })
             await processThread(parentTweet, depth + 1)
           } else {
-            elizaLogger.log('No parent tweet found for:', currentTweet.inReplyToStatusId)
+            ayaLogger.log('No parent tweet found for:', currentTweet.inReplyToStatusId)
           }
         } catch (error) {
-          elizaLogger.log('Error fetching parent tweet:', {
+          ayaLogger.log('Error fetching parent tweet:', {
             tweetId: currentTweet.inReplyToStatusId,
             error
           })
         }
       } else {
-        elizaLogger.log('Reached end of reply chain at:', currentTweet.id)
+        ayaLogger.log('Reached end of reply chain at:', currentTweet.id)
       }
     }
 

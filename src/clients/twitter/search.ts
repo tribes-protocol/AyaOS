@@ -1,10 +1,10 @@
 import type { ClientBase } from '@/clients/twitter/base'
 import { buildConversationThread, sendTweet, wait } from '@/clients/twitter/utils'
 import { isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import {
   composeContext,
   type Content,
-  elizaLogger,
   generateMessageResponse,
   generateText,
   type HandlerCallback,
@@ -66,22 +66,22 @@ export class TwitterSearchClient {
   private engageWithSearchTermsLoop(): void {
     void this.engageWithSearchTerms()
     const randomMinutes = Math.floor(Math.random() * (120 - 60 + 1)) + 60
-    elizaLogger.log(`Next twitter search scheduled in ${randomMinutes} minutes`)
+    ayaLogger.log(`Next twitter search scheduled in ${randomMinutes} minutes`)
     setTimeout(() => this.engageWithSearchTermsLoop(), randomMinutes * 60 * 1000)
   }
 
   private async engageWithSearchTerms(): Promise<void> {
-    elizaLogger.log('Engaging with search terms')
+    ayaLogger.log('Engaging with search terms')
     try {
       const searchTerm = [...this.runtime.character.topics][
         Math.floor(Math.random() * this.runtime.character.topics.length)
       ]
 
-      elizaLogger.log('Fetching search tweets')
+      ayaLogger.log('Fetching search tweets')
       // TODO: we wait 5 seconds here to avoid getting rate limited on startup, but we should queue
       await new Promise((resolve) => setTimeout(resolve, 5000))
       const recentTweets = await this.client.fetchSearchTweets(searchTerm, 20, SearchMode.Top)
-      elizaLogger.log('Search tweets fetched')
+      ayaLogger.log('Search tweets fetched')
 
       const homeTimeline = await this.client.fetchHomeTimeline(50)
 
@@ -99,7 +99,7 @@ export class TwitterSearchClient {
       const slicedTweets = recentTweets.tweets.sort(() => Math.random() - 0.5).slice(0, 20)
 
       if (slicedTweets.length === 0) {
-        elizaLogger.log('No valid tweets found for the search term', searchTerm)
+        ayaLogger.log('No valid tweets found for the search term', searchTerm)
         return
       }
 
@@ -144,15 +144,15 @@ export class TwitterSearchClient {
       )
 
       if (!selectedTweet) {
-        elizaLogger.warn('No matching tweet found for the selected ID')
-        elizaLogger.log('Selected tweet ID:', tweetId)
+        ayaLogger.warn('No matching tweet found for the selected ID')
+        ayaLogger.log('Selected tweet ID:', tweetId)
         return
       }
 
-      elizaLogger.log('Selected tweet to reply to:', selectedTweet?.text)
+      ayaLogger.log('Selected tweet to reply to:', selectedTweet?.text)
 
       if (selectedTweet.username === this.twitterUsername) {
-        elizaLogger.log('Skipping tweet from bot itself')
+        ayaLogger.log('Skipping tweet from bot itself')
         return
       }
 
@@ -189,7 +189,7 @@ export class TwitterSearchClient {
       }
 
       if (!message.content.text) {
-        elizaLogger.warn('Returning: No response text found')
+        ayaLogger.warn('Returning: No response text found')
         return
       }
 
@@ -251,11 +251,11 @@ export class TwitterSearchClient {
       const response = responseContent
 
       if (!response.text) {
-        elizaLogger.warn('Returning: No response text found')
+        ayaLogger.warn('Returning: No response text found')
         return
       }
 
-      elizaLogger.log(`Bot would respond to tweet ${selectedTweet.id} with: ${response.text}`)
+      ayaLogger.log(`Bot would respond to tweet ${selectedTweet.id} with: ${response.text}`)
       try {
         const callback: HandlerCallback = async (response: Content) => {
           if (isNull(selectedTweet.id)) {

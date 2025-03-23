@@ -5,11 +5,11 @@ import { MediaData, RawTweetType } from '@/clients/twitter/types'
 import { buildConversationThread, fetchMediaData } from '@/clients/twitter/utils'
 import { isNull } from '@/common/functions'
 import { IAyaRuntime } from '@/common/iruntime'
+import { ayaLogger } from '@/common/logger'
 import {
   ActionResponse,
   cleanJsonResponse,
   composeContext,
-  elizaLogger,
   extractAttributes,
   generateText,
   generateTweetActions,
@@ -113,23 +113,23 @@ export class TwitterPostClient {
     this.isDryRun = this.client.twitterConfig.TWITTER_DRY_RUN
 
     // Log configuration on initialization
-    elizaLogger.log('Twitter Client Configuration:')
-    elizaLogger.log(`- Username: ${this.twitterUsername}`)
-    elizaLogger.log(`- Dry Run Mode: ${this.isDryRun ? 'enabled' : 'disabled'}`)
-    elizaLogger.log(
+    ayaLogger.log('Twitter Client Configuration:')
+    ayaLogger.log(`- Username: ${this.twitterUsername}`)
+    ayaLogger.log(`- Dry Run Mode: ${this.isDryRun ? 'enabled' : 'disabled'}`)
+    ayaLogger.log(
       // eslint-disable-next-line max-len
       `- Post Interval: ${this.client.twitterConfig.POST_INTERVAL_MIN}-${this.client.twitterConfig.POST_INTERVAL_MAX} minutes`
     )
-    elizaLogger.log(
+    ayaLogger.log(
       `- Action Processing: ${
         this.client.twitterConfig.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'
       }`
     )
-    elizaLogger.log(`- Action Interval: ${this.client.twitterConfig.ACTION_INTERVAL} minutes`)
-    elizaLogger.log(
+    ayaLogger.log(`- Action Interval: ${this.client.twitterConfig.ACTION_INTERVAL} minutes`)
+    ayaLogger.log(
       `- Post Immediately: ${this.client.twitterConfig.POST_IMMEDIATELY ? 'enabled' : 'disabled'}`
     )
-    elizaLogger.log(
+    ayaLogger.log(
       `- Search Enabled: ${
         this.client.twitterConfig.TWITTER_SEARCH_ENABLE ? 'enabled' : 'disabled'
       }`
@@ -137,11 +137,11 @@ export class TwitterPostClient {
 
     const targetUsers = this.client.twitterConfig.TWITTER_TARGET_USERS
     if (targetUsers) {
-      elizaLogger.log(`- Target Users: ${targetUsers}`)
+      ayaLogger.log(`- Target Users: ${targetUsers}`)
     }
 
     if (this.isDryRun) {
-      elizaLogger.log(
+      ayaLogger.log(
         'Twitter client initialized in dry run mode - no actual tweets should be posted'
       )
     }
@@ -186,7 +186,7 @@ export class TwitterPostClient {
       partials: [Partials.Channel, Partials.Message, Partials.Reaction]
     })
     this.discordClientForApproval.once(Events.ClientReady, (readyClient) => {
-      elizaLogger.log(`Discord bot is ready as ${readyClient.user.tag}!`)
+      ayaLogger.log(`Discord bot is ready as ${readyClient.user.tag}!`)
 
       // Generate invite link with required permissions
       // eslint-disable-next-line max-len
@@ -196,7 +196,7 @@ export class TwitterPostClient {
       // - Read Messages/View Channels
       // - Read Message History
 
-      elizaLogger.log(
+      ayaLogger.log(
         `Use this link to properly invite the Twitter Post Approval Discord bot: ${invite}`
       )
     })
@@ -233,7 +233,7 @@ export class TwitterPostClient {
         void generateNewTweetLoop() // Set up next iteration
       }, delay)
 
-      elizaLogger.log(`Next tweet scheduled in ${randomMinutes} minutes`)
+      ayaLogger.log(`Next tweet scheduled in ${randomMinutes} minutes`)
     }
 
     const processActionsLoop = async (): Promise<void> => {
@@ -243,15 +243,15 @@ export class TwitterPostClient {
         try {
           const results = await this.processTweetActions()
           if (results) {
-            elizaLogger.log(`Processed ${results.length} tweets`)
-            elizaLogger.log(`Next action processing scheduled in ${actionInterval} minutes`)
+            ayaLogger.log(`Processed ${results.length} tweets`)
+            ayaLogger.log(`Next action processing scheduled in ${actionInterval} minutes`)
             // Wait for the full interval before next processing
             await new Promise(
               (resolve) => setTimeout(resolve, actionInterval * 60 * 1000) // now in minutes
             )
           }
         } catch (error) {
-          elizaLogger.error('Error in action processing loop:', error)
+          ayaLogger.error('Error in action processing loop:', error)
           // Add exponential backoff on error
           await new Promise((resolve) => setTimeout(resolve, 30000)) // Wait 30s on error
         }
@@ -263,11 +263,11 @@ export class TwitterPostClient {
     }
 
     void generateNewTweetLoop()
-    elizaLogger.log('Tweet generation loop started')
+    ayaLogger.log('Tweet generation loop started')
 
     if (this.client.twitterConfig.ENABLE_ACTION_PROCESSING) {
       processActionsLoop().catch((error) => {
-        elizaLogger.error('Fatal error in process actions loop:', error)
+        ayaLogger.error('Fatal error in process actions loop:', error)
       })
     }
 
@@ -322,7 +322,7 @@ export class TwitterPostClient {
     await client.cacheTweet(tweet)
 
     // Log the posted tweet
-    elizaLogger.log(`Tweet posted:\n ${tweet.permanentUrl}`)
+    ayaLogger.log(`Tweet posted:\n ${tweet.permanentUrl}`)
 
     // Ensure the room and participant exist
     await runtime.ensureRoomExists(roomId)
@@ -401,12 +401,12 @@ export class TwitterPostClient {
         }
       } = await standardTweetResult.json()
       if (!body?.data?.create_tweet?.tweet_results?.result) {
-        elizaLogger.error('Error sending tweet; Bad response:', body)
+        ayaLogger.error('Error sending tweet; Bad response:', body)
         return null
       }
       return body.data.create_tweet.tweet_results.result
     } catch (error) {
-      elizaLogger.error('Error sending standard Tweet:', error)
+      ayaLogger.error('Error sending standard Tweet:', error)
       throw error
     }
   }
@@ -421,7 +421,7 @@ export class TwitterPostClient {
     mediaData?: MediaData[]
   ): Promise<Tweet | null> {
     try {
-      elizaLogger.log(`Posting new tweet:\n`)
+      ayaLogger.log(`Posting new tweet:\n`)
 
       let result
 
@@ -437,7 +437,7 @@ export class TwitterPostClient {
 
       return tweet
     } catch (error) {
-      elizaLogger.error('Error sending tweet:', error)
+      ayaLogger.error('Error sending tweet:', error)
       return null
     }
   }
@@ -446,11 +446,11 @@ export class TwitterPostClient {
    * Generates and posts a new tweet. If isDryRun is true, only logs what would have been posted.
    */
   async generateNewTweet(): Promise<void> {
-    elizaLogger.log('Generating new tweet')
+    ayaLogger.log('Generating new tweet')
 
     try {
       if (isNull(this.client.profile)) {
-        elizaLogger.error('Client profile is not set')
+        ayaLogger.error('Client profile is not set')
         return
       }
 
@@ -489,7 +489,7 @@ export class TwitterPostClient {
       })
 
       if (!shouldContinue) {
-        elizaLogger.info('AgentcoinClient received prellm event but it was suppressed')
+        ayaLogger.info('AgentcoinClient received prellm event but it was suppressed')
         return
       }
 
@@ -498,7 +498,7 @@ export class TwitterPostClient {
         template: this.runtime.character.templates?.twitterPostTemplate || twitterPostTemplate
       })
 
-      elizaLogger.debug('generate post prompt:\n' + context)
+      ayaLogger.debug('generate post prompt:\n' + context)
 
       const response = await generateText({
         runtime: this.runtime,
@@ -514,7 +514,7 @@ export class TwitterPostClient {
       })
 
       if (!shouldContinue) {
-        elizaLogger.info('AgentcoinClient received postllm event but it was suppressed')
+        ayaLogger.info('AgentcoinClient received postllm event but it was suppressed')
         return
       }
 
@@ -563,18 +563,18 @@ export class TwitterPostClient {
       tweetTextForPosting = removeQuotes(fixNewLines(tweetTextForPosting))
 
       if (this.isDryRun) {
-        elizaLogger.info(`Dry run: would have posted tweet: ${tweetTextForPosting}`)
+        ayaLogger.info(`Dry run: would have posted tweet: ${tweetTextForPosting}`)
         return
       }
 
       try {
         if (this.approvalRequired) {
           // Send for approval instead of posting directly
-          elizaLogger.log(`Sending Tweet For Approval:\n ${tweetTextForPosting}`)
+          ayaLogger.log(`Sending Tweet For Approval:\n ${tweetTextForPosting}`)
           await this.sendForApproval(tweetTextForPosting, roomId, rawTweetContent)
-          elizaLogger.log('Tweet sent for approval')
+          ayaLogger.log('Tweet sent for approval')
         } else {
-          elizaLogger.log(`Posting new tweet:\n ${tweetTextForPosting}`)
+          ayaLogger.log(`Posting new tweet:\n ${tweetTextForPosting}`)
           void this.postTweet(
             this.runtime,
             this.client,
@@ -586,10 +586,10 @@ export class TwitterPostClient {
           )
         }
       } catch (error) {
-        elizaLogger.error('Error sending tweet:', error)
+        ayaLogger.error('Error sending tweet:', error)
       }
     } catch (error) {
-      elizaLogger.error('Error generating new tweet:', error)
+      ayaLogger.error('Error generating new tweet:', error)
     }
   }
 
@@ -615,7 +615,7 @@ export class TwitterPostClient {
       modelClass: ModelClass.SMALL
     })
 
-    elizaLogger.log('generate tweet content response:\n' + response)
+    ayaLogger.log('generate tweet content response:\n' + response)
 
     // First clean up any markdown and newlines
     const cleanedResponse = cleanJsonResponse(response)
@@ -674,7 +674,7 @@ export class TwitterPostClient {
     }[]
   > {
     if (this.isProcessing) {
-      elizaLogger.log('Already processing tweet actions, skipping')
+      ayaLogger.log('Already processing tweet actions, skipping')
       return []
     }
 
@@ -682,7 +682,7 @@ export class TwitterPostClient {
       this.isProcessing = true
       this.lastProcessTime = Date.now()
 
-      elizaLogger.log('Processing tweet actions')
+      ayaLogger.log('Processing tweet actions')
 
       await this.runtime.ensureUserExists(
         this.runtime.agentId,
@@ -707,7 +707,7 @@ export class TwitterPostClient {
             stringToUuid(tweet.id + '-' + this.runtime.agentId)
           )
           if (memory) {
-            elizaLogger.log(`Already processed tweet ID: ${tweet.id}`)
+            ayaLogger.log(`Already processed tweet ID: ${tweet.id}`)
             continue
           }
 
@@ -740,7 +740,7 @@ export class TwitterPostClient {
           })
 
           if (!actionResponse) {
-            elizaLogger.log(`No valid actions generated for tweet ${tweet.id}`)
+            ayaLogger.log(`No valid actions generated for tweet ${tweet.id}`)
             continue
           }
           processedTimelines.push({
@@ -750,7 +750,7 @@ export class TwitterPostClient {
             roomId
           })
         } catch (error) {
-          elizaLogger.error(`Error processing tweet ${tweet.id}:`, error)
+          ayaLogger.error(`Error processing tweet ${tweet.id}:`, error)
           continue
         }
       }
@@ -786,7 +786,7 @@ export class TwitterPostClient {
 
       return this.processTimelineActions(sortedTimelines)
     } catch (error) {
-      elizaLogger.error('Error in processTweetActions:', error)
+      ayaLogger.error('Error in processTweetActions:', error)
       throw error
     } finally {
       this.isProcessing = false
@@ -825,7 +825,7 @@ export class TwitterPostClient {
       const { actionResponse, tweetState, roomId, tweet } = timeline
       const tweetId = tweet.id
       if (isNull(tweetId)) {
-        elizaLogger.error('Tweet ID is not set')
+        ayaLogger.error('Tweet ID is not set')
         continue
       }
       try {
@@ -833,30 +833,30 @@ export class TwitterPostClient {
         // Execute actions
         if (actionResponse.like) {
           if (this.isDryRun) {
-            elizaLogger.info(`Dry run: would have liked tweet ${tweetId}`)
+            ayaLogger.info(`Dry run: would have liked tweet ${tweetId}`)
             executedActions.push('like (dry run)')
           } else {
             try {
               await this.client.twitterClient.likeTweet(tweetId)
               executedActions.push('like')
-              elizaLogger.log(`Liked tweet ${tweetId}`)
+              ayaLogger.log(`Liked tweet ${tweetId}`)
             } catch (error) {
-              elizaLogger.error(`Error liking tweet ${tweetId}:`, error)
+              ayaLogger.error(`Error liking tweet ${tweetId}:`, error)
             }
           }
         }
 
         if (actionResponse.retweet) {
           if (this.isDryRun) {
-            elizaLogger.info(`Dry run: would have retweeted tweet ${tweetId}`)
+            ayaLogger.info(`Dry run: would have retweeted tweet ${tweetId}`)
             executedActions.push('retweet (dry run)')
           } else {
             try {
               await this.client.twitterClient.retweet(tweetId)
               executedActions.push('retweet')
-              elizaLogger.log(`Retweeted tweet ${tweetId}`)
+              ayaLogger.log(`Retweeted tweet ${tweetId}`)
             } catch (error) {
-              elizaLogger.error(`Error retweeting tweet ${tweetId}:`, error)
+              ayaLogger.error(`Error retweeting tweet ${tweetId}:`, error)
             }
           }
         }
@@ -875,7 +875,7 @@ export class TwitterPostClient {
             // Generate image descriptions if present
             const imageDescriptions: { title: string; description: string }[] = []
             if (tweet.photos?.length > 0) {
-              elizaLogger.log('Processing images in tweet for context')
+              ayaLogger.log('Processing images in tweet for context')
               for (const photo of tweet.photos) {
                 const description = await this.runtime
                   .getService<IImageDescriptionService>(ServiceType.IMAGE_DESCRIPTION)
@@ -896,7 +896,7 @@ export class TwitterPostClient {
                    @${quotedTweet.username}:\n${quotedTweet.text}`
                 }
               } catch (error) {
-                elizaLogger.error('Error fetching quoted tweet:', error)
+                ayaLogger.error('Error fetching quoted tweet:', error)
               }
             }
 
@@ -932,14 +932,14 @@ export class TwitterPostClient {
             })
 
             if (!quoteContent) {
-              elizaLogger.error('Failed to generate valid quote tweet content')
+              ayaLogger.error('Failed to generate valid quote tweet content')
               return []
             }
 
-            elizaLogger.log('Generated quote tweet content:', quoteContent)
+            ayaLogger.log('Generated quote tweet content:', quoteContent)
             // Check for dry run mode
             if (this.isDryRun) {
-              elizaLogger.info(
+              ayaLogger.info(
                 `Dry run: A quote tweet for tweet ID ${tweet.id} 
                 would have been posted with the following content: "${quoteContent}".`
               )
@@ -960,7 +960,7 @@ export class TwitterPostClient {
                 }
               } = await result.json()
               if (body?.data?.create_tweet?.tweet_results?.result) {
-                elizaLogger.log('Successfully posted quote tweet')
+                ayaLogger.log('Successfully posted quote tweet')
                 executedActions.push('quote')
 
                 // Cache generation context for debugging
@@ -969,11 +969,11 @@ export class TwitterPostClient {
                   `Context:\n${enrichedState}\n\nGenerated Quote:\n${quoteContent}`
                 )
               } else {
-                elizaLogger.error('Quote tweet creation failed:', body)
+                ayaLogger.error('Quote tweet creation failed:', body)
               }
             }
           } catch (error) {
-            elizaLogger.error('Error in quote tweet generation:', error)
+            ayaLogger.error('Error in quote tweet generation:', error)
           }
         }
 
@@ -981,7 +981,7 @@ export class TwitterPostClient {
           try {
             await this.handleTextOnlyReply(tweet, tweetState, executedActions)
           } catch (error) {
-            elizaLogger.error(`Error replying to tweet ${tweet.id}:`, error)
+            ayaLogger.error(`Error replying to tweet ${tweet.id}:`, error)
           }
         }
 
@@ -1019,7 +1019,7 @@ export class TwitterPostClient {
           executedActions
         })
       } catch (error) {
-        elizaLogger.error(`Error processing tweet ${tweet.id}:`, error)
+        ayaLogger.error(`Error processing tweet ${tweet.id}:`, error)
         continue
       }
     }
@@ -1049,7 +1049,7 @@ export class TwitterPostClient {
       // Generate image descriptions if present
       const imageDescriptions: { title: string; description: string }[] = []
       if (tweet.photos?.length > 0) {
-        elizaLogger.log('Processing images in tweet for context')
+        ayaLogger.log('Processing images in tweet for context')
         for (const photo of tweet.photos) {
           const description = await this.runtime
             .getService<IImageDescriptionService>(ServiceType.IMAGE_DESCRIPTION)
@@ -1069,7 +1069,7 @@ export class TwitterPostClient {
             quotedContent = `\nQuoted Tweet from @${quotedTweet.username}:\n${quotedTweet.text}`
           }
         } catch (error) {
-          elizaLogger.error('Error fetching quoted tweet:', error)
+          ayaLogger.error('Error fetching quoted tweet:', error)
         }
       }
 
@@ -1103,17 +1103,17 @@ export class TwitterPostClient {
       })
 
       if (!replyText) {
-        elizaLogger.error('Failed to generate valid reply content')
+        ayaLogger.error('Failed to generate valid reply content')
         return
       }
 
       if (this.isDryRun) {
-        elizaLogger.info(`Dry run: reply to tweet ${tweet.id} would have been: ${replyText}`)
+        ayaLogger.info(`Dry run: reply to tweet ${tweet.id} would have been: ${replyText}`)
         executedActions.push('reply (dry run)')
         return
       }
 
-      elizaLogger.debug('Final reply text to be sent:', replyText)
+      ayaLogger.debug('Final reply text to be sent:', replyText)
 
       let result
 
@@ -1124,7 +1124,7 @@ export class TwitterPostClient {
       }
 
       if (result) {
-        elizaLogger.log('Successfully posted reply tweet')
+        ayaLogger.log('Successfully posted reply tweet')
         executedActions.push('reply')
 
         // Cache generation context for debugging
@@ -1133,10 +1133,10 @@ export class TwitterPostClient {
           `Context:\n${enrichedState}\n\nGenerated Reply:\n${replyText}`
         )
       } else {
-        elizaLogger.error('Tweet reply creation failed')
+        ayaLogger.error('Tweet reply creation failed')
       }
     } catch (error) {
-      elizaLogger.error('Error in handleTextOnlyReply:', error)
+      ayaLogger.error('Error in handleTextOnlyReply:', error)
     }
   }
 
@@ -1200,7 +1200,7 @@ export class TwitterPostClient {
 
       return message.id
     } catch (error) {
-      elizaLogger.error('Error Sending Twitter Post Approval Request:', error)
+      ayaLogger.error('Error Sending Twitter Post Approval Request:', error)
       return null
     }
   }
@@ -1212,10 +1212,10 @@ export class TwitterPostClient {
         this.discordApprovalChannelId ?? ''
       )
 
-      elizaLogger.log(`channel ${JSON.stringify(channel)}`)
+      ayaLogger.log(`channel ${JSON.stringify(channel)}`)
 
       if (!(channel instanceof TextChannel)) {
-        elizaLogger.error('Invalid approval channel')
+        ayaLogger.error('Invalid approval channel')
         return 'PENDING'
       }
 
@@ -1252,7 +1252,7 @@ export class TwitterPostClient {
 
       return 'PENDING'
     } catch (error) {
-      elizaLogger.error('Error checking approval status:', error)
+      ayaLogger.error('Error checking approval status:', error)
       return 'PENDING'
     }
   }
@@ -1275,7 +1275,7 @@ export class TwitterPostClient {
   }
 
   private async handlePendingTweet(): Promise<void> {
-    elizaLogger.log('Checking Pending Tweets...')
+    ayaLogger.log('Checking Pending Tweets...')
     const pendingTweetsKey = `twitter/${this.client.profile?.username}/pendingTweet`
     const pendingTweets =
       (await this.runtime.cacheManager.get<PendingTweet[]>(pendingTweetsKey)) || []
@@ -1285,7 +1285,7 @@ export class TwitterPostClient {
       const isExpired = Date.now() - pendingTweet.timestamp > 24 * 60 * 60 * 1000
 
       if (isExpired) {
-        elizaLogger.log('Pending tweet expired, cleaning up')
+        ayaLogger.log('Pending tweet expired, cleaning up')
 
         // Notify on Discord about expiration
         try {
@@ -1297,7 +1297,7 @@ export class TwitterPostClient {
             await originalMessage.reply('This tweet approval request has expired (24h timeout).')
           }
         } catch (error) {
-          elizaLogger.error('Error sending expiration notification:', error)
+          ayaLogger.error('Error sending expiration notification:', error)
         }
 
         await this.cleanupPendingTweet(pendingTweet.discordMessageId)
@@ -1305,13 +1305,13 @@ export class TwitterPostClient {
       }
 
       // Check approval status
-      elizaLogger.log('Checking approval status...')
+      ayaLogger.log('Checking approval status...')
       const approvalStatus: PendingTweetApprovalStatus = await this.checkApprovalStatus(
         pendingTweet.discordMessageId
       )
 
       if (approvalStatus === 'APPROVED') {
-        elizaLogger.log('Tweet Approved, Posting')
+        ayaLogger.log('Tweet Approved, Posting')
         await this.postTweet(
           this.runtime,
           this.client,
@@ -1331,12 +1331,12 @@ export class TwitterPostClient {
             await originalMessage.reply('Tweet has been posted successfully! ✅')
           }
         } catch (error) {
-          elizaLogger.error('Error sending post notification:', error)
+          ayaLogger.error('Error sending post notification:', error)
         }
 
         await this.cleanupPendingTweet(pendingTweet.discordMessageId)
       } else if (approvalStatus === 'REJECTED') {
-        elizaLogger.log('Tweet Rejected, Cleaning Up')
+        ayaLogger.log('Tweet Rejected, Cleaning Up')
         await this.cleanupPendingTweet(pendingTweet.discordMessageId)
         // Notify about Rejection of Tweet
         try {
@@ -1348,7 +1348,7 @@ export class TwitterPostClient {
             await originalMessage.reply('Tweet has been rejected! ❌')
           }
         } catch (error) {
-          elizaLogger.error('Error sending rejection notification:', error)
+          ayaLogger.error('Error sending rejection notification:', error)
         }
       }
     }

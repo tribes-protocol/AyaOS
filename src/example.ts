@@ -1,5 +1,5 @@
 import { Agent } from '@/agent/agent'
-import { elizaLogger } from '@elizaos/core'
+import { ayaLogger } from '@/common/logger'
 
 async function main(): Promise<void> {
   try {
@@ -26,4 +26,4 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(elizaLogger.error)
+main().catch(ayaLogger.error)

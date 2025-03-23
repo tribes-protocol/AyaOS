@@ -1,8 +1,8 @@
 import type { FarcasterClient } from '@/clients/farcaster/client'
 import type { Cast } from '@/clients/farcaster/types'
 import { castUuid } from '@/clients/farcaster/utils'
+import { ayaLogger } from '@/common/logger'
 import {
-  elizaLogger,
   getEmbeddingZeroVector,
   stringToUuid,
   type IAgentRuntime,
@@ -75,7 +75,7 @@ export async function buildConversationThread({
     const memory = await runtime.messageManager.getMemoryById(roomId)
 
     if (!memory) {
-      elizaLogger.log('Creating memory for cast', currentCast.hash)
+      ayaLogger.log('Creating memory for cast', currentCast.hash)
 
       const userId = stringToUuid(currentCast.authorFid.toString())
 

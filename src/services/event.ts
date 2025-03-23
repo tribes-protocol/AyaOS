@@ -1,6 +1,6 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { Character } from '@/common/types'
-import { elizaLogger } from '@elizaos/core'
+import { ayaLogger } from '@/common/logger'
 
 export class EventService {
   constructor(
@@ -11,9 +11,9 @@ export class EventService {
   private heartbeatInterval?: NodeJS.Timeout
 
   async start(): Promise<void> {
-    elizaLogger.info('Starting event service...')
+    ayaLogger.info('Starting event service...')
     if (this.heartbeatInterval) {
-      elizaLogger.info('Event service already started')
+      ayaLogger.info('Event service already started')
       return
     }
 
@@ -49,7 +49,7 @@ export class EventService {
       { cookie: this.agentcoinCookie }
     )
 
-    elizaLogger.info('Event service stopped')
+    ayaLogger.info('Event service stopped')
   }
 
   async publishEnvChangeEvent(envContents: string): Promise<void> {

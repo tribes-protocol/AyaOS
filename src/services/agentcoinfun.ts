@@ -1,5 +1,8 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
+import { USER_CREDENTIALS_FILE } from '@/common/constants'
+import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { isNull, toJsonTree } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import {
   AgentIdentity,
@@ -17,10 +20,8 @@ import {
 } from '@/common/types'
 import { IAgentcoinService } from '@/services/interfaces'
 import { KeychainService } from '@/services/keychain'
-import { elizaLogger, IAgentRuntime, Service, ServiceType } from '@elizaos/core'
+import { IAgentRuntime, Service, ServiceType } from '@elizaos/core'
 import * as fs from 'fs'
-import { AGENTCOIN_FUN_API_URL } from '@/common/env'
-import { USER_CREDENTIALS_FILE } from '@/common/constants'
 
 export class AgentcoinService extends Service implements IAgentcoinService {
   private cachedCookie: string | undefined
@@ -83,23 +84,23 @@ export class AgentcoinService extends Service implements IAgentcoinService {
 
     const token = await this.api.login({ identity, message, signature })
 
-    elizaLogger.success('Agent coin logged in successfully', identity)
+    ayaLogger.success('Agent coin logged in successfully', identity)
     return token
   }
 
   async provisionIfNeeded(): Promise<void> {
-    elizaLogger.info('Checking if agent coin is provisioned...')
+    ayaLogger.info('Checking if agent coin is provisioned...')
     if (await this.isProvisioned()) {
       return
     }
 
-    elizaLogger.info('Provisioning hardware...')
+    ayaLogger.info('Provisioning hardware...')
 
     const regPath = this.pathResolver.registrationFile
 
     if (!fs.existsSync(regPath)) {
       const agentId = await this.provisionPureAgent()
-      elizaLogger.success('Agent coin provisioned successfully', agentId)
+      ayaLogger.success('Agent coin provisioned successfully', agentId)
       return
     }
 
@@ -116,7 +117,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
       JSON.stringify(toJsonTree(character), null, 2)
     )
 
-    elizaLogger.success('Agent coin provisioned successfully', character.id)
+    ayaLogger.success('Agent coin provisioned successfully', character.id)
 
     fs.unlinkSync(regPath)
   }
@@ -239,12 +240,12 @@ export class AgentcoinService extends Service implements IAgentcoinService {
               JSON.stringify({ token, createdAt: new Date().toISOString() }, null, 2)
             )
 
-            elizaLogger.success('Credentials saved to', USER_CREDENTIALS_FILE)
+            ayaLogger.success('Credentials saved to', USER_CREDENTIALS_FILE)
             return token
           }
         } catch (error) {
           clearInterval(waitingInterval)
-          elizaLogger.error('Error polling for CLI auth token', error)
+          ayaLogger.error('Error polling for CLI auth token', error)
           throw new Error('Failed to authenticate via CLI')
         }
       }

@@ -20,7 +20,7 @@ import {
   User,
   UserSchema
 } from '@/common/types'
-import { elizaLogger } from '@elizaos/core'
+import { ayaLogger } from '@/common/logger'
 import { z } from 'zod'
 
 const MessageResponseSchema = z.object({
@@ -42,7 +42,7 @@ export class AgentcoinAPI {
         throw new Error(ErrorResponseSchema.parse(error).error)
       }
     } catch (error) {
-      elizaLogger.error('Failed to publish event', body, error)
+      ayaLogger.error('Failed to publish event', body, error)
     }
   }
 

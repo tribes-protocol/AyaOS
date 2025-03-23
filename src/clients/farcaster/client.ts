@@ -8,7 +8,8 @@ import type {
   Profile
 } from '@/clients/farcaster/types'
 import { isNull } from '@/common/functions'
-import { type IAgentRuntime, elizaLogger } from '@elizaos/core'
+import { ayaLogger } from '@/common/logger'
+import { type IAgentRuntime } from '@elizaos/core'
 import { type NeynarAPIClient, isApiErrorResponse } from '@neynar/nodejs-sdk'
 
 export class FarcasterClient {
@@ -79,10 +80,10 @@ export class FarcasterClient {
       }
     } catch (err) {
       if (isApiErrorResponse(err)) {
-        elizaLogger.error('Neynar error: ', err.response.data)
+        ayaLogger.error('Neynar error: ', err.response.data)
         throw err.response.data
       } else {
-        elizaLogger.error('Error: ', err)
+        ayaLogger.error('Error: ', err)
         throw err
       }
     }
@@ -124,10 +125,10 @@ export class FarcasterClient {
       return cast
     } catch (err) {
       if (isApiErrorResponse(err)) {
-        elizaLogger.error('Neynar error: ', err.response.data)
+        ayaLogger.error('Neynar error: ', err.response.data)
         throw err.response.data
       } else {
-        elizaLogger.error('Error: ', err)
+        ayaLogger.error('Error: ', err)
         throw err
       }
     }
@@ -203,7 +204,7 @@ export class FarcasterClient {
 
     const result = await this.neynar.fetchBulkUsers({ fids: [fid] })
     if (!result.users || result.users.length < 1) {
-      elizaLogger.error('Error fetching user by fid')
+      ayaLogger.error('Error fetching user by fid')
 
       throw new Error('getProfile ERROR')
     }

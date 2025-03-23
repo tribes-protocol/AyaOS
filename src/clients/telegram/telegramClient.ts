@@ -2,7 +2,7 @@ import { getOrCreateRecommenderInBe } from '@/clients/telegram/getOrCreateRecomm
 import { MessageManager } from '@/clients/telegram/messageManager'
 import { isNull } from '@/common/functions'
 import { Client, IAyaRuntime } from '@/common/iruntime'
-import { elizaLogger } from '@elizaos/core'
+import { ayaLogger } from '@/common/logger'
 import { type Context, Telegraf } from 'telegraf'
 
 interface TelegramError {
@@ -25,7 +25,7 @@ export class TelegramClient implements Client {
   private options?: Partial<Telegraf.Options<Context>>
 
   constructor(runtime: IAyaRuntime, botToken: string) {
-    elizaLogger.log('📱 Constructing new TelegramClient...')
+    ayaLogger.log('📱 Constructing new TelegramClient...')
     this.options = {
       telegram: {
         apiRoot:
@@ -40,7 +40,7 @@ export class TelegramClient implements Client {
     this.backend = runtime.getSetting('BACKEND_URL')
     this.backendToken = runtime.getSetting('BACKEND_TOKEN')
     this.tgTrader = runtime.getSetting('TG_TRADER') // boolean To Be added to the settings
-    elizaLogger.log('✅ TelegramClient constructor completed')
+    ayaLogger.log('✅ TelegramClient constructor completed')
   }
 
   public async start(runtime: IAyaRuntime): Promise<void> {
@@ -48,24 +48,24 @@ export class TelegramClient implements Client {
       throw new Error('Telegram client runtime mismatch')
     }
 
-    elizaLogger.log('🚀 Starting Telegram bot...')
+    ayaLogger.log('🚀 Starting Telegram bot...')
     try {
       await this.initializeBot()
       this.setupMessageHandlers()
       this.setupShutdownHandlers()
     } catch (error) {
-      elizaLogger.error('❌ Failed to launch Telegram bot:', error)
+      ayaLogger.error('❌ Failed to launch Telegram bot:', error)
       throw error
     }
   }
 
   private async initializeBot(): Promise<void> {
     void this.bot.launch({ dropPendingUpdates: true })
-    elizaLogger.info('✨ Telegram bot successfully launched and is running!')
+    ayaLogger.info('✨ Telegram bot successfully launched and is running!')
 
     const botInfo = await this.bot.telegram.getMe()
     this.bot.botInfo = botInfo
-    elizaLogger.success(`Bot username: @${botInfo.username}`)
+    ayaLogger.success(`Bot username: @${botInfo.username}`)
 
     this.messageManager.bot = this.bot
   }
@@ -88,12 +88,12 @@ export class TelegramClient implements Client {
     const currentGroupId = ctx.chat.id.toString()
 
     if (!allowedGroups.includes(currentGroupId)) {
-      elizaLogger.info(`Unauthorized group detected: ${currentGroupId}`)
+      ayaLogger.info(`Unauthorized group detected: ${currentGroupId}`)
       try {
         await ctx.reply('Not authorized. Leaving.')
         await ctx.leaveChat()
       } catch (error) {
-        elizaLogger.error(`Error leaving unauthorized group ${currentGroupId}:`, error)
+        ayaLogger.error(`Error leaving unauthorized group ${currentGroupId}:`, error)
       }
       return false
     }
@@ -102,7 +102,7 @@ export class TelegramClient implements Client {
   }
 
   private setupMessageHandlers(): void {
-    elizaLogger.log('Setting up message handler...')
+    ayaLogger.log('Setting up message handler...')
 
     this.bot.on('message', async (ctx) => {
       try {
@@ -115,51 +115,53 @@ export class TelegramClient implements Client {
           const userId = ctx.from?.id.toString()
           const username = ctx.from?.username || ctx.from?.first_name || 'Unknown'
           if (!userId) {
-            elizaLogger.warn('Received message from a user without an ID.')
+            ayaLogger.warn('Received message from a user without an ID.')
             return
           }
           try {
             await getOrCreateRecommenderInBe(userId, username, this.backendToken, this.backend)
           } catch (error) {
-            elizaLogger.error('Error getting or creating recommender in backend', error)
+            ayaLogger.error('Error getting or creating recommender in backend', error)
           }
         }
 
         await this.messageManager.handleMessage(ctx)
       } catch (error: unknown) {
-        elizaLogger.error('❌ Error handling message:', error)
+        ayaLogger.error('❌ Error handling message:', error)
         if (isTelegramError(error) && error.response?.error_code !== 403) {
           try {
             await ctx.reply('An error occurred while processing your message.')
           } catch (replyError) {
-            elizaLogger.error('Failed to send error message:', replyError)
+            ayaLogger.error('Failed to send error message:', replyError)
           }
         }
       }
     })
 
     this.bot.on('photo', (ctx) => {
-      elizaLogger.log('📸 Received photo message with caption:', ctx.message.caption)
+      ayaLogger.log('📸 Received photo message with caption:', ctx.message.caption)
     })
 
     this.bot.on('document', (ctx) => {
-      elizaLogger.log('📎 Received document message:', ctx.message.document.file_name)
+      ayaLogger.log('📎 Received document message:', ctx.message.document.file_name)
     })
 
     this.bot.catch(async (err, ctx) => {
-      elizaLogger.error(`❌ Telegram Error for ${ctx.updateType}:`, err)
-      await ctx.reply('An unexpected error occurred. Please try again later.')
+      ayaLogger.error(`❌ Telegram Error for ${ctx.updateType}:`, err)
+
+      // we should not reply to the user here if error
+      // await ctx.reply('An unexpected error occurred. Please try again later.')
     })
   }
 
   private setupShutdownHandlers(): void {
     const shutdownHandler = async (signal: string): Promise<void> => {
-      elizaLogger.log(`⚠️ Received ${signal}. Shutting down Telegram bot gracefully...`)
+      ayaLogger.log(`⚠️ Received ${signal}. Shutting down Telegram bot gracefully...`)
       try {
         await this.stop(this.runtime)
-        elizaLogger.log('🛑 Telegram bot stopped gracefully')
+        ayaLogger.log('🛑 Telegram bot stopped gracefully')
       } catch (error) {
-        elizaLogger.error('❌ Error during Telegram bot shutdown:', error)
+        ayaLogger.error('❌ Error during Telegram bot shutdown:', error)
         throw error
       }
     }
@@ -174,9 +176,9 @@ export class TelegramClient implements Client {
       throw new Error('Telegram client runtime mismatch')
     }
 
-    elizaLogger.log('Stopping Telegram bot...')
+    ayaLogger.log('Stopping Telegram bot...')
     // await
     this.bot.stop()
-    elizaLogger.log('Telegram bot stopped')
+    ayaLogger.log('Telegram bot stopped')
   }
 }

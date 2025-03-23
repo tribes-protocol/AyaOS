@@ -1,6 +1,7 @@
 import type { TwitterConfig } from '@/clients/twitter/environment'
 import { RawTweetType, TwitterCookie } from '@/clients/twitter/types'
 import { isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import {
   ActionTimelineType,
   type IAgentRuntime,
@@ -8,7 +9,6 @@ import {
   type Memory,
   type State,
   type UUID,
-  elizaLogger,
   getEmbeddingZeroVector,
   stringToUuid
 } from '@elizaos/core'
@@ -252,40 +252,40 @@ export class ClientBase extends EventEmitter {
     const cachedCookies = await this.getCachedCookies(username)
 
     if (cachedCookies) {
-      elizaLogger.info('Using cached cookies')
+      ayaLogger.info('Using cached cookies')
       await this.setCookiesFromArray(cachedCookies)
     }
 
-    elizaLogger.log('Waiting for Twitter login')
+    ayaLogger.log('Waiting for Twitter login')
     while (retries > 0) {
       try {
         if (await this.twitterClient.isLoggedIn()) {
           // cookies are valid, no login required
-          elizaLogger.info('Successfully logged in.')
+          ayaLogger.info('Successfully logged in.')
           break
         } else {
           await this.twitterClient.login(username, password, email, twitter2faSecret)
           if (await this.twitterClient.isLoggedIn()) {
             // fresh login, store new cookies
-            elizaLogger.info('Successfully logged in.')
-            elizaLogger.info('Caching cookies')
+            ayaLogger.info('Successfully logged in.')
+            ayaLogger.info('Caching cookies')
             await this.cacheCookies(username, await this.twitterClient.getCookies())
             break
           }
         }
       } catch (error) {
         if (error instanceof Error) {
-          elizaLogger.error(`Login attempt failed: ${error.message}`)
+          ayaLogger.error(`Login attempt failed: ${error.message}`)
         } else {
-          elizaLogger.error(`Login attempt failed: ${error}`)
+          ayaLogger.error(`Login attempt failed: ${error}`)
         }
       }
 
       retries--
-      elizaLogger.error(`Failed to login to Twitter. Retrying... (${retries} attempts left)`)
+      ayaLogger.error(`Failed to login to Twitter. Retrying... (${retries} attempts left)`)
 
       if (retries === 0) {
-        elizaLogger.error('Max retries reached. Exiting login process.')
+        ayaLogger.error('Max retries reached. Exiting login process.')
         throw new Error('Twitter login failed after maximum retries.')
       }
 
@@ -295,8 +295,8 @@ export class ClientBase extends EventEmitter {
     this.profile = await this.fetchProfile(username)
 
     if (this.profile) {
-      elizaLogger.log('Twitter user ID:', this.profile.id)
-      elizaLogger.log('Twitter loaded:', JSON.stringify(this.profile, null, 10))
+      ayaLogger.log('Twitter user ID:', this.profile.id)
+      ayaLogger.log('Twitter loaded:', JSON.stringify(this.profile, null, 10))
       // Store profile info for use in responses
       this.runtime.character.twitterProfile = {
         id: this.profile.id,
@@ -314,7 +314,7 @@ export class ClientBase extends EventEmitter {
   }
 
   async fetchOwnPosts(count: number): Promise<Tweet[]> {
-    elizaLogger.debug('fetching own posts')
+    ayaLogger.debug('fetching own posts')
     if (isNull(this.profile)) {
       throw new Error('Profile is not loaded')
     }
@@ -327,23 +327,23 @@ export class ClientBase extends EventEmitter {
    * Fetch timeline for twitter account, optionally only from followed accounts
    */
   async fetchHomeTimeline(count: number, following?: boolean): Promise<Tweet[]> {
-    elizaLogger.debug('fetching home timeline')
+    ayaLogger.debug('fetching home timeline')
     const homeTimeline = following
       ? await this.twitterClient.fetchFollowingTimeline(count, [])
       : await this.twitterClient.fetchHomeTimeline(count, [])
 
-    elizaLogger.debug('Raw home timeline:', homeTimeline)
+    ayaLogger.debug('Raw home timeline:', homeTimeline)
     const processedTimeline = homeTimeline
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       .filter((t) => t.__typename !== 'TweetWithVisibilityResults') // Filter out visibility-restricted tweets
       .map((tweet) => this.parseTweet(tweet))
 
-    // elizaLogger.debug("process homeTimeline", processedTimeline);
+    // ayaLogger.debug("process homeTimeline", processedTimeline);
     return processedTimeline
   }
 
   async fetchTimelineForActions(count: number): Promise<Tweet[]> {
-    elizaLogger.debug('fetching timeline for actions')
+    ayaLogger.debug('fetching timeline for actions')
 
     const agentUsername = this.twitterConfig.TWITTER_USERNAME
 
@@ -386,17 +386,17 @@ export class ClientBase extends EventEmitter {
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         return (result ?? { tweets: [] }) as QueryTweetsResponse
       } catch (error) {
-        elizaLogger.error('Error fetching search tweets:', error)
+        ayaLogger.error('Error fetching search tweets:', error)
         return { tweets: [] }
       }
     } catch (error) {
-      elizaLogger.error('Error fetching search tweets:', error)
+      ayaLogger.error('Error fetching search tweets:', error)
       return { tweets: [] }
     }
   }
 
   private async populateTimeline(): Promise<void> {
-    elizaLogger.debug('populating timeline...')
+    ayaLogger.debug('populating timeline...')
 
     const cachedTimeline = await this.getCachedTimeline()
 
@@ -433,7 +433,7 @@ export class ClientBase extends EventEmitter {
 
         // Save the missing tweets as memories
         for (const tweet of tweetsToSave) {
-          elizaLogger.log('Saving Tweet', tweet.id)
+          ayaLogger.log('Saving Tweet', tweet.id)
 
           const roomId = stringToUuid(tweet.conversationId + '-' + this.runtime.agentId)
 
@@ -469,7 +469,7 @@ export class ClientBase extends EventEmitter {
               : undefined
           }
 
-          elizaLogger.log('Creating memory for tweet', tweet.id)
+          ayaLogger.log('Creating memory for tweet', tweet.id)
 
           // check if it already exists
           const memory = await this.runtime.messageManager.getMemoryById(
@@ -477,7 +477,7 @@ export class ClientBase extends EventEmitter {
           )
 
           if (memory) {
-            elizaLogger.log('Memory already exists, skipping timeline population')
+            ayaLogger.log('Memory already exists, skipping timeline population')
             break
           }
 
@@ -494,7 +494,7 @@ export class ClientBase extends EventEmitter {
           await this.cacheTweet(tweet)
         }
 
-        elizaLogger.log(`Populated ${tweetsToSave.length} missing tweets from the cache.`)
+        ayaLogger.log(`Populated ${tweetsToSave.length} missing tweets from the cache.`)
         return
       }
     }
@@ -539,7 +539,7 @@ export class ClientBase extends EventEmitter {
       (tweet) => !existingMemoryIds.has(stringToUuid(tweet.id + '-' + this.runtime.agentId))
     )
 
-    elizaLogger.debug({
+    ayaLogger.debug({
       processingTweets: tweetsToSave.map((tweet) => tweet.id).join(',')
     })
 
@@ -552,7 +552,7 @@ export class ClientBase extends EventEmitter {
 
     // Save the new tweets as memories
     for (const tweet of tweetsToSave) {
-      elizaLogger.log('Saving Tweet', tweet.id)
+      ayaLogger.log('Saving Tweet', tweet.id)
 
       const roomId = stringToUuid(tweet.conversationId + '-' + this.runtime.agentId)
       const userId =
@@ -614,7 +614,7 @@ export class ClientBase extends EventEmitter {
       })
 
       if (recentMessage.length > 0 && recentMessage[0].content === message.content) {
-        elizaLogger.debug('Message already saved', recentMessage[0].id)
+        ayaLogger.debug('Message already saved', recentMessage[0].id)
       } else {
         await this.runtime.messageManager.createMemory({
           ...message,

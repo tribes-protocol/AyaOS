@@ -4,7 +4,8 @@ import { createCastMemory } from '@/clients/farcaster/memory'
 import { formatTimeline, postTemplate } from '@/clients/farcaster/prompts'
 import { castUuid, MAX_CAST_LENGTH } from '@/clients/farcaster/utils'
 import { IAyaRuntime } from '@/common/iruntime'
-import { composeContext, elizaLogger, generateText, ModelClass, stringToUuid } from '@elizaos/core'
+import { ayaLogger } from '@/common/logger'
+import { composeContext, generateText, ModelClass, stringToUuid } from '@elizaos/core'
 
 export class FarcasterPostManager {
   client: FarcasterClient
@@ -26,28 +27,28 @@ export class FarcasterPostManager {
     this.isDryRun = this.client.farcasterConfig?.FARCASTER_DRY_RUN ?? false
 
     // Log configuration on initialization
-    elizaLogger.log('Farcaster Client Configuration:')
-    elizaLogger.log(`- FID: ${this.fid}`)
-    elizaLogger.log(`- Dry Run Mode: ${this.isDryRun ? 'enabled' : 'disabled'}`)
-    elizaLogger.log(
+    ayaLogger.log('Farcaster Client Configuration:')
+    ayaLogger.log(`- FID: ${this.fid}`)
+    ayaLogger.log(`- Dry Run Mode: ${this.isDryRun ? 'enabled' : 'disabled'}`)
+    ayaLogger.log(
       `- Enable Post: ${this.client.farcasterConfig.ENABLE_POST ? 'enabled' : 'disabled'}`
     )
     if (this.client.farcasterConfig.ENABLE_POST) {
-      elizaLogger.log(
+      ayaLogger.log(
         `- Post Interval: ${this.client.farcasterConfig.POST_INTERVAL_MIN}-
         ${this.client.farcasterConfig.POST_INTERVAL_MAX} minutes`
       )
-      elizaLogger.log(
+      ayaLogger.log(
         `- Post Immediately: ${this.client.farcasterConfig.POST_IMMEDIATELY ? 'enabled' : 'disabled'}`
       )
     }
-    elizaLogger.log(
+    ayaLogger.log(
       `- Action Processing: ${this.client.farcasterConfig.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'}`
     )
-    elizaLogger.log(`- Action Interval: ${this.client.farcasterConfig.ACTION_INTERVAL} minutes`)
+    ayaLogger.log(`- Action Interval: ${this.client.farcasterConfig.ACTION_INTERVAL} minutes`)
 
     if (this.isDryRun) {
-      elizaLogger.log(
+      ayaLogger.log(
         'Farcaster client initialized in dry run mode - no actual casts should be posted'
       )
     }
@@ -69,7 +70,7 @@ export class FarcasterPostManager {
         try {
           await this.generateNewCast()
         } catch (error) {
-          elizaLogger.error(error)
+          ayaLogger.error(error)
           return
         }
       }
@@ -78,7 +79,7 @@ export class FarcasterPostManager {
         void generateNewCastLoop() // Set up next iteration
       }, delay)
 
-      elizaLogger.log(`Next cast scheduled in ${randomMinutes} minutes`)
+      ayaLogger.log(`Next cast scheduled in ${randomMinutes} minutes`)
     }
 
     if (this.client.farcasterConfig.ENABLE_POST) {
@@ -94,7 +95,7 @@ export class FarcasterPostManager {
   }
 
   private async generateNewCast(): Promise<void> {
-    elizaLogger.info('Generating new cast')
+    ayaLogger.info('Generating new cast')
     try {
       const profile = await this.client.getProfile(this.fid)
 
@@ -144,7 +145,7 @@ export class FarcasterPostManager {
       })
 
       if (!shouldContinue) {
-        elizaLogger.info('FarcasterPostManager received pre:llm event but it was suppressed')
+        ayaLogger.info('FarcasterPostManager received pre:llm event but it was suppressed')
         return
       }
 
@@ -162,7 +163,7 @@ export class FarcasterPostManager {
       })
 
       if (!shouldContinue) {
-        elizaLogger.info('FarcasterPostManager received post:llm event but it was suppressed')
+        ayaLogger.info('FarcasterPostManager received post:llm event but it was suppressed')
         return
       }
 
@@ -186,7 +187,7 @@ export class FarcasterPostManager {
       }
 
       if (this.runtime.getSetting('FARCASTER_DRY_RUN') === 'true') {
-        elizaLogger.info(`Dry run: would have cast: ${content}`)
+        ayaLogger.info(`Dry run: would have cast: ${content}`)
         return
       }
 
@@ -214,7 +215,7 @@ export class FarcasterPostManager {
 
         await this.runtime.ensureParticipantInRoom(this.runtime.agentId, roomId)
 
-        elizaLogger.info(`[Farcaster Neynar Client] Published cast ${cast.hash}`)
+        ayaLogger.info(`[Farcaster Neynar Client] Published cast ${cast.hash}`)
 
         await this.runtime.messageManager.createMemory(
           createCastMemory({
@@ -225,10 +226,10 @@ export class FarcasterPostManager {
           })
         )
       } catch (error) {
-        elizaLogger.error('Error sending cast:', error)
+        ayaLogger.error('Error sending cast:', error)
       }
     } catch (error) {
-      elizaLogger.error('Error generating new cast:', error)
+      ayaLogger.error('Error generating new cast:', error)
     }
   }
 }

@@ -11,10 +11,10 @@ import type { Cast, Profile } from '@/clients/farcaster/types'
 import { castUuid } from '@/clients/farcaster/utils'
 import { hasActions } from '@/common/functions'
 import { IAyaRuntime } from '@/common/iruntime'
+import { ayaLogger } from '@/common/logger'
 import {
   composeContext,
   type Content,
-  elizaLogger,
   generateMessageResponse,
   generateShouldRespond,
   type HandlerCallback,
@@ -38,7 +38,7 @@ export class FarcasterInteractionManager {
       try {
         await this.handleInteractions()
       } catch (error) {
-        elizaLogger.error(error)
+        ayaLogger.error(error)
       }
 
       // Always set up next check, even if there was an error
@@ -58,7 +58,7 @@ export class FarcasterInteractionManager {
   private async handleInteractions(): Promise<void> {
     const agentFid = this.client.farcasterConfig?.FARCASTER_FID ?? 0
     if (!agentFid) {
-      elizaLogger.info('No FID found, skipping interactions')
+      ayaLogger.info('No FID found, skipping interactions')
       return
     }
 
@@ -85,7 +85,7 @@ export class FarcasterInteractionManager {
         continue
       }
 
-      elizaLogger.info('new mention received:', mention.text)
+      ayaLogger.info('new mention received:', mention.text)
 
       const username = mention.profile.username
 
@@ -134,12 +134,12 @@ export class FarcasterInteractionManager {
     thread: Cast[]
   }): Promise<{ text: string; action: string }> {
     if (cast.profile.fid === agent.fid) {
-      elizaLogger.info('skipping cast from bot itself', cast.hash)
+      ayaLogger.info('skipping cast from bot itself', cast.hash)
       return { text: '', action: 'IGNORE' }
     }
 
     if (!memory.content.text) {
-      elizaLogger.info('skipping cast with no text', cast.hash)
+      ayaLogger.info('skipping cast with no text', cast.hash)
       return { text: '', action: 'IGNORE' }
     }
 
@@ -206,7 +206,7 @@ export class FarcasterInteractionManager {
     })
 
     if (shouldRespondResponse === 'IGNORE' || shouldRespondResponse === 'STOP') {
-      elizaLogger.info(
+      ayaLogger.info(
         `Not responding to cast because generated ShouldRespond was ${shouldRespondResponse}`
       )
       return { text: '', action: 'IGNORE' }
@@ -227,7 +227,7 @@ export class FarcasterInteractionManager {
     })
 
     if (!shouldContinue) {
-      elizaLogger.info('AgentcoinClient received prellm event but it was suppressed')
+      ayaLogger.info('AgentcoinClient received prellm event but it was suppressed')
       return { text: '', action: 'IGNORE' }
     }
 
@@ -245,7 +245,7 @@ export class FarcasterInteractionManager {
     })
 
     if (!shouldContinue) {
-      elizaLogger.info('AgentcoinClient received postllm event but it was suppressed')
+      ayaLogger.info('AgentcoinClient received postllm event but it was suppressed')
       return { text: '', action: 'IGNORE' }
     }
 
@@ -256,7 +256,7 @@ export class FarcasterInteractionManager {
     }
 
     if (this.client.farcasterConfig?.FARCASTER_DRY_RUN) {
-      elizaLogger.info(
+      ayaLogger.info(
         `Dry run: would have responded to cast ${cast.hash} with ${responseContent.text}`
       )
       return { text: '', action: 'IGNORE' }
@@ -287,7 +287,7 @@ export class FarcasterInteractionManager {
         }
         return results.map((result) => result.memory)
       } catch (error) {
-        elizaLogger.error('Error sending response cast:', error)
+        ayaLogger.error('Error sending response cast:', error)
         return []
       }
     }
@@ -308,7 +308,7 @@ export class FarcasterInteractionManager {
     })
 
     if (!shouldContinue) {
-      elizaLogger.info('AgentcoinClient received preaction event but it was suppressed')
+      ayaLogger.info('AgentcoinClient received preaction event but it was suppressed')
       return { text: '', action: 'IGNORE' }
     }
 
@@ -325,7 +325,7 @@ export class FarcasterInteractionManager {
         })
 
         if (!shouldContinue) {
-          elizaLogger.info('AgentcoinClient received postaction event but it was suppressed')
+          ayaLogger.info('AgentcoinClient received postaction event but it was suppressed')
           return []
         }
 

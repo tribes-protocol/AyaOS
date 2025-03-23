@@ -3,7 +3,7 @@ import { type FarcasterConfig } from '@/clients/farcaster/environment'
 import { FarcasterInteractionManager } from '@/clients/farcaster/interactions'
 import { FarcasterPostManager } from '@/clients/farcaster/post'
 import { Client, IAyaRuntime } from '@/common/iruntime'
-import { elizaLogger } from '@elizaos/core'
+import { ayaLogger } from '@/common/logger'
 import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk'
 
 /**
@@ -45,7 +45,7 @@ export class FarcasterManager implements Client {
       farcasterConfig
     })
 
-    elizaLogger.success('Farcaster Neynar client initialized.')
+    ayaLogger.success('Farcaster Neynar client initialized.')
 
     this.posts = new FarcasterPostManager(this.client, runtime, this.signerUuid, cache)
 
@@ -56,7 +56,7 @@ export class FarcasterManager implements Client {
       cache
     )
 
-    elizaLogger.info('✅ Farcaster client initialized.')
+    ayaLogger.info('✅ Farcaster client initialized.')
   }
 
   async start(runtime: IAyaRuntime): Promise<void> {

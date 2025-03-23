@@ -1,12 +1,13 @@
 import { AGENTCOIN_MONITORING_ENABLED } from '@/common/env'
 import { isNull, isRequiredString } from '@/common/functions'
 import { OperationQueue } from '@/common/lang/operation_queue'
+import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { CharacterSchema, ServiceKind } from '@/common/types'
 import { EventService } from '@/services/event'
 import { IConfigService } from '@/services/interfaces'
 import { ProcessService } from '@/services/process'
-import { elizaLogger, IAgentRuntime, Service, ServiceType } from '@elizaos/core'
+import { IAgentRuntime, Service, ServiceType } from '@elizaos/core'
 import crypto from 'crypto'
 import express from 'express'
 import fs from 'fs'
@@ -36,15 +37,15 @@ export class ConfigService extends Service implements IConfigService {
   async initialize(_: IAgentRuntime): Promise<void> {}
 
   async start(): Promise<void> {
-    elizaLogger.info('Starting config service...')
+    ayaLogger.info('Starting config service...')
     // disable in dev mode
     if (process.env.NODE_ENV !== 'production') {
-      elizaLogger.info('Config service disabled in dev mode')
+      ayaLogger.info('Config service disabled in dev mode')
       return
     }
 
     if (!AGENTCOIN_MONITORING_ENABLED) {
-      elizaLogger.info('Agentcoin monitoring disabled')
+      ayaLogger.info('Agentcoin monitoring disabled')
       return
     }
 
@@ -59,7 +60,7 @@ export class ConfigService extends Service implements IConfigService {
 
     app.get('/command/new', async (req, res) => {
       const { kind } = req.query
-      elizaLogger.info(`Received command request: ${kind}`)
+      ayaLogger.info(`Received command request: ${kind}`)
 
       if (isNull(kind)) {
         res.status(400).json({ error: 'Kind parameter is required' })
@@ -76,7 +77,7 @@ export class ConfigService extends Service implements IConfigService {
             res.status(400).json({ error: `Invalid kind parameter: ${kind}` })
         }
       } catch (error) {
-        elizaLogger.error('Error processing command:', error)
+        ayaLogger.error('Error processing command:', error)
         res.status(500).json({ error: 'Internal server error' })
       }
     })
@@ -105,7 +106,7 @@ export class ConfigService extends Service implements IConfigService {
       }
 
       // kill the process and docker container should restart it
-      elizaLogger.info(`New character file detected. Restarting agent...`)
+      ayaLogger.info(`New character file detected. Restarting agent...`)
       const characterObject = CharacterSchema.parse(
         JSON.parse(fs.readFileSync(this.pathResolver.characterFile, 'utf8'))
       )
@@ -125,7 +126,7 @@ export class ConfigService extends Service implements IConfigService {
         const remoteUrl = await git.remote(['get-url', 'origin'])
 
         if (!isRequiredString(remoteUrl)) {
-          elizaLogger.error('No remote url found')
+          ayaLogger.error('No remote url found')
           return
         }
 
@@ -133,7 +134,7 @@ export class ConfigService extends Service implements IConfigService {
           this.gitCommitHash = commitHash
         } else {
           // kill the process and docker container should restart it
-          elizaLogger.info(
+          ayaLogger.info(
             `New code detected current=${this.gitCommitHash} new=${commitHash}. Restarting agent...`
           )
           this.gitCommitHash = commitHash
@@ -147,9 +148,9 @@ export class ConfigService extends Service implements IConfigService {
           e instanceof Error &&
           e.message.includes('Cannot use simple-git on a directory that does not exist')
         ) {
-          elizaLogger.info('Git directory not initiated yet')
+          ayaLogger.info('Git directory not initiated yet')
         } else {
-          elizaLogger.error('Error checking git status:', e)
+          ayaLogger.error('Error checking git status:', e)
         }
       }
     })
@@ -166,6 +167,6 @@ export class ConfigService extends Service implements IConfigService {
       }
       this.server = undefined
     }
-    elizaLogger.info('Stopping config service...')
+    ayaLogger.info('Stopping config service...')
   }
 }

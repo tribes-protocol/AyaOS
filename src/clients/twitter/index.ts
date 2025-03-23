@@ -4,7 +4,7 @@ import { TwitterInteractionClient } from '@/clients/twitter/interactions'
 import { TwitterPostClient } from '@/clients/twitter/post'
 import { TwitterSearchClient } from '@/clients/twitter/search'
 import { Client, IAyaRuntime } from '@/common/iruntime'
-import { elizaLogger } from '@elizaos/core'
+import { ayaLogger } from '@/common/logger'
 
 /**
  * A manager that orchestrates all specialized Twitter logic:
@@ -31,18 +31,18 @@ export class TwitterManager implements Client {
 
     // Optional search logic (enabled if TWITTER_SEARCH_ENABLE is true)
     if (twitterConfig.TWITTER_SEARCH_ENABLE) {
-      elizaLogger.warn('Twitter/X client running in a mode that:')
-      elizaLogger.warn('1. violates consent of random users')
-      elizaLogger.warn('2. burns your rate limit')
-      elizaLogger.warn('3. can get your account banned')
-      elizaLogger.warn('use at your own risk')
+      ayaLogger.warn('Twitter/X client running in a mode that:')
+      ayaLogger.warn('1. violates consent of random users')
+      ayaLogger.warn('2. burns your rate limit')
+      ayaLogger.warn('3. can get your account banned')
+      ayaLogger.warn('use at your own risk')
       this.search = new TwitterSearchClient(this.client, runtime)
     }
 
     // Mentions and interactions
     this.interaction = new TwitterInteractionClient(this.client, runtime)
 
-    elizaLogger.info('🐦 Twitter client initialized')
+    ayaLogger.info('🐦 Twitter client initialized')
   }
 
   async start(runtime: IAyaRuntime): Promise<TwitterManager> {
@@ -50,7 +50,7 @@ export class TwitterManager implements Client {
       throw new Error('Twitter client runtime mismatch')
     }
 
-    elizaLogger.log('Twitter client started')
+    ayaLogger.log('Twitter client started')
 
     // Initialize login/session
     await this.client.init()
@@ -74,7 +74,7 @@ export class TwitterManager implements Client {
       throw new Error('Twitter client runtime mismatch')
     }
 
-    elizaLogger.warn('Twitter client does not support stopping yet')
+    ayaLogger.warn('Twitter client does not support stopping yet')
   }
 }
 
@@ -82,7 +82,7 @@ export const TwitterClientInterface: Client = {
   async start(runtime: IAyaRuntime) {
     const twitterConfig: TwitterConfig = await validateTwitterConfig(runtime)
 
-    elizaLogger.log('Twitter client started')
+    ayaLogger.log('Twitter client started')
 
     const manager = new TwitterManager(runtime, twitterConfig)
 
@@ -104,7 +104,7 @@ export const TwitterClientInterface: Client = {
   },
 
   async stop(_runtime: IAyaRuntime) {
-    elizaLogger.warn('Twitter client does not support stopping yet')
+    ayaLogger.warn('Twitter client does not support stopping yet')
   }
 }
 
