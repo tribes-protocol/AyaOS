@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.32
+
+### Patch Changes
+
+- 9a0ef9e: Switch elizaLogger -> ayaLogger for better json handling
+
 ## 0.0.31
 
 ### Patch Changes
