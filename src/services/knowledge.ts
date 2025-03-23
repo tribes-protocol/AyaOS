@@ -1,5 +1,5 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
-import { calculateChecksum } from '@/common/functions'
+import { calculateChecksum, isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { AyaRuntime } from '@/common/runtime'
 import { Identity, Knowledge, RagKnowledgeItemContent, ServiceKind } from '@/common/types'
@@ -106,13 +106,13 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       cursor = knowledges[knowledges.length - 1].id
     }
 
-    ayaLogger.info(`Found ${allKnowledge.length} knowledges`)
+    ayaLogger.debug(`Found ${allKnowledge.length} knowledges`)
 
     return allKnowledge
   }
 
   private async syncKnowledge(): Promise<void> {
-    ayaLogger.info('Syncing knowledge...')
+    ayaLogger.debug('Syncing knowledge...')
     try {
       const knowledges = await this.getAllKnowledge()
 
@@ -133,7 +133,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           }
         })
 
-        ayaLogger.info(`Found ${AGENTCOIN_SOURCE} ${results.length} knowledge items in page ${i++}`)
+        ayaLogger.debug(
+          `Found ${AGENTCOIN_SOURCE} ${results.length} knowledge items in page ${i++}`
+        )
 
         // Add their IDs to the set (no filtering needed anymore as it's done at DB level)
         for (const knowledge of results) {
@@ -165,7 +167,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       }
 
       await this.runtime.ragKnowledgeManager.cleanupDeletedKnowledgeFiles()
-      ayaLogger.info(
+      ayaLogger.debug(
         `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ` +
           `${knowledgeIdsToRemove.length} items removed`
       )
@@ -292,7 +294,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     const databaseAdapter = this.runtime.databaseAdapter
     const agentId = this.runtime.agentId
     const checksum = calculateChecksum(knowledge.text)
-    const kbType = knowledge.metadata?.type ?? 'unknown'
+    const kind = knowledge.metadata?.kind ?? '<unknown>'
     const storedKB: RAGKnowledgeItem | undefined = (
       await databaseAdapter.getKnowledge({
         id,
@@ -301,8 +303,10 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       })
     )[0]
 
-    if (storedKB?.content.metadata?.checksum === checksum) {
-      ayaLogger.debug(`[${kbType}] knowledge=[${id}] already exists. skipping...`)
+    if (isNull(storedKB)) {
+      ayaLogger.debug(`[${kind}] knowledge=[${id}] does not exist. creating...`)
+    } else if (storedKB?.content.metadata?.checksum === checksum) {
+      ayaLogger.debug(`[${kind}] knowledge=[${id}] already exists. skipping...`)
       return
     }
 
@@ -316,7 +320,6 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           ...Object.fromEntries(
             Object.entries(knowledge.metadata || {}).filter(([_, v]) => v !== null)
           ),
-          // Move checksum and other properties to metadata
           isMain: true,
           isChunk: false,
           originalId: undefined,
@@ -342,7 +345,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       const chunk = chunks[i]
       const chunkId: UUID = stringToUuid(`${id}-${i}`)
 
-      ayaLogger.info(`processing chunk id=${chunkId} page=${i} id=${id}`)
+      ayaLogger.info(`processing chunk id=${chunkId} page=${i} id=${id} kind=${kind}`)
 
       const embeddings = await embed(this.runtime, chunk.pageContent)
       const knowledgeItem: RAGKnowledgeItem = {
@@ -359,7 +362,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
             originalId: id,
             chunkIndex: i,
             source: undefined,
-            type: kbType,
+            kind,
             checksum
           }
         },

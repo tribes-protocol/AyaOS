@@ -472,7 +472,8 @@ export const RagKnowledgeItemContentSchema = z.object({
       chunkIndex: z.number().optional().nullable(),
       source: z.string().optional().nullable(),
       type: z.string().optional().nullable(),
-      isShared: z.boolean().optional().nullable()
+      isShared: z.boolean().optional().nullable(),
+      kind: z.string().optional().nullable()
     })
     .passthrough()
     .optional()
