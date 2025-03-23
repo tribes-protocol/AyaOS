@@ -61,7 +61,7 @@ export class AyaPostgresDatabaseAdapter
     params: FetchKnowledgeParams
   ): Promise<{ results: RAGKnowledgeItem[]; cursor?: string }> {
     return this.withCircuitBreaker(async () => {
-      const { agentId, limit = 20, cursor, filters } = params
+      const { agentId, limit = 20, cursor, filters, sort = 'desc' } = params
 
       const conditions = [eq(Knowledges.agentId, agentId)]
 
@@ -71,11 +71,19 @@ export class AyaPostgresDatabaseAdapter
           const decoded = JSON.parse(Buffer.from(cursor, 'base64').toString())
           const { createdAt, id } = decoded
 
-          conditions.push(
-            sql`(${Knowledges.createdAt} < ${new Date(createdAt).toISOString()}
-                OR (${Knowledges.createdAt} = ${new Date(createdAt).toISOString()} 
-                AND ${Knowledges.id} < ${id}))`
-          )
+          if (sort === 'desc') {
+            conditions.push(
+              sql`(${Knowledges.createdAt} < ${new Date(createdAt).toISOString()}
+                  OR (${Knowledges.createdAt} = ${new Date(createdAt).toISOString()} 
+                  AND ${Knowledges.id} < ${id}))`
+            )
+          } else {
+            conditions.push(
+              sql`(${Knowledges.createdAt} > ${new Date(createdAt).toISOString()}
+                  OR (${Knowledges.createdAt} = ${new Date(createdAt).toISOString()} 
+                  AND ${Knowledges.id} > ${id}))`
+            )
+          }
         } catch (error) {
           throw new Error(`Invalid cursor format: ${error}`)
         }
@@ -105,7 +113,7 @@ export class AyaPostgresDatabaseAdapter
       }
 
       // Query with pagination
-      const results = await this.drizzleDb
+      const query = this.drizzleDb
         .select({
           id: Knowledges.id,
           agentId: Knowledges.agentId,
@@ -119,8 +127,16 @@ export class AyaPostgresDatabaseAdapter
         })
         .from(Knowledges)
         .where(and(...conditions))
-        .orderBy(desc(Knowledges.createdAt), desc(Knowledges.id))
         .limit(limit + 1) // Fetch one extra to determine if there are more items
+
+      // Add sorting based on sort
+      if (sort === 'desc') {
+        query.orderBy(desc(Knowledges.createdAt), desc(Knowledges.id))
+      } else {
+        query.orderBy(Knowledges.createdAt, Knowledges.id)
+      }
+
+      const results = await query
 
       // Determine if we have more items and create the next cursor
       const hasMoreItems = results.length > limit

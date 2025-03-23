@@ -245,19 +245,21 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   async list(options?: {
     limit?: number
+    sort?: 'asc' | 'desc'
     filters?: {
       isChunk?: boolean
       source?: string
       kind?: string
     }
   }): Promise<RAGKnowledgeItem[]> {
-    const { limit, filters } = options ?? {}
+    const { limit, filters, sort } = options ?? {}
 
     // Use fetchKnowledge which supports filters instead of getKnowledge
     const { results } = await this.runtime.databaseAdapter.fetchKnowledge({
       agentId: this.runtime.agentId,
       limit,
-      filters
+      filters,
+      sort
     })
 
     return results

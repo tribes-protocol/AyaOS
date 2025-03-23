@@ -107,7 +107,7 @@ export class AyaSqliteDatabaseAdapter extends SqliteDatabaseAdapter implements I
   async fetchKnowledge(
     params: FetchKnowledgeParams
   ): Promise<{ results: RAGKnowledgeItem[]; cursor?: string }> {
-    const { agentId, limit = 20, cursor, filters } = params
+    const { agentId, limit = 20, cursor, filters, sort = 'desc' } = params
 
     let sql = 'SELECT * FROM knowledge WHERE (agentId = ? OR isShared = 1)'
     const queryParams: (string | number | boolean)[] = [agentId]
@@ -129,7 +129,11 @@ export class AyaSqliteDatabaseAdapter extends SqliteDatabaseAdapter implements I
         const { createdAt, id } = decodedObj
 
         // In SQLite, we need to handle date comparison a bit differently
-        sql += ' AND (createdAt < ? OR (createdAt = ? AND id < ?))'
+        if (sort === 'desc') {
+          sql += ' AND (createdAt < ? OR (createdAt = ? AND id < ?))'
+        } else {
+          sql += ' AND (createdAt > ? OR (createdAt = ? AND id > ?))'
+        }
         queryParams.push(new Date(createdAt).toISOString(), new Date(createdAt).toISOString(), id)
       } catch (error) {
         throw new Error(`Invalid cursor format: ${error}`)
@@ -161,7 +165,9 @@ export class AyaSqliteDatabaseAdapter extends SqliteDatabaseAdapter implements I
     }
 
     // Add ordering and limit with one extra item to determine if there are more results
-    sql += ' ORDER BY createdAt DESC, id DESC LIMIT ?'
+    sql += ` ORDER BY createdAt ${sort === 'desc' ? 'DESC' : 'ASC'}, id ${
+      sort === 'desc' ? 'DESC' : 'ASC'
+    } LIMIT ?`
     queryParams.push(limit + 1)
 
     // Execute the query and handle results safely

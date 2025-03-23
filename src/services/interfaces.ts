@@ -33,6 +33,7 @@ export interface IConfigService {
 export interface IKnowledgeService {
   list(options: {
     limit?: number
+    sort?: 'asc' | 'desc'
     filters?: {
       isChunk?: boolean
       source?: string
