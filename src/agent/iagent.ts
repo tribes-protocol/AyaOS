@@ -1,7 +1,8 @@
+import { Action, Provider } from '@/common/iruntime'
 import { AyaRuntime } from '@/common/runtime'
 import { ContextHandler } from '@/common/types'
 import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
-import { Action, Plugin, Provider, Service, UUID } from '@elizaos/core'
+import { Plugin, Service, UUID } from '@elizaos/core'
 
 export interface IAyaAgent {
   readonly agentId: UUID

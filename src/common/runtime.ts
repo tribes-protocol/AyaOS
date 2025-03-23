@@ -1,23 +1,26 @@
 import { ensure, formatKnowledge, isNull } from '@/common/functions'
-import { AgentEventHandler, IAyaRuntime } from '@/common/iruntime'
+import { Action, AgentEventHandler, IAyaRuntime, Provider } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { Context, SdkEventKind } from '@/common/types'
+import { IAyaDatabaseAdapter } from '@/databases/interfaces'
+import { AyaRAGKnowledgeManager } from '@/managers/rag_knowledge'
 import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import {
-  Action,
   AgentRuntime,
   Character,
+  // eslint-disable-next-line no-restricted-imports
+  Action as ElizaAction,
+  // eslint-disable-next-line no-restricted-imports
+  Provider as ElizaProvider,
   Evaluator,
   ICacheManager,
-  IDatabaseAdapter,
   IMemoryManager,
   KnowledgeItem,
   Memory,
   ModelProviderName,
   Plugin,
-  Provider,
   Service,
   ServiceType,
   State,
@@ -26,9 +29,10 @@ import {
 
 export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
   private eventHandler: AgentEventHandler | undefined
-  public pathResolver: PathResolver
-  public matchThreshold: number
-  public matchLimit: number
+  public readonly pathResolver: PathResolver
+  public readonly matchThreshold: number
+  public readonly matchLimit: number
+  public readonly databaseAdapter: IAyaDatabaseAdapter
 
   public constructor(opts: {
     eliza: {
@@ -44,7 +48,7 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
       modelProvider: ModelProviderName
       services?: Service[]
       managers?: IMemoryManager[]
-      databaseAdapter: IDatabaseAdapter
+      databaseAdapter: IAyaDatabaseAdapter
       fetch?: typeof fetch | unknown
       speechModelPath?: string
       cacheManager: ICacheManager
@@ -54,10 +58,27 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     matchThreshold?: number
     matchLimit?: number
   }) {
-    super(opts.eliza)
+    super({
+      ...opts.eliza,
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      actions: opts.eliza.actions ? (opts.eliza.actions as ElizaAction[]) : undefined,
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      providers: opts.eliza.providers ? (opts.eliza.providers as ElizaProvider[]) : undefined
+    })
     this.pathResolver = opts.pathResolver
     this.matchThreshold = opts.matchThreshold ?? 0.4
     this.matchLimit = opts.matchLimit ?? 6
+    this.databaseAdapter = opts.eliza.databaseAdapter
+
+    // 😈 hacky way to set the knowledge root
+    // eslint-disable-next-line
+    ;(this as any).knowledgeRoot = this.pathResolver.knowledgeRoot
+
+    this.ragKnowledgeManager = new AyaRAGKnowledgeManager({
+      runtime: this,
+      tableName: 'knowledge',
+      knowledgeRoot: this.pathResolver.knowledgeRoot
+    })
   }
 
   async initialize(options?: { eventHandler: AgentEventHandler }): Promise<void> {

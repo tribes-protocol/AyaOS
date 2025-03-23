@@ -1,5 +1,5 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
-import { calculateChecksum, ensureUUID } from '@/common/functions'
+import { calculateChecksum, isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { AyaRuntime } from '@/common/runtime'
 import { Identity, Knowledge, RagKnowledgeItemContent, ServiceKind } from '@/common/types'
@@ -59,32 +59,25 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }
 
   async start(): Promise<void> {
-    // TODO: we have to disable this for now.
-    // 1. It's deleting knowledge page from different `source`
-    // 2. It's calling ` this.runtime.databaseAdapter.getKnowledge` which is super heavy
-    //    call without any paging. i.e. JFK agent I have > 300K records
-    // 3. We'll need to implement paging for `getKnowledge`. (using drizzle)
-    //
-    //
-    // if (this.isRunning) {
-    //   return
-    // }
-    // ayaLogger.info('📌 Knowledge sync job started...')
-    // this.isRunning = true
-    // while (this.isRunning) {
-    //   try {
-    //     await this.syncKnowledge()
-    //   } catch (error) {
-    //     if (error instanceof Error) {
-    //       ayaLogger.error('⚠️ Error in sync job:', error.message)
-    //     } else {
-    //       ayaLogger.error('⚠️ Error in sync job:', error)
-    //     }
-    //   }
-    //   // Wait for 1 minute before the next run
-    //   await new Promise((resolve) => setTimeout(resolve, 60_000))
-    // }
-    // ayaLogger.info('✅ Sync job stopped gracefully.')
+    if (this.isRunning) {
+      return
+    }
+
+    this.isRunning = true
+    while (this.isRunning) {
+      try {
+        await this.syncKnowledge()
+      } catch (error) {
+        if (error instanceof Error) {
+          ayaLogger.error('⚠️ Error in sync job:', error.message)
+        } else {
+          ayaLogger.error('⚠️ Error in sync job:', error)
+        }
+      }
+      // Wait for 1 minute before the next run
+      await new Promise((resolve) => setTimeout(resolve, 60_000))
+    }
+    ayaLogger.success('Sync job stopped gracefully.')
   }
 
   async stop(): Promise<void> {
@@ -113,29 +106,44 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       cursor = knowledges[knowledges.length - 1].id
     }
 
-    ayaLogger.info(`Found ${allKnowledge.length} knowledges`)
+    ayaLogger.debug(`Found ${allKnowledge.length} knowledges`)
 
     return allKnowledge
   }
 
   private async syncKnowledge(): Promise<void> {
-    ayaLogger.info('Syncing knowledge...')
+    ayaLogger.debug('Syncing knowledge...')
     try {
-      const [knowledges, existingKnowledges] = await Promise.all([
-        this.getAllKnowledge(),
-        this.runtime.databaseAdapter.getKnowledge({
-          agentId: this.runtime.agentId
-        })
-      ])
+      const knowledges = await this.getAllKnowledge()
 
-      const existingParentKnowledges = existingKnowledges.filter(
-        (knowledge) =>
-          !knowledge.content.metadata?.isChunk &&
-          knowledge.content.metadata?.source === AGENTCOIN_SOURCE
-      )
-      const existingKnowledgeIds = new Set(
-        existingParentKnowledges.map((knowledge) => knowledge.id)
-      )
+      // Use fetchKnowledge with filtering by source and isChunk
+      const existingKnowledgeIds = new Set<UUID>()
+
+      // Fetch parent knowledge items with source=agentcoin directly using database filters
+      let cursor: string | undefined
+      let i = 0
+      do {
+        const { results, cursor: nextCursor } = await this.runtime.databaseAdapter.fetchKnowledge({
+          agentId: this.runtime.agentId,
+          limit: 100,
+          cursor,
+          filters: {
+            isChunk: false,
+            source: AGENTCOIN_SOURCE
+          }
+        })
+
+        ayaLogger.debug(
+          `Found ${AGENTCOIN_SOURCE} ${results.length} knowledge items in page ${i++}`
+        )
+
+        // Add their IDs to the set (no filtering needed anymore as it's done at DB level)
+        for (const knowledge of results) {
+          existingKnowledgeIds.add(knowledge.id)
+        }
+
+        cursor = nextCursor
+      } while (cursor)
 
       const remoteKnowledgeIds: UUID[] = []
       for (const knowledge of knowledges) {
@@ -148,18 +156,20 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         }
       }
 
-      const knowledgesToRemove = existingParentKnowledges.filter(
-        (knowledge) => !remoteKnowledgeIds.includes(knowledge.id)
+      // Find IDs to remove by filtering existing IDs not present in remote IDs
+      const knowledgeIdsToRemove = Array.from(existingKnowledgeIds).filter(
+        (id) => !remoteKnowledgeIds.includes(id)
       )
 
-      for (const knowledge of knowledgesToRemove) {
-        ayaLogger.info(`Removing knowledge: ${knowledge.content.metadata?.source}`)
-        await this.remove(knowledge.id)
+      for (const knowledgeId of knowledgeIdsToRemove) {
+        ayaLogger.info(`Removing knowledge: ${knowledgeId}`)
+        await this.remove(knowledgeId)
       }
+
       await this.runtime.ragKnowledgeManager.cleanupDeletedKnowledgeFiles()
-      ayaLogger.info(
+      ayaLogger.debug(
         `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ` +
-          `${knowledgesToRemove.length} items removed`
+          `${knowledgeIdsToRemove.length} items removed`
       )
     } catch (error) {
       if (error instanceof Error) {
@@ -235,13 +245,26 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     }
   }
 
-  async list(options?: { limit?: number }): Promise<RAGKnowledgeItem[]> {
-    const { limit } = options ?? {}
+  async list(options?: {
+    limit?: number
+    sort?: 'asc' | 'desc'
+    filters?: {
+      isChunk?: boolean
+      source?: string
+      kind?: string
+    }
+  }): Promise<RAGKnowledgeItem[]> {
+    const { limit, filters, sort } = options ?? {}
 
-    return this.runtime.databaseAdapter.getKnowledge({
+    // Use fetchKnowledge which supports filters instead of getKnowledge
+    const { results } = await this.runtime.databaseAdapter.fetchKnowledge({
       agentId: this.runtime.agentId,
-      limit
+      limit,
+      filters,
+      sort
     })
+
+    return results
   }
 
   async search(options: {
@@ -271,7 +294,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     const databaseAdapter = this.runtime.databaseAdapter
     const agentId = this.runtime.agentId
     const checksum = calculateChecksum(knowledge.text)
-    const kbType = knowledge.metadata?.type ?? 'unknown'
+    const kind = knowledge.metadata?.kind ?? '<unknown>'
     const storedKB: RAGKnowledgeItem | undefined = (
       await databaseAdapter.getKnowledge({
         id,
@@ -280,8 +303,10 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       })
     )[0]
 
-    if (storedKB?.content.metadata?.checksum === checksum) {
-      ayaLogger.debug(`[${kbType}] knowledge=[${id}] already exists. skipping...`)
+    if (isNull(storedKB)) {
+      ayaLogger.debug(`[${kind}] knowledge=[${id}] does not exist. creating...`)
+    } else if (storedKB?.content.metadata?.checksum === checksum) {
+      ayaLogger.debug(`[${kind}] knowledge=[${id}] already exists. skipping...`)
       return
     }
 
@@ -295,7 +320,6 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           ...Object.fromEntries(
             Object.entries(knowledge.metadata || {}).filter(([_, v]) => v !== null)
           ),
-          // Move checksum and other properties to metadata
           isMain: true,
           isChunk: false,
           originalId: undefined,
@@ -321,7 +345,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       const chunk = chunks[i]
       const chunkId: UUID = stringToUuid(`${id}-${i}`)
 
-      ayaLogger.info(`processing chunk id=${chunkId} page=${i} id=${id}`)
+      ayaLogger.info(`processing chunk id=${chunkId} page=${i} id=${id} kind=${kind}`)
 
       const embeddings = await embed(this.runtime, chunk.pageContent)
       const knowledgeItem: RAGKnowledgeItem = {
@@ -338,7 +362,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
             originalId: id,
             chunkIndex: i,
             source: undefined,
-            type: kbType,
+            kind,
             checksum
           }
         },
@@ -352,73 +376,5 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   async remove(id: UUID): Promise<void> {
     await this.runtime.databaseAdapter.removeKnowledge(id)
-  }
-
-  private convertToRAGKnowledgeItems(
-    results: Array<{
-      id: string
-      agentId: string | null
-      content: RagKnowledgeItemContent
-      embedding?: number[] | null
-      createdAt?: Date | null
-      isMain?: boolean | null
-      originalId?: string | null
-      chunkIndex?: number | null
-      isShared?: boolean | null
-      similarity?: number | null
-    }>
-  ): RAGKnowledgeItem[] {
-    return results.map((result) => {
-      // Extract content text
-      let text = ''
-      if (typeof result.content === 'object' && result.content && 'text' in result.content) {
-        text = String(result.content.text)
-      } else {
-        text = JSON.stringify(result.content)
-      }
-
-      // Extract or create metadata
-      const metadata: Record<string, unknown> = {}
-
-      // Add properties from result
-      if (result.isMain !== null && result.isMain !== undefined) {
-        metadata.isMain = result.isMain
-      }
-      if (result.originalId) {
-        metadata.originalId = result.originalId
-      }
-      if (result.chunkIndex !== null && result.chunkIndex !== undefined) {
-        metadata.chunkIndex = result.chunkIndex
-      }
-      if (result.isShared !== null && result.isShared !== undefined) {
-        metadata.isShared = result.isShared
-      }
-
-      // Add metadata from content if available
-      if (
-        typeof result.content === 'object' &&
-        result.content &&
-        'metadata' in result.content &&
-        typeof result.content.metadata === 'object' &&
-        result.content.metadata
-      ) {
-        Object.assign(metadata, result.content.metadata)
-      }
-
-      const item: RAGKnowledgeItem = {
-        id: ensureUUID(result.id),
-        agentId: ensureUUID(result.agentId),
-        content: {
-          text,
-          metadata
-        },
-        ...(result.similarity !== undefined && result.similarity !== null
-          ? { similarity: result.similarity }
-          : {}),
-        ...(result.embedding ? { embedding: new Float32Array(result.embedding) } : {}),
-        ...(result.createdAt ? { createdAt: result.createdAt.getTime() } : {})
-      }
-      return item
-    })
   }
 }
