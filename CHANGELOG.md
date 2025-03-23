@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.33
+
+### Patch Changes
+
+- a709adf: Improve type safety
+
 ## 0.0.32
 
 ### Patch Changes
