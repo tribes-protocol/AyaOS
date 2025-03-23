@@ -2,12 +2,13 @@ import { IAyaAgent } from '@/agent/iagent'
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { initializeClients } from '@/clients'
 import { getTokenForProvider } from '@/common/config'
-import { initializeDatabase } from '@/common/db'
 import { ensure, isNull } from '@/common/functions'
+import { Action, Provider } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { AyaRuntime } from '@/common/runtime'
 import { AyaOSOptions, Context, ContextHandler, ModelConfig, SdkEventKind } from '@/common/types'
+import { initializeDatabase } from '@/databases/db'
 import agentcoinPlugin from '@/plugins/agentcoin'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
@@ -20,12 +21,10 @@ import { ProcessService } from '@/services/process'
 import { WalletService } from '@/services/wallet'
 import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
 import {
-  Action,
   CacheManager,
   DbCacheAdapter,
   Evaluator,
   Plugin,
-  Provider,
   Service,
   UUID,
   type Character

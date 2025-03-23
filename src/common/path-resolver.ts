@@ -12,6 +12,7 @@ export class PathResolver {
   public readonly codeDir: string
   public readonly runtimeServerSocketFile: string
   public readonly dbFile: string
+  public readonly knowledgeRoot: string
 
   constructor(rootDir?: string) {
     if (rootDir && !path.isAbsolute(rootDir)) {
@@ -19,7 +20,6 @@ export class PathResolver {
     }
 
     this.rootDir = rootDir ?? path.join(os.homedir(), '.agentcoin-fun')
-    this.ensureRootDirExists()
 
     this.dataDir = this.rootDir
     this.characterFile = path.join(this.rootDir, 'character.json')
@@ -29,11 +29,18 @@ export class PathResolver {
     this.codeDir = path.join(this.rootDir, 'code')
     this.runtimeServerSocketFile = path.join(this.rootDir, 'runtime-server.sock')
     this.dbFile = path.join(this.rootDir, 'sqlite.db')
+    this.knowledgeRoot = path.join(this.rootDir, 'knowledgeFiles')
+
+    this.ensureRootDirExists()
   }
 
   private ensureRootDirExists(): void {
     if (!fs.existsSync(this.rootDir)) {
       fs.mkdirSync(this.rootDir, { recursive: true })
+    }
+
+    if (!fs.existsSync(this.knowledgeRoot)) {
+      fs.mkdirSync(this.knowledgeRoot, { recursive: true })
     }
   }
 }

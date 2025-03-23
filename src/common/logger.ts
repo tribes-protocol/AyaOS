@@ -32,6 +32,7 @@ const logLevel = process.env.DEFAULT_LOG_LEVEL || 'info'
 const loggerOptions = {
   level: logLevel,
   customLevels,
+  useOnlyCustomLevels: false,
   serializers: {
     err: pino.stdSerializers.errWithCause,
     '*': objectSerializer // Fallback serializer for any value
@@ -48,18 +49,21 @@ const loggerOptions = {
       }
 }
 
-// Create and export the logger
-export const ayaLogger = pino(loggerOptions)
+// Create the logger
+const logger = pino(loggerOptions)
 
-// // Helper function to properly log errors in a way that serializes them correctly
-// export function logError(message: string, error: unknown): void {
-//   ayaLogger.error({ err: error }, message)
-// }
+type CustomLogger = pino.Logger & {
+  fatal: pino.LogFn
+  error: pino.LogFn
+  warn: pino.LogFn
+  info: pino.LogFn
+  log: pino.LogFn
+  progress: pino.LogFn
+  success: pino.LogFn
+  debug: pino.LogFn
+  trace: pino.LogFn
+}
 
-// // Helper function to log objects using toJsonTree
-// export function logObject(message: string, obj: unknown): void {
-//   const serialized = toJsonTree(obj)
-//   ayaLogger.info({ obj: serialized }, message)
-// }
-
-export default ayaLogger
+// Wrap it with a proxy to avoid losing any functionality
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+export const ayaLogger: CustomLogger = logger as unknown as CustomLogger

@@ -1,5 +1,6 @@
 import { ensureUUID } from '@/common/functions'
 import { RagKnowledgeItemContent } from '@/common/types'
+import { FetchKnowledgeParams, IAyaDatabaseAdapter } from '@/databases/interfaces'
 import { Knowledges, Memories } from '@/databases/postgres/schema'
 import PostgresDatabaseAdapter from '@elizaos/adapter-postgres'
 import { Memory, RAGKnowledgeItem, UUID } from '@elizaos/core'
@@ -7,7 +8,10 @@ import { and, cosineDistance, desc, eq, gt, sql } from 'drizzle-orm'
 import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 
-export class AyaPostgresDatabaseAdapter extends PostgresDatabaseAdapter {
+export class AyaPostgresDatabaseAdapter
+  extends PostgresDatabaseAdapter
+  implements IAyaDatabaseAdapter
+{
   drizzleDb: PostgresJsDatabase
 
   constructor({ connectionString }: { connectionString: string }) {
@@ -26,6 +30,117 @@ export class AyaPostgresDatabaseAdapter extends PostgresDatabaseAdapter {
 
   async init(): Promise<void> {
     await super.init()
+
+    // Create indexes on JSON properties for better query performance
+    await this.createJsonIndexes()
+  }
+
+  private async createJsonIndexes(): Promise<void> {
+    return this.withCircuitBreaker(async () => {
+      // Create index for content->metadata->isChunk property
+      await this.drizzleDb.execute(sql`
+        CREATE INDEX IF NOT EXISTS knowledge_content_metadata_ischunk_idx 
+        ON knowledge ((content->'metadata'->>'isChunk'))
+      `)
+
+      // Create index for content->metadata->source property
+      await this.drizzleDb.execute(sql`
+        CREATE INDEX IF NOT EXISTS knowledge_content_metadata_source_idx 
+        ON knowledge ((content->'metadata'->>'source'))
+      `)
+
+      // Create index for content->metadata->kind property
+      await this.drizzleDb.execute(sql`
+        CREATE INDEX IF NOT EXISTS knowledge_content_metadata_kind_idx 
+        ON knowledge ((content->'metadata'->>'kind'))
+      `)
+    }, 'createJsonIndexes')
+  }
+
+  async fetchKnowledge(
+    params: FetchKnowledgeParams
+  ): Promise<{ results: RAGKnowledgeItem[]; cursor?: string }> {
+    return this.withCircuitBreaker(async () => {
+      const { agentId, limit = 20, cursor, filters } = params
+
+      const conditions = [eq(Knowledges.agentId, agentId)]
+
+      // If cursor is provided, decode it and add conditions
+      if (cursor) {
+        try {
+          const decoded = JSON.parse(Buffer.from(cursor, 'base64').toString())
+          const { createdAt, id } = decoded
+
+          conditions.push(
+            sql`(${Knowledges.createdAt} < ${new Date(createdAt).toISOString()}
+                OR (${Knowledges.createdAt} = ${new Date(createdAt).toISOString()} 
+                AND ${Knowledges.id} < ${id}))`
+          )
+        } catch (error) {
+          throw new Error(`Invalid cursor format: ${error}`)
+        }
+      }
+
+      // Add filter conditions from the filters parameter
+      if (filters) {
+        if (filters.isChunk !== undefined) {
+          // Use JSON path operator to filter on metadata.isChunk
+          conditions.push(
+            filters.isChunk
+              ? sql`(content->'metadata'->>'isChunk')::boolean = true`
+              : // eslint-disable-next-line max-len
+                sql`((content->'metadata'->>'isChunk')::boolean = false OR content->'metadata'->>'isChunk' IS NULL)`
+          )
+        }
+
+        if (filters.source !== undefined) {
+          // Use JSON path operator to filter on metadata.source
+          conditions.push(sql`content->'metadata'->>'source' = ${filters.source}`)
+        }
+
+        if (filters.kind !== undefined) {
+          // Use JSON path operator to filter on metadata.kind
+          conditions.push(sql`content->'metadata'->>'kind' = ${filters.kind}`)
+        }
+      }
+
+      // Query with pagination
+      const results = await this.drizzleDb
+        .select({
+          id: Knowledges.id,
+          agentId: Knowledges.agentId,
+          content: Knowledges.content,
+          embedding: Knowledges.embedding,
+          createdAt: Knowledges.createdAt,
+          isMain: Knowledges.isMain,
+          originalId: Knowledges.originalId,
+          chunkIndex: Knowledges.chunkIndex,
+          isShared: Knowledges.isShared
+        })
+        .from(Knowledges)
+        .where(and(...conditions))
+        .orderBy(desc(Knowledges.createdAt), desc(Knowledges.id))
+        .limit(limit + 1) // Fetch one extra to determine if there are more items
+
+      // Determine if we have more items and create the next cursor
+      const hasMoreItems = results.length > limit
+      const items = hasMoreItems ? results.slice(0, limit) : results
+
+      let nextCursor: string | undefined
+      if (hasMoreItems && items.length > 0) {
+        const lastItem = items[items.length - 1]
+        const cursorData = {
+          createdAt: lastItem.createdAt?.getTime(),
+          id: lastItem.id
+        }
+        nextCursor = Buffer.from(JSON.stringify(cursorData)).toString('base64')
+      }
+
+      return {
+        results: this.convertToRAGKnowledgeItems(items),
+        cursor: nextCursor
+      }
+    }, 'fetchKnowledge')
   }
 
   async searchMemoriesByEmbedding(

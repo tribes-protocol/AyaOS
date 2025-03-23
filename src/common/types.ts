@@ -1,14 +1,6 @@
 import { UUID_PATTERN } from '@/common/constants'
 import { isRequiredString, sortIdentities } from '@/common/functions'
-import {
-  Action,
-  Content,
-  Memory,
-  ModelConfiguration,
-  ModelProviderName,
-  State,
-  UUID
-} from '@elizaos/core'
+import { Content, Memory, ModelConfiguration, ModelProviderName, State, UUID } from '@elizaos/core'
 import { isAddress } from 'viem'
 import { z } from 'zod'
 
@@ -436,9 +428,6 @@ export const MessageEventSchema = z.discriminatedUnion('kind', [
 ])
 
 export type MessageEvent = z.infer<typeof MessageEventSchema>
-
-// type alias for some Eliza types
-export type Tool = Action
 
 export const CliAuthResponseSchema = z.object({
   id: z.string()
