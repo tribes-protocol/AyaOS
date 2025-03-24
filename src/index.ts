@@ -1,11 +1,14 @@
 import {
   Account,
   Actor,
+  composeContext,
   Content,
+  generateObject,
   Goal,
   GoalStatus,
   HandlerCallback,
   Memory,
+  ModelClass,
   ModelProviderName,
   Participant,
   Plugin,
@@ -30,8 +33,15 @@ export { MemoriesService } from '@/services/memories'
 export { WalletService } from '@/services/wallet'
 
 // Export values (classes, enums, functions)
-export { GoalStatus, ModelProviderName, Service, ServiceType, stringToUuid }
-
+export {
+  composeContext,
+  generateObject,
+  GoalStatus,
+  ModelProviderName,
+  Service,
+  ServiceType,
+  stringToUuid
+}
 // Export types (interfaces, type aliases)
 export type {
   Account,
@@ -40,6 +50,7 @@ export type {
   Goal,
   HandlerCallback,
   Memory,
+  ModelClass,
   Participant,
   Plugin,
   RAGKnowledgeItem,
