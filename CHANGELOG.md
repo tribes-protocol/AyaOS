@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.34
+
+### Patch Changes
+
+- ea7a336: export missed eliza types
+
 ## 0.0.33
 
 ### Patch Changes
