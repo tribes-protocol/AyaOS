@@ -347,7 +347,8 @@ export enum ServiceKind {
   agent = 'agent-service',
   knowledge = 'knowledge-service',
   knowledgeBase = 'knowledge-base-service',
-  memories = 'memories-service'
+  memories = 'memories-service',
+  store = 'store-service'
 }
 
 const PdfFileSchema = z.object({
@@ -519,3 +520,23 @@ export const MemoryContentSchema = z
   .passthrough()
 
 export type MemoryContent = z.infer<typeof MemoryContentSchema>
+
+export type ComparisonOperator<T> = {
+  $eq?: T
+  $ne?: T
+  $gt?: number
+  $gte?: number
+  $lt?: number
+  $lte?: number
+  $in?: T[]
+  $contains?: T[]
+}
+
+export type FilterValue<T> = T | ComparisonOperator<T>
+
+export type FilterPrimitive = string | number | boolean
+
+export type MemoryFilters = Record<
+  string,
+  FilterValue<FilterPrimitive> | FilterPrimitive[] | Record<string, FilterPrimitive>
+>

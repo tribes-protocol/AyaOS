@@ -58,3 +58,29 @@ export interface IMemoriesService {
     matchThreshold?: number
   }): Promise<Memory[]>
 }
+
+export interface StoreItem {
+  id: UUID
+  data: Record<string, unknown>
+  embedding?: number[]
+}
+
+export interface IStoreService {
+  insert(params: {
+    table: string
+    data: Record<string, unknown>
+    embedding?: number[]
+  }): Promise<StoreItem>
+  searchByEmbedding(params: {
+    table: string
+    embedding: number[]
+    limit: number
+    matchThreshold: number
+  }): Promise<StoreItem[]>
+  filter(params: {
+    table: string
+    filters: Record<string, unknown>
+    limit?: number
+  }): Promise<StoreItem[]>
+  delete(params: { table: string; id: string }): Promise<void>
+}

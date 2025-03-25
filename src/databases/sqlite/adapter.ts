@@ -1,8 +1,9 @@
-import { ensureUUID } from '@/common/functions'
+import { ensureUUID, isComparisonOperator } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
+import { ComparisonOperator, FilterPrimitive, MemoryFilters } from '@/common/types'
 import { FetchKnowledgeParams, IAyaDatabaseAdapter } from '@/databases/interfaces'
 import { SqliteDatabaseAdapter } from '@elizaos/adapter-sqlite'
-import { RAGKnowledgeItem } from '@elizaos/core'
+import { Memory, RAGKnowledgeItem } from '@elizaos/core'
 import Database from 'better-sqlite3'
 
 // Define the shape of cursor data for type safety
@@ -24,10 +25,203 @@ interface KnowledgeRow {
   isShared: number
 }
 
+// Define interface for memories table row
+interface MemoryRow {
+  id: string
+  type: string
+  roomId: string
+  agentId: string
+  userId: string
+  content: string
+  embedding?: Buffer
+  createdAt: string | number
+  unique?: number
+  [key: string]: unknown
+}
+
 export class AyaSqliteDatabaseAdapter extends SqliteDatabaseAdapter implements IAyaDatabaseAdapter {
   constructor(dbFile: string) {
     super(new Database(dbFile))
     ayaLogger.info('Using sqlite db')
+  }
+
+  async filterMemories(params: {
+    table: string
+    filters: MemoryFilters
+    limit?: number
+  }): Promise<Memory[]> {
+    const { table, filters, limit = 100 } = params
+
+    let sql = `SELECT * FROM memories WHERE type = ?`
+    const queryParams: (string | number | boolean)[] = [table]
+
+    if (filters && Object.keys(filters).length > 0) {
+      for (const [key, value] of Object.entries(filters)) {
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          if (isComparisonOperator(value)) {
+            const conditions = this.processComplexFilter(key, value)
+            if (conditions) {
+              sql += ` AND ${conditions.sql}`
+              queryParams.push(...conditions.params)
+            }
+          }
+        } else if (Array.isArray(value)) {
+          sql += ` AND json_extract(content, '$.${key}') IN (${value.map(() => '?').join(',')})`
+          queryParams.push(...value)
+        } else if (typeof value === 'boolean') {
+          sql += ` AND json_extract(content, '$.${key}') = ?`
+          queryParams.push(value ? 1 : 0)
+        } else {
+          sql += ` AND json_extract(content, '$.${key}') = ?`
+          queryParams.push(this.safelyConvertValue(value))
+        }
+      }
+    }
+
+    sql += ` ORDER BY createdAt DESC LIMIT ?`
+    queryParams.push(limit)
+
+    const stmt = this.db.prepare(sql)
+    const results = stmt.all(...queryParams)
+
+    const typedResults = this.safelyMapToMemoryRows(results)
+
+    return typedResults.map((row) => ({
+      id: ensureUUID(row.id),
+      userId: ensureUUID(row.userId),
+      agentId: ensureUUID(row.agentId),
+      roomId: ensureUUID(row.roomId),
+      createdAt: typeof row.createdAt === 'string' ? Date.parse(row.createdAt) : row.createdAt,
+      content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content,
+      embedding: row.embedding ? Array.from(new Uint8Array(row.embedding)) : undefined,
+      unique: row.unique === 1
+    }))
+  }
+
+  private safelyConvertValue(value: unknown): string | number | boolean {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return value
+    }
+    return String(value)
+  }
+
+  private processComplexFilter(
+    key: string,
+    operatorObj: ComparisonOperator<FilterPrimitive>
+  ): { sql: string; params: (string | number | boolean)[] } | null {
+    const conditions: string[] = []
+    const params: (string | number | boolean)[] = []
+
+    for (const [operator, operand] of Object.entries(operatorObj)) {
+      switch (operator) {
+        case '$gt':
+          conditions.push(`json_extract(content, '$.${key}') > ?`)
+          params.push(Number(operand))
+          break
+        case '$gte':
+          conditions.push(`json_extract(content, '$.${key}') >= ?`)
+          params.push(Number(operand))
+          break
+        case '$lt':
+          conditions.push(`json_extract(content, '$.${key}') < ?`)
+          params.push(Number(operand))
+          break
+        case '$lte':
+          conditions.push(`json_extract(content, '$.${key}') <= ?`)
+          params.push(Number(operand))
+          break
+        case '$eq':
+          conditions.push(`json_extract(content, '$.${key}') = ?`)
+          params.push(this.safelyConvertValue(operand))
+          break
+        case '$ne':
+          conditions.push(`json_extract(content, '$.${key}') != ?`)
+          params.push(this.safelyConvertValue(operand))
+          break
+        case '$in':
+          if (Array.isArray(operand)) {
+            conditions.push(
+              `json_extract(content, '$.${key}') IN (${operand.map(() => '?').join(',')})`
+            )
+            params.push(...operand.map((v) => this.safelyConvertValue(v)))
+          }
+          break
+        case '$contains':
+          if (Array.isArray(operand)) {
+            const arrayChecks = operand
+              .map((val) => {
+                params.push(this.safelyConvertValue(val))
+                return `json_array_contains(json_extract(content, '$.${key}'), ?)`
+              })
+              .join(' OR ')
+            conditions.push(`(${arrayChecks})`)
+          }
+          break
+      }
+    }
+
+    if (conditions.length === 0) return null
+
+    return {
+      sql: conditions.join(' AND '),
+      params
+    }
+  }
+
+  private safelyMapToMemoryRows(results: unknown): MemoryRow[] {
+    if (!Array.isArray(results)) {
+      return []
+    }
+
+    return results.map((item) => {
+      if (!item || typeof item !== 'object') {
+        return {
+          id: '',
+          type: '',
+          roomId: '',
+          agentId: '',
+          userId: '',
+          content: '{}',
+          createdAt: Date.now()
+        }
+      }
+
+      if (this.isRecordWithStringKeys(item)) {
+        return {
+          id: typeof item.id === 'string' ? item.id : '',
+          type: typeof item.type === 'string' ? item.type : '',
+          roomId: typeof item.roomId === 'string' ? item.roomId : '',
+          agentId: typeof item.agentId === 'string' ? item.agentId : '',
+          userId: typeof item.userId === 'string' ? item.userId : '',
+          content: typeof item.content === 'string' ? item.content : '{}',
+          embedding: Buffer.isBuffer(item.embedding) ? item.embedding : undefined,
+          createdAt:
+            typeof item.createdAt === 'string' || typeof item.createdAt === 'number'
+              ? item.createdAt
+              : Date.now(),
+          unique: typeof item.unique === 'number' ? item.unique : undefined
+        }
+      }
+
+      return {
+        id: '',
+        type: '',
+        roomId: '',
+        agentId: '',
+        userId: '',
+        content: '{}',
+        createdAt: Date.now()
+      }
+    })
+  }
+
+  private isRecordWithStringKeys(obj: object): obj is Record<string, unknown> {
+    return (
+      obj !== null &&
+      typeof obj === 'object' &&
+      !Array.isArray(obj) &&
+      Object.keys(obj).every((key) => typeof key === 'string')
+    )
   }
 
   async init(): Promise<void> {

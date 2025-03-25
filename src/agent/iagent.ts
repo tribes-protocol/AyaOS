@@ -1,7 +1,12 @@
 import { Action, Provider } from '@/common/iruntime'
 import { AyaRuntime } from '@/common/runtime'
 import { ContextHandler } from '@/common/types'
-import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
+import {
+  IKnowledgeService,
+  IMemoriesService,
+  IStoreService,
+  IWalletService
+} from '@/services/interfaces'
 import { Plugin, Service, UUID } from '@elizaos/core'
 
 export interface IAyaAgent {
@@ -10,6 +15,7 @@ export interface IAyaAgent {
   readonly knowledge: IKnowledgeService
   readonly memories: IMemoriesService
   readonly wallet: IWalletService
+  readonly store: IStoreService
 
   start(): Promise<void>
 
