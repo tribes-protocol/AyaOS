@@ -1,5 +1,4 @@
 import * as fs from 'fs'
-import * as os from 'os'
 import * as path from 'path'
 
 export class PathResolver {
@@ -19,7 +18,7 @@ export class PathResolver {
       rootDir = path.resolve(process.cwd(), rootDir)
     }
 
-    this.rootDir = rootDir ?? path.join(os.homedir(), '.agentcoin-fun')
+    this.rootDir = rootDir ?? path.join(process.cwd(), 'data')
 
     this.dataDir = this.rootDir
     this.characterFile = path.join(this.rootDir, 'character.json')

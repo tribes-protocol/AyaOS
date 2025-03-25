@@ -7,31 +7,15 @@ AyaOS is a high-level framework built on top of ElizaOS for creating autonomous 
 ### Prerequisites
 
 - Node.js 20 or higher
-- PostgreSQL (pgvector extension required) or Supabase
 
 ### Installation
 
 Choose one of these two options to get started:
 
-#### Option 1: Create a New Project
+#### Option 1: Clone the Agent Template (recommended)
 
-Create a new directory for your project and initialize it:
-
-```bash
-mkdir my-aya-agent
-cd my-aya-agent
-bun init -y # or npm init -y
-```
-
-Install AyaOS:
-
-```bash
-bun add @tribesxyz/ayaos # or npm install @tribesxyz/ayaos
-```
-
-#### Option 2: Clone the Agent Template
-
-Alternatively, you can clone the agent template repository:
+You can clone our agent template repository.
+This template comes with prettier, eslint, github workflows all setup so its recommended to use this template.
 
 ```bash
 git clone https://github.com/tribes-protocol/agent
@@ -50,15 +34,39 @@ pnpm install
 bun install
 ```
 
+#### Option 2: Add to existing project
+
+Create a new directory for your project and initialize it:
+
+```bash
+mkdir my-aya-agent
+cd my-aya-agent
+bun init -y # or npm init -y
+```
+
+Install AyaOS:
+
+```bash
+bun add @tribesxyz/ayaos # or npm install @tribesxyz/ayaos
+bun add -D tsx
+```
+
+Add a script to your package.json to run the agent:
+
+```json
+"scripts": {
+  "dev": "tsx src/index.ts"
+}
+```
+
 #### Set Environment Variables
 
 Create a `.env` file in the root directory with the following required variables:
 
 ```bash
-# Database configuration
-POSTGRES_URL=postgresql://username:password@localhost:5432/database_name
+USE_OPENAI_EMBEDDING=true # or false if you want to use a different embedding provider
 
-# Optional: API keys for various providers (if needed)
+# API keys for various providers (if needed)
 OPENAI_API_KEY=your_openai_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
 ```
@@ -68,18 +76,17 @@ ANTHROPIC_API_KEY=your_anthropic_api_key
 Create a file at `src/index.ts` (or edit the existing one if you cloned the template) with the following code:
 
 ```typescript
-import { Agent } from '@tribesxyz/ayaos'
+import { Agent, ayaLogger } from '@tribesxyz/ayaos'
 
 async function main() {
   // Create a new agent
   const agent = new Agent({
-    // Optional: custom data directory
-    dataDir: './agent-data'
+    dataDir: 'data' // default data directory
   })
 
   // Pre-LLM handler - executed before sending context to the LLM
   agent.on('pre:llm', async (context) => {
-    console.log('Processing before LLM:', context.memory?.content)
+    ayaLogger.info('Processing before LLM:', context.memory?.content)
     // Return true to continue execution, false to stop
     return true
   })
@@ -87,10 +94,10 @@ async function main() {
   // Start the agent
   await agent.start()
 
-  console.log('Agent started with ID:', agent.agentId)
+  ayaLogger.info('Agent started with ID:', agent.agentId)
 }
 
-main().catch(console.error)
+main().catch(ayaLogger.error)
 ```
 
 ### Running Your Agent
@@ -162,11 +169,11 @@ Returning `false` from any handler stops the execution flow, providing control o
 
 ### Data Directory
 
-AyaOS stores agent configuration, credentials, and other persistent data in a dedicated directory. By default, this is located at `~/.agentcoin-fun`, but you can specify a custom location when creating an agent:
+AyaOS stores agent configuration, credentials, and other persistent data in a dedicated directory. It is recommended to use the `data` directory in the root of your project.
 
 ```typescript
 const agent = new Agent({
-  dataDir: './custom-agent-data'
+  dataDir: 'data'
 })
 ```
 
@@ -196,35 +203,143 @@ AyaOS extends ElizaOS with several core abstractions:
 Actions are tools your agent can use to perform specific tasks. They follow a JSON Schema format for parameters and return results.
 
 ```typescript
-import { Agent, Action } from '@tribesxyz/ayaos'
+import type { Action, Content, HandlerCallback, IAyaRuntime, Memory, State } from '@tribesxyz/ayaos'
+import { ayaLogger, composeContext, generateObject, ModelClass } from '@tribesxyz/ayaos'
+import { z } from 'zod'
 
-// Define a simple greeting action
-const greetingAction: Action = {
-  name: 'greeting',
-  description: 'Greets a person by name',
-  parameters: {
-    type: 'object',
-    properties: {
-      name: {
-        type: 'string',
-        description: 'The name of the person to greet'
-      }
-    },
-    required: ['name']
+const SentimentAnalysisResultSchema = z.object({
+  sentiment: z.enum(['POSITIVE', 'NEGATIVE', 'NEUTRAL']),
+  confidence: z.number().min(0).max(1),
+  explanation: z.string()
+})
+
+export interface SentimentAnalysisContent extends Content {
+  sentiment: string
+  confidence: number
+  explanation: string
+}
+
+const sentimentAnalysisTemplate = `
+You are a sentiment analysis engine that evaluates text and determines its emotional tone.
+
+Your job is to analyze the text and respond with:
+- sentiment: one of ["POSITIVE", "NEGATIVE", "NEUTRAL"]
+- confidence: how confident you are in your analysis (0-1)
+- explanation: a brief explanation of your reasoning
+
+Text to analyze:
+{{text}}
+
+Respond with a JSON object.
+`
+
+export const analyzeSentimentAction: Action = {
+  name: 'ANALYZE_SENTIMENT',
+  similes: ['EVALUATE_TONE', 'DETECT_EMOTION'],
+  description: 'Analyzes the sentiment of a text using the LLM',
+  validate: async () => true,
+  handler: async (
+    runtime: IAyaRuntime,
+    message: Memory,
+    state?: State,
+    options?: { [key: string]: unknown },
+    callback?: HandlerCallback
+  ): Promise<boolean> => {
+    ayaLogger.info('Starting ANALYZE_SENTIMENT handler...')
+
+    if (!state) {
+      state = await runtime.composeState(message)
+    } else {
+      state = await runtime.updateRecentMessageState(state)
+    }
+
+    // Extract the text to analyze from the message or options
+    const textToAnalyze = options?.text || message.content?.text || ''
+
+    const context = composeContext({
+      state,
+      template: sentimentAnalysisTemplate,
+      variables: { text: textToAnalyze }
+    })
+
+    const raw = (
+      await generateObject({
+        runtime,
+        context,
+        modelClass: ModelClass.LARGE,
+        schema: SentimentAnalysisResultSchema
+      })
+    ).object
+
+    const sentimentResult = SentimentAnalysisResultSchema.parse(raw)
+
+    if (callback) {
+      await callback({
+        text: `Sentiment analysis completed ✅: ${JSON.stringify(sentimentResult, null, 2)}`,
+        content: sentimentResult
+      })
+    }
+
+    return true
   },
-  execute: async (params) => {
-    const { name } = params
-    return { result: `Hello, ${name}! Nice to meet you.` }
-  }
+  examples: [
+    [
+      {
+        user: '{{user1}}',
+        content: {
+          text: 'I absolutely love this new product! It has changed my life for the better.'
+        }
+      },
+      {
+        user: '{{user2}}',
+        content: {
+          action: 'ANALYZE_SENTIMENT',
+          text: 'Sentiment analysis completed ✅'
+        }
+      }
+    ],
+    [
+      {
+        user: '{{user1}}',
+        content: {
+          text: 'This experience was terrible. I will never use this service again.'
+        }
+      },
+      {
+        user: '{{user2}}',
+        content: {
+          action: 'ANALYZE_SENTIMENT',
+          text: 'Sentiment analysis completed ✅'
+        }
+      }
+    ],
+    [
+      {
+        user: '{{user1}}',
+        content: {
+          text: 'The package arrived on time. It contained all the items I ordered.'
+        }
+      },
+      {
+        user: '{{user2}}',
+        content: {
+          action: 'ANALYZE_SENTIMENT',
+          text: 'Sentiment analysis completed ✅'
+        }
+      }
+    ]
+  ]
 }
 
 async function main() {
   const agent = new Agent()
 
-  // Register the greeting action
-  agent.register('action', greetingAction)
+  // Register the sentiment analysis action
+  agent.register('action', sentimentAnalysisAction)
 
   await agent.start()
+
+  // Now the agent can use the sentiment analysis action when needed
 }
 ```
 
@@ -561,61 +676,6 @@ async function main() {
 }
 ```
 
-### Creating an Agent with Custom Action and Event Handlers
-
-```typescript
-import { Agent, Action } from '@tribesxyz/ayaos'
-
-async function main() {
-  const agent = new Agent()
-
-  // Register a custom action
-  const calculateAction: Action = {
-    name: 'calculate',
-    description: 'Performs a mathematical calculation',
-    parameters: {
-      type: 'object',
-      properties: {
-        expression: {
-          type: 'string',
-          description: 'The mathematical expression to evaluate'
-        }
-      },
-      required: ['expression']
-    },
-    execute: async (params) => {
-      const { expression } = params
-      try {
-        // Warning: Using eval for demonstration only
-        // In production, use a proper expression evaluator
-        const result = eval(expression)
-        return { result }
-      } catch (error) {
-        return { error: 'Invalid expression' }
-      }
-    }
-  }
-
-  agent.register('action', calculateAction)
-
-  // Add event handlers
-  agent.on('pre:llm', async (context) => {
-    // Add timestamp to context
-    context.state = context.state || {}
-    context.state.timestamp = new Date().toISOString()
-    return true
-  })
-
-  agent.on('post:action', async (context) => {
-    // Log action results
-    console.log('Action completed:', context.memory?.content)
-    return true
-  })
-
-  await agent.start()
-}
-```
-
 ## Troubleshooting
 
 ### Common Issues
@@ -623,10 +683,6 @@ async function main() {
 #### Agent fails to provision
 
 Ensure your internet connection is stable and you've completed the authentication process by visiting the URL shown in the terminal.
-
-#### Database connection errors
-
-Verify that your PostgreSQL database is running and the `POSTGRES_URL` environment variable is correctly set in your `.env` file.
 
 #### API key issues
 
