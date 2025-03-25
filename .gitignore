@@ -6,3 +6,4 @@ built
 data/
 db.sqlite
 .idea
+data_test

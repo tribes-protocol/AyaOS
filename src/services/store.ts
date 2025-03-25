@@ -2,7 +2,15 @@ import { ensureUUID } from '@/common/functions'
 import { AyaRuntime } from '@/common/runtime'
 import { MemoryFilters, ServiceKind } from '@/common/types'
 import { IStoreService, StoreItem } from '@/services/interfaces'
-import { Content, IAgentRuntime, Service, ServiceType, stringToUuid, UUID } from '@elizaos/core'
+import {
+  Content,
+  embed as elizaEmbed,
+  IAgentRuntime,
+  Service,
+  ServiceType,
+  stringToUuid,
+  UUID
+} from '@elizaos/core'
 
 export class StoreService extends Service implements IStoreService {
   constructor(private readonly runtime: AyaRuntime) {
@@ -87,5 +95,9 @@ export class StoreService extends Service implements IStoreService {
 
   async delete(params: { table: string; id: UUID }): Promise<void> {
     await this.runtime.databaseAdapter.removeMemory(params.id, params.table)
+  }
+
+  async embed(text: string): Promise<number[]> {
+    return elizaEmbed(this.runtime, text)
   }
 }

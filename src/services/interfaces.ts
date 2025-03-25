@@ -83,4 +83,5 @@ export interface IStoreService {
     limit?: number
   }): Promise<StoreItem[]>
   delete(params: { table: string; id: string }): Promise<void>
+  embed(text: string): Promise<number[]>
 }

@@ -148,13 +148,13 @@ export class AyaSqliteDatabaseAdapter extends SqliteDatabaseAdapter implements I
           break
         case '$contains':
           if (Array.isArray(operand)) {
-            const arrayChecks = operand
-              .map((val) => {
-                params.push(this.safelyConvertValue(val))
-                return `json_array_contains(json_extract(content, '$.${key}'), ?)`
-              })
-              .join(' OR ')
-            conditions.push(`(${arrayChecks})`)
+            conditions.push(
+              `EXISTS (SELECT 1 FROM json_each(json_extract(content, '$.${key}')) WHERE ${operand
+                .map(() => 'value = ?')
+                .join(' OR ')})`
+            )
+
+            params.push(...operand.map((v) => this.safelyConvertValue(v)))
           }
           break
       }
