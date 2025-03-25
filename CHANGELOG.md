@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.35
+
+### Patch Changes
+
+- 5810358: fix ModelClass export
+
 ## 0.0.34
 
 ### Patch Changes
