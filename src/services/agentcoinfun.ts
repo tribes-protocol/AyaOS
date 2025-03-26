@@ -2,6 +2,7 @@ import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { USER_CREDENTIALS_FILE } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { isNull, toJsonTree } from '@/common/functions'
+import { IAyaRuntime } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import {
@@ -19,26 +20,52 @@ import {
   User
 } from '@/common/types'
 import { KeychainService } from '@/services/keychain'
-import { IAgentRuntime, Service } from '@elizaos/core'
+import { Service } from '@elizaos/core'
 import * as fs from 'fs'
 
 export class AgentcoinService extends Service {
   private cachedCookie: string | undefined
   private cachedIdentity: Identity | undefined
+  readonly serviceType = ServiceKind.agent
+  readonly capabilityDescription = ''
 
-  static get serviceType(): string {
-    return ServiceKind.agent
-  }
-
-  constructor(
+  private constructor(
     private readonly keychain: KeychainService,
     private readonly api: AgentcoinAPI,
     private readonly pathResolver: PathResolver
   ) {
-    super()
+    super(undefined)
   }
 
-  async initialize(_: IAgentRuntime): Promise<void> {}
+  static getInstance(
+    keychain: KeychainService,
+    api: AgentcoinAPI,
+    pathResolver: PathResolver
+  ): AgentcoinService {
+    if (isNull(instance)) {
+      instance = new AgentcoinService(keychain, api, pathResolver)
+    }
+    return instance
+  }
+
+  static async start(_runtime: IAyaRuntime): Promise<Service> {
+    if (isNull(instance)) {
+      throw new Error('AgentcoinService not initialized')
+    }
+    return instance
+  }
+
+  static async stop(_runtime: IAyaRuntime): Promise<unknown> {
+    if (isNull(instance)) {
+      throw new Error('AgentcoinService not initialized')
+    }
+    await instance.stop()
+    return instance
+  }
+
+  async stop(): Promise<void> {
+    // nothing to do
+  }
 
   async getUser(identity: Identity): Promise<User | undefined> {
     return this.api.getUser(identity)
@@ -275,3 +302,5 @@ export class AgentcoinService extends Service {
     }
   }
 }
+
+let instance: AgentcoinService | undefined

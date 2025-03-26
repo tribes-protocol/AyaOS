@@ -5,25 +5,24 @@ import {
   HandlerCallback,
   IAgentRuntime,
   Memory,
+  ProviderResult,
   Service,
   ServiceTypeName,
   State
 } from '@elizaos/core'
 
-export type ServiceLike<T> =
-  | ServiceTypeName
-  | string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  | ((new (...args: any[]) => T) & { serviceType: string })
+export type ServiceLike = ServiceTypeName | string
 
 export interface IAyaRuntime extends IAgentRuntime {
   readonly pathResolver: PathResolver
 
-  ensureService<T extends Service>(service: ServiceLike<T>, message?: string): T
+  ensureService<T extends Service>(service: ServiceLike, message?: string): T
 
   ensureSetting(key: string, message?: string): string
 
   databaseAdapter: IAyaDatabaseAdapter
+
+  // registerService(service: typeof Service): void
 }
 
 export type Client = {
@@ -47,22 +46,35 @@ export type Validator = (runtime: IAyaRuntime, message: Memory, state?: State) =
 
 export interface Action {
   /** Similar action descriptions */
-  similes: string[]
+  similes?: string[]
   /** Detailed description */
   description: string
   /** Example usages */
-  examples: ActionExample[][]
+  examples?: ActionExample[][]
   /** Handler function */
   handler: Handler
   /** Action name */
   name: string
   /** Validation function */
   validate: Validator
-  /** Whether to suppress the initial message when this action is used */
-  suppressInitialMessage?: boolean
 }
 
 export interface Provider {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get: (runtime: IAyaRuntime, message: Memory, state?: State) => Promise<any>
+  /** Provider name */
+  name: string
+  /** Description of the provider */
+  description?: string
+  /** Whether the provider is dynamic */
+  dynamic?: boolean
+  /** Position of the provider in the provider list, positive or negative */
+  position?: number
+  /**
+   * Whether the provider is private
+   *
+   * Private providers are not displayed in the regular provider list, they have to be
+   * called explicitly
+   */
+  private?: boolean
+  /** Data retrieval function */
+  get: (runtime: IAyaRuntime, message: Memory, state: State) => Promise<ProviderResult>
 }

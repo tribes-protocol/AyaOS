@@ -60,7 +60,10 @@ export class AyaService extends Service {
   }
 
   static async start(runtime: IAyaRuntime): Promise<Service> {
-    const agentcoinService = runtime.ensureService(AgentcoinService, 'Agentcoin service not found')
+    const agentcoinService = runtime.ensureService<AgentcoinService>(
+      AgentcoinService.serviceType,
+      'Agentcoin service not found'
+    )
 
     const socket = io(AGENTCOIN_FUN_API_URL, {
       reconnection: true,
@@ -184,7 +187,10 @@ export class AyaService extends Service {
   }
 
   private async handleSetCharacter(character: Character): Promise<void> {
-    const configService = this.runtime.ensureService(ConfigService, 'Config service not found')
+    const configService = this.runtime.ensureService<ConfigService>(
+      ConfigService.serviceType,
+      'Config service not found'
+    )
     // write the character to the character file
     await fs.promises.writeFile(
       this.runtime.pathResolver.characterFile,
@@ -196,8 +202,8 @@ export class AyaService extends Service {
   }
 
   private async sendStatus(channel: ChatChannel, status: MessageStatusEnum): Promise<() => void> {
-    const agentcoinService = this.runtime.ensureService(
-      AgentcoinService,
+    const agentcoinService = this.runtime.ensureService<AgentcoinService>(
+      AgentcoinService.serviceType,
       'Agentcoin service not found'
     )
     await agentcoinService.sendStatus(channel, status)
@@ -208,8 +214,8 @@ export class AyaService extends Service {
   }
 
   private async processMessage(channel: ChatChannel, data: unknown): Promise<void> {
-    const agentcoinService = this.runtime.ensureService(
-      AgentcoinService,
+    const agentcoinService = this.runtime.ensureService<AgentcoinService>(
+      AgentcoinService.serviceType,
       'Agentcoin service not found'
     )
     const identity = await agentcoinService.getIdentity()
@@ -295,8 +301,8 @@ export class AyaService extends Service {
     content: Content
     channel: ChatChannel
   }): Promise<Memory | undefined> {
-    const agentcoinService = this.runtime.ensureService(
-      AgentcoinService,
+    const agentcoinService = this.runtime.ensureService<AgentcoinService>(
+      AgentcoinService.serviceType,
       'Agentcoin service not found'
     )
 

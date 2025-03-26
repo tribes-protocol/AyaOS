@@ -12,7 +12,7 @@ export interface IAyaAgent {
 
   start(): Promise<void>
 
-  register(kind: 'service', handler: Service): Promise<void>
+  register(kind: 'service', handler: typeof Service): Promise<void>
   register(kind: 'provider', handler: Provider): Promise<void>
   register(kind: 'action', handler: Action): Promise<void>
   register(kind: 'plugin', handler: Plugin): Promise<void>

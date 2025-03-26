@@ -1,3 +1,4 @@
+import { isNull } from '@/common/functions'
 import { IAyaRuntime } from '@/common/iruntime'
 import { ServiceKind } from '@/common/types'
 import { IMemoriesService } from '@/services/interfaces'
@@ -7,7 +8,7 @@ export class MemoriesService extends Service implements IMemoriesService {
   public readonly capabilityDescription: string = 'Allows the agent to search for memories'
   protected readonly runtime: IAyaRuntime
 
-  constructor(runtime: IAyaRuntime) {
+  private constructor(runtime: IAyaRuntime) {
     super(runtime)
     this.runtime = runtime
   }
@@ -34,10 +35,20 @@ export class MemoriesService extends Service implements IMemoriesService {
   }
 
   static async start(_runtime: IAyaRuntime): Promise<Service> {
-    return new MemoriesService(_runtime)
+    if (isNull(instance)) {
+      instance = new MemoriesService(_runtime)
+    }
+    return instance
   }
 
-  static async stop(_runtime: IAyaRuntime): Promise<void> {}
+  static async stop(_runtime: IAyaRuntime): Promise<void> {
+    if (isNull(instance)) {
+      throw new Error('MemoriesService not initialized')
+    }
+    await instance.stop()
+  }
 
   async stop(): Promise<void> {}
 }
+
+let instance: MemoriesService | undefined

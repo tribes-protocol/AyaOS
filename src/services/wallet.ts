@@ -1,6 +1,6 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { isNull } from '@/common/functions'
-import { AyaRuntime } from '@/common/runtime'
+import { IAyaRuntime } from '@/common/iruntime'
 import {
   AgentWallet,
   AgentWalletKind,
@@ -10,29 +10,27 @@ import {
   Transaction
 } from '@/common/types'
 import { IWalletService } from '@/services/interfaces'
-import { IAgentRuntime, Service } from '@elizaos/core'
+import { Service } from '@elizaos/core'
 import { TurnkeyClient } from '@turnkey/http'
 import { ApiKeyStamper } from '@turnkey/sdk-server'
 import { createAccountWithAddress } from '@turnkey/viem'
-import { Account, createWalletClient, getAddress, http, WalletClient } from 'viem'
+import { Account, getAddress, WalletClient } from 'viem'
 import { base } from 'viem/chains'
 
 export class WalletService extends Service implements IWalletService {
   private readonly turnkey: TurnkeyClient
 
-  static get serviceType(): string {
-    return ServiceKind.wallet
-  }
+  readonly serviceType = ServiceKind.wallet
+  readonly capabilityDescription = ''
 
-  constructor(
+  private constructor(
     private readonly agentcoinCookie: string,
     private readonly agentcoinIdentity: Identity,
     private readonly agentcoinAPI: AgentcoinAPI,
-    private readonly runtime: AyaRuntime,
+    readonly runtime: IAyaRuntime,
     apiKeyStamper: ApiKeyStamper
   ) {
-    super()
-
+    super(runtime)
     this.turnkey = new TurnkeyClient(
       {
         baseUrl: 'https://api.turnkey.com'
@@ -41,7 +39,43 @@ export class WalletService extends Service implements IWalletService {
     )
   }
 
-  async initialize(_: IAgentRuntime): Promise<void> {}
+  static getInstance(
+    agentcoinCookie: string,
+    agentcoinIdentity: Identity,
+    agentcoinAPI: AgentcoinAPI,
+    runtime: IAyaRuntime,
+    apiKeyStamper: ApiKeyStamper
+  ): IWalletService {
+    if (isNull(instance)) {
+      instance = new WalletService(
+        agentcoinCookie,
+        agentcoinIdentity,
+        agentcoinAPI,
+        runtime,
+        apiKeyStamper
+      )
+    }
+    return instance
+  }
+
+  static async start(_runtime: IAyaRuntime): Promise<Service> {
+    if (isNull(instance)) {
+      throw new Error('WalletService not initialized')
+    }
+    return instance
+  }
+
+  static async stop(_runtime: IAyaRuntime): Promise<unknown> {
+    if (isNull(instance)) {
+      throw new Error('WalletService not initialized')
+    }
+    await instance.stop()
+    return instance
+  }
+
+  async stop(): Promise<void> {
+    // nothing to do
+  }
 
   async getDefaultWallet(kind: AgentWalletKind): Promise<AgentWallet> {
     const wallet = await this.agentcoinAPI.getDefaultWallet(this.agentcoinIdentity, kind, {
@@ -61,26 +95,14 @@ export class WalletService extends Service implements IWalletService {
     return account.signMessage({ message })
   }
 
-  async signAndSubmitTransaction(
-    wallet: AgentWallet,
+  async signAndSubmitTransaction(params: {
+    client: WalletClient
     transaction: Transaction
-  ): Promise<HexString> {
+  }): Promise<HexString> {
+    const { client, transaction } = params
     if (!isNull(transaction.chainId) && transaction.chainId !== base.id) {
       throw new Error(`Unsupported chainId: ${transaction.chainId}`)
     }
-
-    const baseRpcUrl = this.runtime.getSetting('BASE_RPC_URL')
-    if (isNull(baseRpcUrl)) {
-      throw new Error(
-        'BASE_RPC_URL is not set, you must add it in you character secrets or in the .env file'
-      )
-    }
-
-    const client: WalletClient = createWalletClient({
-      account: this.getAccount(wallet),
-      chain: base,
-      transport: http(baseRpcUrl)
-    })
 
     if (isNull(client.account)) {
       throw new Error('Failed to get account')
@@ -110,3 +132,5 @@ export class WalletService extends Service implements IWalletService {
     return account
   }
 }
+
+let instance: WalletService | undefined

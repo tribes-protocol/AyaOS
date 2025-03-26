@@ -1,17 +1,19 @@
 import { AGENTCOIN_MONITORING_ENABLED } from '@/common/env'
 import { isNull, isRequiredString } from '@/common/functions'
+import { IAyaRuntime } from '@/common/iruntime'
 import { OperationQueue } from '@/common/lang/operation_queue'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { CharacterSchema, ServiceKind } from '@/common/types'
 import { EventService } from '@/services/event'
+import { Service } from '@elizaos/core'
 import crypto from 'crypto'
 import express from 'express'
 import fs from 'fs'
 import net from 'net'
 import simpleGit from 'simple-git'
 
-export class ConfigService {
+export class ConfigService extends Service {
   private readonly operationQueue = new OperationQueue(1)
   private isRunning = false
   private gitCommitHash: string | undefined
@@ -19,14 +21,22 @@ export class ConfigService {
   private server: net.Server | undefined
   private shutdownFunc?: (signal?: string) => Promise<void>
 
-  static get serviceType(): string {
-    return ServiceKind.config
-  }
+  readonly serviceType = ServiceKind.config
+  readonly capabilityDescription = ''
 
-  constructor(
+  private constructor(
     private readonly eventService: EventService,
     private readonly pathResolver: PathResolver
-  ) {}
+  ) {
+    super(undefined)
+  }
+
+  static getInstance(eventService: EventService, pathResolver: PathResolver): ConfigService {
+    if (isNull(instance)) {
+      instance = new ConfigService(eventService, pathResolver)
+    }
+    return instance
+  }
 
   setShutdownFunc(func: (signal?: string) => Promise<void>): void {
     this.shutdownFunc = func
@@ -40,7 +50,7 @@ export class ConfigService {
     await this.shutdownFunc?.()
   }
 
-  async start(): Promise<void> {
+  private async start(): Promise<void> {
     ayaLogger.info('Starting config service...')
     // disable in dev mode
     if (process.env.NODE_ENV !== 'production') {
@@ -173,4 +183,23 @@ export class ConfigService {
     }
     ayaLogger.info('Stopping config service...')
   }
+
+  static async start(_runtime: IAyaRuntime): Promise<Service> {
+    if (isNull(instance)) {
+      throw new Error('ConfigService not initialized')
+    }
+    // don't await this. it'll lock up the main process
+    void instance.start()
+    return instance
+  }
+
+  static async stop(_runtime: IAyaRuntime): Promise<unknown> {
+    if (isNull(instance)) {
+      throw new Error('ConfigService not initialized')
+    }
+    await instance.stop()
+    return instance
+  }
 }
+
+let instance: ConfigService | undefined

@@ -480,12 +480,6 @@ export const CredentialsSchema = z.object({
 
 export type Credentials = z.infer<typeof CredentialsSchema>
 
-export type ModelConfig = {
-  provider: string
-  endpoint?: string
-  apiKey?: string
-}
-
 export interface AyaOSOptions {
   dataDir?: string
 }
@@ -509,6 +503,18 @@ export const RagKnowledgeItemContentSchema = z.object({
 })
 
 export type RagKnowledgeItemContent = z.infer<typeof RagKnowledgeItemContentSchema>
+
+export const RAGKnowledgeItemSchema = z.object({
+  id: UUIDSchema,
+  agentId: UUIDSchema,
+  content: RagKnowledgeItemContentSchema,
+  embedding: z.instanceof(Float32Array).optional(),
+  createdAt: z.number().optional(),
+  similarity: z.number().optional(),
+  score: z.number().optional()
+})
+
+export type RAGKnowledgeItem = z.infer<typeof RAGKnowledgeItemSchema>
 
 // Create a Zod schema for Content
 export const MemoryContentSchema = z

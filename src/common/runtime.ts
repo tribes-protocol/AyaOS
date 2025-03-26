@@ -55,20 +55,15 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     // })
   }
 
-  getService<T extends Service>(service: ServiceLike<T>): T | null {
-    if (typeof service === 'function') {
-      // Handle case where a class constructor is passed
-      const serviceType = service.serviceType
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      return super.getService(serviceType as ServiceTypeName) as T
-    }
+  getService<T extends Service>(service: ServiceLike): T | null {
     // Handle existing case where ServiceType or string is passed
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return super.getService(service as ServiceTypeName) as T
   }
 
-  ensureService<T extends Service>(service: ServiceLike<T>, message?: string): T {
-    return ensure(this.getService(service), message)
+  ensureService<T extends Service>(service: ServiceLike, message?: string): T {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    return ensure(this.getService(service), message) as T
   }
 
   ensureSetting(key: string, message?: string): string {
