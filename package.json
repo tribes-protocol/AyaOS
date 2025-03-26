@@ -22,7 +22,7 @@
     "@elizaos/adapter-postgres": "0.1.9",
     "@elizaos/adapter-sqlite": "0.1.9",
     "@elizaos/client-direct": "0.1.9",
-    "@elizaos/core": "0.1.9",
+    "@elizaos/core": "1.0.0-beta.7",
     "@elizaos/plugin-bootstrap": "0.1.9",
     "@langchain/community": "0.3.31",
     "@langchain/core": "0.3.40",

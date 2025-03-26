@@ -1,71 +1,25 @@
 import { PathResolver } from '@/common/path-resolver'
-import { Context, SdkEventKind } from '@/common/types'
 import { IAyaDatabaseAdapter } from '@/databases/interfaces'
 import {
   ActionExample,
-  Character,
   HandlerCallback,
   IAgentRuntime,
   Memory,
   Service,
-  ServiceType,
+  ServiceTypeName,
   State
 } from '@elizaos/core'
-import { UUID } from 'crypto'
 
-export type AgentEventHandler = (event: SdkEventKind, params: Context) => Promise<boolean>
+export type ServiceLike<T> =
+  | ServiceTypeName
+  | string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  | ((new (...args: any[]) => T) & { serviceType: string })
 
 export interface IAyaRuntime extends IAgentRuntime {
-  readonly agentId: UUID
-  readonly character: Character
   readonly pathResolver: PathResolver
 
-  initialize(options?: { eventHandler: AgentEventHandler }): Promise<void>
-
-  handle(event: SdkEventKind, params: Context): Promise<boolean>
-
-  getService<T extends Service>(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    service: ServiceType | string | ((new (...args: any[]) => T) & { serviceType: ServiceType })
-  ): T | null
-
-  ensureService<T extends Service>(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    service: ServiceType | string | ((new (...args: any[]) => T) & { serviceType: ServiceType }),
-    message?: string
-  ): T
-
-  ensureUserRoomConnection(options: {
-    roomId: UUID
-    userId: UUID
-    username?: string
-    name?: string
-    email?: string
-    source?: string
-    image?: string
-    bio?: string
-    ethAddress?: string
-  }): Promise<void>
-
-  ensureAccountExists(params: {
-    userId: UUID
-    username: string
-    name: string
-    email?: string | null
-    source?: string | null
-    image?: string | null
-    bio?: string | null
-    ethAddress?: string | null
-  }): Promise<void>
-
-  composeState(
-    message: Memory,
-    additionalKeys?: {
-      [key: string]: unknown
-    }
-  ): Promise<State>
-
-  registerService(service: Service): Promise<void>
+  ensureService<T extends Service>(service: ServiceLike<T>, message?: string): T
 
   ensureSetting(key: string, message?: string): string
 

@@ -1,33 +1,43 @@
-import { AyaRuntime } from '@/common/runtime'
+import { IAyaRuntime } from '@/common/iruntime'
 import { ServiceKind } from '@/common/types'
 import { IMemoriesService } from '@/services/interfaces'
-import { embed, IAgentRuntime, Memory, Service, ServiceType } from '@elizaos/core'
+import { Memory, Service } from '@elizaos/core'
 
 export class MemoriesService extends Service implements IMemoriesService {
-  constructor(private readonly runtime: AyaRuntime) {
-    super()
+  public readonly capabilityDescription: string = 'Allows the agent to search for memories'
+  protected readonly runtime: IAyaRuntime
+
+  constructor(runtime: IAyaRuntime) {
+    super(runtime)
+    this.runtime = runtime
   }
 
-  static get serviceType(): ServiceType {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    return ServiceKind.memories as unknown as ServiceType
+  static get serviceType(): string {
+    return ServiceKind.memories
   }
 
-  async initialize(_: IAgentRuntime): Promise<void> {}
-
-  async search(options: {
+  async search(_options: {
     q: string
     limit: number
     type: string
     matchThreshold?: number
   }): Promise<Memory[]> {
-    const { q, limit, type, matchThreshold = this.runtime.matchThreshold } = options
-    const embedding = await embed(this.runtime, q)
+    throw new Error('Not implemented')
+    // const { q, limit, type, matchThreshold = this.runtime.matchThreshold } = options
+    // const embedding = await embed(this.runtime, q)
 
-    return this.runtime.databaseAdapter.searchMemoriesByEmbedding(embedding, {
-      match_threshold: matchThreshold,
-      count: limit,
-      tableName: type
-    })
+    // return this.runtime.databaseAdapter.searchMemoriesByEmbedding(embedding, {
+    //   match_threshold: matchThreshold,
+    //   count: limit,
+    //   tableName: type
+    // })
   }
+
+  static async start(_runtime: IAyaRuntime): Promise<Service> {
+    return new MemoriesService(_runtime)
+  }
+
+  static async stop(_runtime: IAyaRuntime): Promise<void> {}
+
+  async stop(): Promise<void> {}
 }

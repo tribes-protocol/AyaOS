@@ -20,16 +20,15 @@ import {
 } from '@/common/types'
 import { IAgentcoinService } from '@/services/interfaces'
 import { KeychainService } from '@/services/keychain'
-import { IAgentRuntime, Service, ServiceType } from '@elizaos/core'
+import { IAgentRuntime, Service } from '@elizaos/core'
 import * as fs from 'fs'
 
 export class AgentcoinService extends Service implements IAgentcoinService {
   private cachedCookie: string | undefined
   private cachedIdentity: Identity | undefined
 
-  static get serviceType(): ServiceType {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    return ServiceKind.agent as unknown as ServiceType
+  static get serviceType(): string {
+    return ServiceKind.agent
   }
 
   constructor(
