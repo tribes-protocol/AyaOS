@@ -1,4 +1,4 @@
-import { ensureUUID } from '@/common/functions'
+import { ensureUUID, isNull } from '@/common/functions'
 import { AyaRuntime } from '@/common/runtime'
 import { MemoryFilters, ServiceKind } from '@/common/types'
 import { IStoreService, StoreItem } from '@/services/interfaces'
@@ -35,6 +35,13 @@ export class StoreService extends Service implements IStoreService {
       embedding: params.embedding
     }
 
+    const roomId = stringToUuid(params.table)
+
+    const room = await this.runtime.databaseAdapter.getRoom(roomId)
+    if (isNull(room)) {
+      await this.runtime.databaseAdapter.createRoom(roomId)
+    }
+
     await this.runtime.databaseAdapter.createMemory(
       {
         id: item.id,
@@ -44,7 +51,7 @@ export class StoreService extends Service implements IStoreService {
         createdAt: new Date().getTime(),
         userId: this.runtime.agentId,
         agentId: this.runtime.agentId,
-        roomId: stringToUuid(params.table)
+        roomId
       },
       params.table,
       true

@@ -1,4 +1,4 @@
-import { ensureUUID, isComparisonOperator } from '@/common/functions'
+import { ensureUUID, isComparisonOperator, isNull } from '@/common/functions'
 import { MemoryFilters, RagKnowledgeItemContent } from '@/common/types'
 import { FetchKnowledgeParams, IAyaDatabaseAdapter } from '@/databases/interfaces'
 import { Knowledges, Memories } from '@/databases/postgres/schema'
@@ -36,7 +36,7 @@ export class AyaPostgresDatabaseAdapter
     return this.withCircuitBreaker(async () => {
       const { table, filters, limit = 100 } = params
 
-      const conditions = [eq(Memories.type, table)]
+      const conditions: SQL[] = [eq(Memories.type, table)]
 
       if (filters && Object.keys(filters).length > 0) {
         for (const [key, value] of Object.entries(filters)) {
@@ -46,13 +46,20 @@ export class AyaPostgresDatabaseAdapter
               conditions.push(operatorConditions)
             }
           } else if (Array.isArray(value)) {
+            const pathAsJson = jsonPathExpr(sql`${Memories.content}`, key, false)
+
             conditions.push(
-              sql`(${Memories.content}->>'${key}')::jsonb ?| ${JSON.stringify(value)}`
+              sql`${pathAsJson}::jsonb ?| ARRAY[${sql.join(
+                value.map((v) => sql`${String(v)}`),
+                sql`, `
+              )}]::text[]`
             )
           } else if (typeof value === 'boolean') {
-            conditions.push(sql`(${Memories.content}->>'${key}')::boolean = ${value}`)
+            const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+            conditions.push(sql`(${pathAsText})::boolean = ${value}`)
           } else {
-            conditions.push(sql`${Memories.content}->>'${key}' = ${String(value)}`)
+            const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+            conditions.push(sql`${pathAsText} = ${String(value)}`)
           }
         }
       }
@@ -87,36 +94,59 @@ export class AyaPostgresDatabaseAdapter
 
     for (const [operator, operand] of Object.entries(operatorObj)) {
       switch (operator) {
-        case '$eq':
-          conditions.push(sql`${Memories.content}->>'${key}' = ${String(operand)}`)
+        case '$eq': {
+          const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+          conditions.push(sql`${pathAsText} = ${String(operand)}`)
           break
-        case '$ne':
-          conditions.push(sql`${Memories.content}->>'${key}' != ${String(operand)}`)
+        }
+        case '$ne': {
+          const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+          conditions.push(sql`${pathAsText} != ${String(operand)}`)
           break
-        case '$gt':
-          conditions.push(sql`(${Memories.content}->>'${key}')::numeric > ${Number(operand)}`)
+        }
+        case '$gt': {
+          const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+          conditions.push(sql`(${pathAsText})::numeric > ${Number(operand)}`)
           break
-        case '$gte':
-          conditions.push(sql`(${Memories.content}->>'${key}')::numeric >= ${Number(operand)}`)
+        }
+        case '$gte': {
+          const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+          conditions.push(sql`(${pathAsText})::numeric >= ${Number(operand)}`)
           break
-        case '$lt':
-          conditions.push(sql`(${Memories.content}->>'${key}')::numeric < ${Number(operand)}`)
+        }
+        case '$lt': {
+          const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+          conditions.push(sql`(${pathAsText})::numeric < ${Number(operand)}`)
           break
-        case '$lte':
-          conditions.push(sql`(${Memories.content}->>'${key}')::numeric <= ${Number(operand)}`)
+        }
+        case '$lte': {
+          const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+          conditions.push(sql`(${pathAsText})::numeric <= ${Number(operand)}`)
           break
-        case '$in':
+        }
+        case '$in': {
           if (Array.isArray(operand)) {
-            const stringValues = operand.map((v) => String(v))
-            conditions.push(sql`(${Memories.content}->>'${key}')::text = ANY(${stringValues})`)
+            const placeholders = operand.map((v) => sql`${String(v)}`)
+            conditions.push(
+              // eslint-disable-next-line max-len
+              sql`((${Memories.content}->>(${key}::text))::text) IN (${sql.join(placeholders, sql`, `)})`
+            )
           }
           break
-        case '$contains':
+        }
+        case '$contains': {
           if (Array.isArray(operand)) {
-            const jsonValues = JSON.stringify(operand)
-            conditions.push(sql`(${Memories.content}->'${key}')::jsonb ?| ${jsonValues}`)
+            const placeholders = operand.map((v) => sql`${String(v)}`)
+
+            conditions.push(
+              sql`
+                  (${Memories.content}->(${key}::text))::jsonb 
+                  ?| ARRAY[${sql.join(placeholders, sql`, `)}]::text[]
+                `
+            )
           }
           break
+        }
       }
     }
 
@@ -125,7 +155,7 @@ export class AyaPostgresDatabaseAdapter
     }
 
     const result = and(...conditions)
-    if (!result) return null
+    if (isNull(result)) return null
     return result
   }
 
@@ -446,4 +476,23 @@ export class AyaPostgresDatabaseAdapter
       return item
     })
   }
+}
+
+function jsonPathExpr(base: SQL, dottedKey: string, asText = true): SQL {
+  const parts = dottedKey.split('.')
+  if (parts.length === 0) return sql`${base}->>('${dottedKey}'::text)`
+
+  const last = parts.pop()
+
+  let expr = parts.reduce((acc, segment) => {
+    return sql`${acc}->(${segment}::text)`
+  }, base)
+
+  if (asText) {
+    expr = sql`${expr}->>(${last}::text)`
+  } else {
+    expr = sql`${expr}->(${last}::text)`
+  }
+
+  return expr
 }

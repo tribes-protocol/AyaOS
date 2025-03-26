@@ -224,78 +224,36 @@ export class AyaSqliteDatabaseAdapter extends SqliteDatabaseAdapter implements I
     )
   }
 
+  private async addIndex(columnName: string, jsonPath: string): Promise<void> {
+    try {
+      // Try to add the column - if it exists, this will fail silently
+      this.db.exec(`
+        ALTER TABLE knowledge ADD COLUMN ${columnName} TEXT 
+        GENERATED ALWAYS AS (
+          json_extract(content, '${jsonPath}')
+        ) STORED;
+      `)
+
+      // Create index - IF NOT EXISTS ensures no duplicate index error
+      this.db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_knowledge_${columnName.replace('metadata_', '')} 
+        ON knowledge(${columnName});
+      `)
+    } catch (error) {
+      // If error is about duplicate column, we can safely ignore it
+      if (error instanceof Error && !error.message.includes('duplicate column')) {
+        ayaLogger.error(`Failed to create column ${columnName}:`, error)
+      }
+    }
+  }
+
   async init(): Promise<void> {
     await super.init()
 
-    // Create generated columns and indexes for JSON filtering
-    try {
-      // SQLite doesn't have native JSON indexing, but we can use a GENERATED COLUMN approach
-      // First, check if we need to add these columns (only run if the columns don't exist)
-      interface TableInfoRow {
-        name: string
-        [key: string]: unknown
-      }
-
-      const rawColumns = this.db.prepare("PRAGMA table_info('knowledge')").all()
-
-      // Extract column names using type predicate in the filter callback
-      const existingColumns = rawColumns
-        .filter(
-          (row): row is TableInfoRow =>
-            row !== null && typeof row === 'object' && 'name' in row && typeof row.name === 'string'
-        )
-        .map((row) => row.name)
-
-      if (!existingColumns.includes('metadata_isChunk')) {
-        // Add STORED column for isChunk (not VIRTUAL) so it can be indexed
-        this.db.exec(`
-          ALTER TABLE knowledge ADD COLUMN metadata_isChunk TEXT 
-          GENERATED ALWAYS AS (
-            json_extract(content, '$.metadata.isChunk')
-          ) STORED;
-        `)
-
-        // Create index on the generated column
-        this.db.exec(`
-          CREATE INDEX IF NOT EXISTS idx_knowledge_isChunk 
-          ON knowledge(metadata_isChunk);
-        `)
-      }
-
-      if (!existingColumns.includes('metadata_source')) {
-        // Add STORED column for source (not VIRTUAL) so it can be indexed
-        this.db.exec(`
-          ALTER TABLE knowledge ADD COLUMN metadata_source TEXT 
-          GENERATED ALWAYS AS (
-            json_extract(content, '$.metadata.source')
-          ) STORED;
-        `)
-
-        // Create index on the generated column
-        this.db.exec(`
-          CREATE INDEX IF NOT EXISTS idx_knowledge_source 
-          ON knowledge(metadata_source);
-        `)
-      }
-
-      if (!existingColumns.includes('metadata_kind')) {
-        // Add STORED column for kind (not VIRTUAL) so it can be indexed
-        this.db.exec(`
-          ALTER TABLE knowledge ADD COLUMN metadata_kind TEXT 
-          GENERATED ALWAYS AS (
-            json_extract(content, '$.metadata.kind')
-          ) STORED;
-        `)
-
-        // Create index on the generated column
-        this.db.exec(`
-          CREATE INDEX IF NOT EXISTS idx_knowledge_kind 
-          ON knowledge(metadata_kind);
-        `)
-      }
-    } catch (error) {
-      ayaLogger.error('Failed to create generated columns for SQLite:', error)
-    }
+    // Add generated columns and indexes for JSON filtering
+    await this.addIndex('metadata_isChunk', '$.metadata.isChunk')
+    await this.addIndex('metadata_source', '$.metadata.source')
+    await this.addIndex('metadata_kind', '$.metadata.kind')
   }
 
   async fetchKnowledge(
