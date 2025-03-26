@@ -1,4 +1,4 @@
-import { UUID_PATTERN } from '@/common/constants'
+import { OPERATORS, UUID_PATTERN } from '@/common/constants'
 import { ayaLogger } from '@/common/logger'
 import {
   ChatChannel,
@@ -6,7 +6,9 @@ import {
   ChatChannelKindSchema,
   ChatChannelSchema,
   CoinChannelSchema,
+  ComparisonOperator,
   DMChannelSchema,
+  FilterPrimitive,
   GitState,
   Identity,
   IdentitySchema
@@ -255,4 +257,10 @@ export function ensureUUID(input?: string | null | undefined): UUID {
 
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return input as UUID
+}
+
+export function isComparisonOperator(
+  obj: Record<string, unknown>
+): obj is ComparisonOperator<FilterPrimitive> {
+  return Object.keys(obj).some((key) => OPERATORS.includes(key))
 }

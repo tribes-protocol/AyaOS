@@ -13,11 +13,17 @@ import agentcoinPlugin from '@/plugins/agentcoin'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
 import { EventService } from '@/services/event'
-import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
+import {
+  IKnowledgeService,
+  IMemoriesService,
+  IStoreService,
+  IWalletService
+} from '@/services/interfaces'
 import { KeychainService } from '@/services/keychain'
 import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import { ProcessService } from '@/services/process'
+import { StoreService } from '@/services/store'
 import { WalletService } from '@/services/wallet'
 import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
 import {
@@ -87,6 +93,11 @@ export class Agent implements IAyaAgent {
   get wallet(): IWalletService {
     const service = this.runtime.getService(WalletService)
     return ensure(service, 'Wallet service not found')
+  }
+
+  get store(): IStoreService {
+    const service = this.runtime.getService(StoreService)
+    return ensure(service, 'Store service not found')
   }
 
   async start(): Promise<void> {
@@ -185,6 +196,7 @@ export class Agent implements IAyaAgent {
         runtime,
         this.keychainService.turnkeyApiKeyStamper
       )
+      const storeService = new StoreService(runtime)
 
       // shutdown handler
       let isShuttingDown = false
@@ -237,7 +249,8 @@ export class Agent implements IAyaAgent {
       await Promise.all([
         this.register('service', knowledgeService),
         this.register('service', memoriesService),
-        this.register('service', walletService)
+        this.register('service', walletService),
+        this.register('service', storeService)
       ])
       // no need to await these. it'll lock up the main process
       void Promise.all([configService.start(), knowledgeService.start()])

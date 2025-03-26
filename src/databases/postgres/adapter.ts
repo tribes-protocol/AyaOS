@@ -1,10 +1,10 @@
-import { ensureUUID } from '@/common/functions'
-import { RagKnowledgeItemContent } from '@/common/types'
+import { ensureUUID, isComparisonOperator, isNull } from '@/common/functions'
+import { MemoryFilters, RagKnowledgeItemContent } from '@/common/types'
 import { FetchKnowledgeParams, IAyaDatabaseAdapter } from '@/databases/interfaces'
 import { Knowledges, Memories } from '@/databases/postgres/schema'
 import PostgresDatabaseAdapter from '@elizaos/adapter-postgres'
 import { Memory, RAGKnowledgeItem, UUID } from '@elizaos/core'
-import { and, cosineDistance, desc, eq, gt, sql } from 'drizzle-orm'
+import { and, cosineDistance, desc, eq, gt, sql, SQL } from 'drizzle-orm'
 import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 
@@ -26,6 +26,137 @@ export class AyaPostgresDatabaseAdapter
         connect_timeout: 10
       })
     )
+  }
+
+  filterMemories(params: {
+    table: string
+    filters: MemoryFilters
+    limit?: number
+  }): Promise<Memory[]> {
+    return this.withCircuitBreaker(async () => {
+      const { table, filters, limit = 100 } = params
+
+      const conditions: SQL[] = [eq(Memories.type, table)]
+
+      if (filters && Object.keys(filters).length > 0) {
+        for (const [key, value] of Object.entries(filters)) {
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            const operatorConditions = this.processComplexFilters(key, value)
+            if (operatorConditions) {
+              conditions.push(operatorConditions)
+            }
+          } else if (Array.isArray(value)) {
+            const pathAsJson = jsonPathExpr(sql`${Memories.content}`, key, false)
+
+            conditions.push(
+              sql`${pathAsJson}::jsonb ?| ARRAY[${sql.join(
+                value.map((v) => sql`${String(v)}`),
+                sql`, `
+              )}]::text[]`
+            )
+          } else if (typeof value === 'boolean') {
+            const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+            conditions.push(sql`(${pathAsText})::boolean = ${value}`)
+          } else {
+            const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+            conditions.push(sql`${pathAsText} = ${String(value)}`)
+          }
+        }
+      }
+
+      const results = await this.drizzleDb
+        .select()
+        .from(Memories)
+        .where(and(...conditions))
+        .orderBy(desc(Memories.createdAt))
+        .limit(limit)
+
+      return results.map((row) => ({
+        id: row.id,
+        type: row.type,
+        createdAt: row.createdAt?.getTime(),
+        content: row.content,
+        embedding: row.embedding || undefined,
+        userId: row.userId,
+        agentId: row.agentId,
+        roomId: row.roomId,
+        unique: row.unique
+      }))
+    }, 'filterMemories')
+  }
+
+  private processComplexFilters(key: string, operatorObj: Record<string, unknown>): SQL | null {
+    if (!isComparisonOperator(operatorObj)) {
+      return null
+    }
+
+    const conditions: SQL[] = []
+
+    for (const [operator, operand] of Object.entries(operatorObj)) {
+      switch (operator) {
+        case '$eq': {
+          const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+          conditions.push(sql`${pathAsText} = ${String(operand)}`)
+          break
+        }
+        case '$ne': {
+          const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+          conditions.push(sql`${pathAsText} != ${String(operand)}`)
+          break
+        }
+        case '$gt': {
+          const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+          conditions.push(sql`(${pathAsText})::numeric > ${Number(operand)}`)
+          break
+        }
+        case '$gte': {
+          const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+          conditions.push(sql`(${pathAsText})::numeric >= ${Number(operand)}`)
+          break
+        }
+        case '$lt': {
+          const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+          conditions.push(sql`(${pathAsText})::numeric < ${Number(operand)}`)
+          break
+        }
+        case '$lte': {
+          const pathAsText = jsonPathExpr(sql`${Memories.content}`, key, true)
+          conditions.push(sql`(${pathAsText})::numeric <= ${Number(operand)}`)
+          break
+        }
+        case '$in': {
+          if (Array.isArray(operand)) {
+            const placeholders = operand.map((v) => sql`${String(v)}`)
+            conditions.push(
+              // eslint-disable-next-line max-len
+              sql`((${Memories.content}->>(${key}::text))::text) IN (${sql.join(placeholders, sql`, `)})`
+            )
+          }
+          break
+        }
+        case '$contains': {
+          if (Array.isArray(operand)) {
+            const placeholders = operand.map((v) => sql`${String(v)}`)
+
+            conditions.push(
+              sql`
+                  (${Memories.content}->(${key}::text))::jsonb 
+                  ?| ARRAY[${sql.join(placeholders, sql`, `)}]::text[]
+                `
+            )
+          }
+          break
+        }
+      }
+    }
+
+    if (conditions.length === 0) {
+      return null
+    }
+
+    const result = and(...conditions)
+    if (isNull(result)) return null
+    return result
   }
 
   async init(): Promise<void> {
@@ -345,4 +476,23 @@ export class AyaPostgresDatabaseAdapter
       return item
     })
   }
+}
+
+function jsonPathExpr(base: SQL, dottedKey: string, asText = true): SQL {
+  const parts = dottedKey.split('.')
+  if (parts.length === 0) return sql`${base}->>('${dottedKey}'::text)`
+
+  const last = parts.pop()
+
+  let expr = parts.reduce((acc, segment) => {
+    return sql`${acc}->(${segment}::text)`
+  }, base)
+
+  if (asText) {
+    expr = sql`${expr}->>(${last}::text)`
+  } else {
+    expr = sql`${expr}->(${last}::text)`
+  }
+
+  return expr
 }

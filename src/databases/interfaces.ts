@@ -1,4 +1,11 @@
-import { IDatabaseAdapter, IDatabaseCacheAdapter, RAGKnowledgeItem, UUID } from '@elizaos/core'
+import { MemoryFilters } from '@/common/types'
+import {
+  IDatabaseAdapter,
+  IDatabaseCacheAdapter,
+  Memory,
+  RAGKnowledgeItem,
+  UUID
+} from '@elizaos/core'
 
 export interface FetchKnowledgeParams {
   agentId: UUID
@@ -17,4 +24,9 @@ export interface IAyaDatabaseAdapter extends IDatabaseCacheAdapter, IDatabaseAda
   fetchKnowledge(
     params: FetchKnowledgeParams
   ): Promise<{ results: RAGKnowledgeItem[]; cursor?: string }>
+  filterMemories(params: {
+    table: string
+    filters: MemoryFilters
+    limit?: number
+  }): Promise<Memory[]>
 }
