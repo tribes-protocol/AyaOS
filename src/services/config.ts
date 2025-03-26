@@ -1,42 +1,56 @@
 import { AGENTCOIN_MONITORING_ENABLED } from '@/common/env'
 import { isNull, isRequiredString } from '@/common/functions'
+import { IAyaRuntime } from '@/common/iruntime'
 import { OperationQueue } from '@/common/lang/operation_queue'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { CharacterSchema, ServiceKind } from '@/common/types'
 import { EventService } from '@/services/event'
-import { IConfigService } from '@/services/interfaces'
-import { ProcessService } from '@/services/process'
-import { IAgentRuntime, Service, ServiceType } from '@elizaos/core'
+import { Service } from '@elizaos/core'
 import crypto from 'crypto'
 import express from 'express'
 import fs from 'fs'
 import net from 'net'
 import simpleGit from 'simple-git'
 
-export class ConfigService extends Service implements IConfigService {
+export class ConfigService extends Service {
   private readonly operationQueue = new OperationQueue(1)
   private isRunning = false
   private gitCommitHash: string | undefined
   private characterChecksum: string | undefined
   private server: net.Server | undefined
+  private shutdownFunc?: (signal?: string) => Promise<void>
 
-  static get serviceType(): ServiceType {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    return ServiceKind.config as unknown as ServiceType
-  }
+  readonly serviceType = ServiceKind.config
+  readonly capabilityDescription = ''
 
-  constructor(
+  private constructor(
     private readonly eventService: EventService,
-    private readonly processService: ProcessService,
     private readonly pathResolver: PathResolver
   ) {
-    super()
+    super(undefined)
   }
 
-  async initialize(_: IAgentRuntime): Promise<void> {}
+  static getInstance(eventService: EventService, pathResolver: PathResolver): ConfigService {
+    if (isNull(instance)) {
+      instance = new ConfigService(eventService, pathResolver)
+    }
+    return instance
+  }
 
-  async start(): Promise<void> {
+  setShutdownFunc(func: (signal?: string) => Promise<void>): void {
+    this.shutdownFunc = func
+  }
+
+  async kill(): Promise<void> {
+    if (isNull(this.shutdownFunc)) {
+      console.log('No shutdown function set. killing process...')
+      process.kill(process.pid, 'SIGTERM')
+    }
+    await this.shutdownFunc?.()
+  }
+
+  private async start(): Promise<void> {
     ayaLogger.info('Starting config service...')
     // disable in dev mode
     if (process.env.NODE_ENV !== 'production') {
@@ -113,7 +127,7 @@ export class ConfigService extends Service implements IConfigService {
       this.characterChecksum = checksum
       await this.eventService.publishCharacterChangeEvent(characterObject)
       if (process.env.NODE_ENV === 'production') {
-        await this.processService.kill()
+        await this.kill()
       }
     })
   }
@@ -140,7 +154,7 @@ export class ConfigService extends Service implements IConfigService {
           this.gitCommitHash = commitHash
           await this.eventService.publishCodeChangeEvent(commitHash.trim(), remoteUrl.trim())
           if (process.env.NODE_ENV === 'production') {
-            await this.processService.kill()
+            await this.kill()
           }
         }
       } catch (e) {
@@ -169,4 +183,23 @@ export class ConfigService extends Service implements IConfigService {
     }
     ayaLogger.info('Stopping config service...')
   }
+
+  static async start(_runtime: IAyaRuntime): Promise<Service> {
+    if (isNull(instance)) {
+      throw new Error('ConfigService not initialized')
+    }
+    // don't await this. it'll lock up the main process
+    void instance.start()
+    return instance
+  }
+
+  static async stop(_runtime: IAyaRuntime): Promise<unknown> {
+    if (isNull(instance)) {
+      throw new Error('ConfigService not initialized')
+    }
+    await instance.stop()
+    return instance
+  }
 }
+
+let instance: ConfigService | undefined
