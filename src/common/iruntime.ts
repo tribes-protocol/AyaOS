@@ -1,5 +1,4 @@
 import { PathResolver } from '@/common/path-resolver'
-import { IAyaDatabaseAdapter } from '@/databases/interfaces'
 import {
   ActionExample,
   HandlerCallback,
@@ -19,8 +18,6 @@ export interface IAyaRuntime extends IAgentRuntime {
   ensureService<T extends Service>(service: ServiceLike, message?: string): T
 
   ensureSetting(key: string, message?: string): string
-
-  databaseAdapter: IAyaDatabaseAdapter
 
   // registerService(service: typeof Service): void
 }

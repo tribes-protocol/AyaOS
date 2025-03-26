@@ -11,7 +11,7 @@ import {
   Identity,
   IdentitySchema
 } from '@/common/types'
-import { KnowledgeItem, Memory, UUID } from '@elizaos/core'
+import { UUID } from '@elizaos/core'
 import crypto, { createHash } from 'crypto'
 import EC from 'elliptic'
 
@@ -200,39 +200,8 @@ export function isValidSignature(message: string, publicKey: string, signature: 
   }
 }
 
-export function hasActions(responses: Memory[]): boolean {
-  for (const messageResponse of responses) {
-    const action = messageResponse.content.action
-    if (isNull(action) || action.toUpperCase() === 'NONE') {
-      continue
-    }
-
-    ayaLogger.info(`found action: ${action}`)
-    return true
-  }
-
-  ayaLogger.info('no actions to process, done!')
-  return false
-}
-
 export function calculateChecksum(content: string): string {
   return crypto.createHash('sha256').update(content).digest('hex')
-}
-
-// copied from elizaos
-export function formatKnowledge(knowledge: KnowledgeItem[]): string {
-  // Group related content in a more natural way
-  return knowledge
-    .map((item) => {
-      // Get the main content text
-      const text = item.content.text
-
-      // Clean up formatting but maintain natural text flow
-      const cleanedText = text.trim().replace(/\n{3,}/g, '\n\n') // Replace excessive newlines
-
-      return cleanedText
-    })
-    .join('\n\n') // Separate distinct pieces with double newlines
 }
 
 /**

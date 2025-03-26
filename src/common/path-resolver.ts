@@ -11,7 +11,6 @@ export class PathResolver {
   public readonly gitStateFile: string
   public readonly codeDir: string
   public readonly runtimeServerSocketFile: string
-  public readonly dbFile: string
   public readonly knowledgeRoot: string
 
   constructor(rootDir?: string) {
@@ -28,7 +27,6 @@ export class PathResolver {
     this.gitStateFile = path.join(this.rootDir, 'agent-git.json')
     this.codeDir = path.join(this.rootDir, 'code')
     this.runtimeServerSocketFile = path.join(this.rootDir, 'runtime-server.sock')
-    this.dbFile = path.join(this.rootDir, 'sqlite.db')
     this.knowledgeRoot = path.join(this.rootDir, 'knowledgeFiles')
 
     this.ensureRootDirExists()

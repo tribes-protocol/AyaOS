@@ -6,7 +6,6 @@ import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { AyaRuntime } from '@/common/runtime'
 import { AyaOSOptions } from '@/common/types'
-import { initializeDatabase } from '@/databases/db'
 import ayaPlugin from '@/plugins/aya'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
@@ -109,8 +108,7 @@ export class Agent implements IAyaAgent {
 
       // step 2: load character and initialize database
       ayaLogger.info('Loading character...')
-      const [db, charString] = await Promise.all([
-        initializeDatabase(this.pathResolver.dbFile),
+      const [charString] = await Promise.all([
         fs.promises.readFile(this.pathResolver.characterFile, 'utf8')
       ])
 
@@ -128,7 +126,6 @@ export class Agent implements IAyaAgent {
 
       runtime = new AyaRuntime({
         eliza: {
-          adapter: db,
           character,
           plugins: [ayaPlugin, ...this.plugins],
           agentId: character.id

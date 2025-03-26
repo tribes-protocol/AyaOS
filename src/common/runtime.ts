@@ -1,12 +1,18 @@
 import { ensure, isNull } from '@/common/functions'
-import { IAyaDatabaseAdapter } from '@/databases/interfaces'
 // import { KnowledgeService } from '@/services/knowledge'
 import { IAyaRuntime, ServiceLike } from '@/common/iruntime'
 import { PathResolver } from '@/common/path-resolver'
-import { AgentRuntime, Character, Plugin, Service, ServiceTypeName, UUID } from '@elizaos/core'
+import {
+  AgentRuntime,
+  Character,
+  IDatabaseAdapter,
+  Plugin,
+  Service,
+  ServiceTypeName,
+  UUID
+} from '@elizaos/core'
 
 export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
-  public readonly databaseAdapter: IAyaDatabaseAdapter
   public readonly pathResolver: PathResolver
   public constructor(opts: {
     eliza: {
@@ -15,7 +21,7 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
       character?: Character
       plugins?: Plugin[]
       fetch?: typeof fetch
-      adapter?: IAyaDatabaseAdapter
+      adapter?: IDatabaseAdapter
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       events?: { [key: string]: ((params: any) => void)[] }
       ignoreBootstrap?: boolean
@@ -37,12 +43,15 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
         opts.eliza.character.plugins.push('@elizaos/plugin-discord')
       }
 
+      // Ensure sql plugin is included
+      if (!opts.eliza.character.plugins.includes('@elizaos/plugin-sql')) {
+        opts.eliza.character.plugins.push('@elizaos/plugin-sql')
+      }
+
       // FIXME: hish - need to add a plugin for the agentcoin and farcaster
     }
 
     super({ ...opts.eliza })
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    this.databaseAdapter = opts.eliza.adapter as IAyaDatabaseAdapter
     this.pathResolver = opts.pathResolver
     // // 😈 hacky way to set the knowledge root
     // // eslint-disable-next-line

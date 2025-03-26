@@ -2,11 +2,10 @@ import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { isNull } from '@/common/functions'
 import { IAyaRuntime } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
-import { Identity, RagKnowledgeItemContent, ServiceKind } from '@/common/types'
+import { Identity, RAGKnowledgeItem, RagKnowledgeItemContent, ServiceKind } from '@/common/types'
 import { IKnowledgeService } from '@/services/interfaces'
 import { Service, UUID } from '@elizaos/core'
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
-import { RAGKnowledgeItem } from '..'
 
 export class KnowledgeService extends Service implements IKnowledgeService {
   private isRunning = false
