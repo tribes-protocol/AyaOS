@@ -18,12 +18,11 @@ import {
   ServiceKind,
   User
 } from '@/common/types'
-import { IAgentcoinService } from '@/services/interfaces'
 import { KeychainService } from '@/services/keychain'
 import { IAgentRuntime, Service } from '@elizaos/core'
 import * as fs from 'fs'
 
-export class AgentcoinService extends Service implements IAgentcoinService {
+export class AgentcoinService extends Service {
   private cachedCookie: string | undefined
   private cachedIdentity: Identity | undefined
 
@@ -132,7 +131,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
   async getJwtAuthToken(): Promise<string> {
     const cookie = await this.getCookie()
     const match = cookie.match(/jwt_auth_token=([^;]+)/)
-    if (!match) {
+    if (isNull(match)) {
       throw new Error('Could not extract JWT token from cookie')
     }
     return match[1]

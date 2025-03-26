@@ -10,7 +10,7 @@ import {
   Transaction
 } from '@/common/types'
 import { IWalletService } from '@/services/interfaces'
-import { IAgentRuntime, Service, ServiceType } from '@elizaos/core'
+import { IAgentRuntime, Service } from '@elizaos/core'
 import { TurnkeyClient } from '@turnkey/http'
 import { ApiKeyStamper } from '@turnkey/sdk-server'
 import { createAccountWithAddress } from '@turnkey/viem'
@@ -20,9 +20,8 @@ import { base } from 'viem/chains'
 export class WalletService extends Service implements IWalletService {
   private readonly turnkey: TurnkeyClient
 
-  static get serviceType(): ServiceType {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    return ServiceKind.wallet as unknown as ServiceType
+  static get serviceType(): string {
+    return ServiceKind.wallet
   }
 
   constructor(

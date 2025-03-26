@@ -5,36 +5,40 @@ import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { CharacterSchema, ServiceKind } from '@/common/types'
 import { EventService } from '@/services/event'
-import { IConfigService } from '@/services/interfaces'
-import { ProcessService } from '@/services/process'
-import { IAgentRuntime, Service, ServiceType } from '@elizaos/core'
 import crypto from 'crypto'
 import express from 'express'
 import fs from 'fs'
 import net from 'net'
 import simpleGit from 'simple-git'
 
-export class ConfigService extends Service implements IConfigService {
+export class ConfigService {
   private readonly operationQueue = new OperationQueue(1)
   private isRunning = false
   private gitCommitHash: string | undefined
   private characterChecksum: string | undefined
   private server: net.Server | undefined
+  private shutdownFunc?: (signal?: string) => Promise<void>
 
-  static get serviceType(): ServiceType {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    return ServiceKind.config as unknown as ServiceType
+  static get serviceType(): string {
+    return ServiceKind.config
   }
 
   constructor(
     private readonly eventService: EventService,
-    private readonly processService: ProcessService,
     private readonly pathResolver: PathResolver
-  ) {
-    super()
+  ) {}
+
+  setShutdownFunc(func: (signal?: string) => Promise<void>): void {
+    this.shutdownFunc = func
   }
 
-  async initialize(_: IAgentRuntime): Promise<void> {}
+  async kill(): Promise<void> {
+    if (isNull(this.shutdownFunc)) {
+      console.log('No shutdown function set. killing process...')
+      process.kill(process.pid, 'SIGTERM')
+    }
+    await this.shutdownFunc?.()
+  }
 
   async start(): Promise<void> {
     ayaLogger.info('Starting config service...')
@@ -113,7 +117,7 @@ export class ConfigService extends Service implements IConfigService {
       this.characterChecksum = checksum
       await this.eventService.publishCharacterChangeEvent(characterObject)
       if (process.env.NODE_ENV === 'production') {
-        await this.processService.kill()
+        await this.kill()
       }
     })
   }
@@ -140,7 +144,7 @@ export class ConfigService extends Service implements IConfigService {
           this.gitCommitHash = commitHash
           await this.eventService.publishCodeChangeEvent(commitHash.trim(), remoteUrl.trim())
           if (process.env.NODE_ENV === 'production') {
-            await this.processService.kill()
+            await this.kill()
           }
         }
       } catch (e) {

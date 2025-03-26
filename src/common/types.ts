@@ -488,11 +488,6 @@ export type ModelConfig = {
 
 export interface AyaOSOptions {
   dataDir?: string
-  modelConfig?: ModelConfig
-  knowledge?: {
-    matchThreshold?: number
-    matchLimit?: number
-  }
 }
 
 export const RagKnowledgeItemContentSchema = z.object({
