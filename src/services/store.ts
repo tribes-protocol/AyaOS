@@ -3,7 +3,6 @@ import { AyaRuntime } from '@/common/runtime'
 import { MemoryFilters, ServiceKind } from '@/common/types'
 import { IStoreService, StoreItem } from '@/services/interfaces'
 import {
-  Content,
   embed as elizaEmbed,
   IAgentRuntime,
   Service,
@@ -45,8 +44,10 @@ export class StoreService extends Service implements IStoreService {
     await this.runtime.databaseAdapter.createMemory(
       {
         id: item.id,
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        content: item.data as unknown as Content,
+        content: {
+          text: '',
+          ...item.data
+        },
         embedding: item.embedding,
         createdAt: new Date().getTime(),
         userId: this.runtime.agentId,
