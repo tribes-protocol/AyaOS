@@ -239,21 +239,20 @@ export const BaseCharacterSchema = z.object({
 export type BaseCharacter = z.infer<typeof BaseCharacterSchema>
 
 export const CharacterSchema = BaseCharacterSchema.extend({
-  id: z.string(),
+  id: z.string().optional().nullable(),
   name: z.string(),
   clients: z.array(z.string()),
   modelProvider: z.string(),
-  settings: z
-    .object({
-      secrets: z.record(z.string()).optional().nullable(),
-      voice: z
-        .object({
-          model: z.string()
-        })
-        .optional()
-        .nullable()
-    })
-    .passthrough(),
+  settings: z.object({
+    secrets: z.record(z.string()).optional().nullable(),
+    ragKnowledge: z.boolean().optional().nullable(),
+    voice: z
+      .object({
+        model: z.string()
+      })
+      .optional()
+      .nullable()
+  }),
   plugins: z.array(z.string())
 })
 
