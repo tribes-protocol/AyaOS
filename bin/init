@@ -1,3 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-git clone https://github.com/tribes-protocol/agent
+# Download repo archive
+curl -L https://github.com/tribes-protocol/agent/archive/refs/heads/main.zip -o repo.zip
+
+# Extract and rename
+unzip repo.zip
+mv agent-main agent
+
+# Cleanup
+rm repo.zip
