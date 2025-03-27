@@ -1,7 +1,9 @@
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { serializeIdentity, toJsonTree } from '@/common/functions'
 import {
+  Agent,
   AgentEventData,
+  AgentSchema,
   AgentWallet,
   AgentWalletKind,
   AgentWalletSchema,
@@ -222,13 +224,13 @@ export class AgentcoinAPI {
     return knowledges
   }
 
-  async createAgentFromCli(
+  async createAgent(
     message: string,
     publicKey: string,
     signature: string,
     cookie: string
-  ): Promise<Character> {
-    const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/create-from-cli`, {
+  ): Promise<[Agent, Character]> {
+    const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/create-pure`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
       body: JSON.stringify({
@@ -243,7 +245,7 @@ export class AgentcoinAPI {
     }
 
     const responseData = await response.json()
-    return CharacterSchema.parse(responseData)
+    return z.tuple([AgentSchema, CharacterSchema]).parse(responseData)
   }
 
   async createCliAuthRequest(): Promise<string> {
