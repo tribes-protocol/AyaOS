@@ -7,6 +7,9 @@
   "files": [
     "dist"
   ],
+  "bin": {
+    "init": "bin/init"
+  },
   "publishConfig": {
     "access": "public"
   },
