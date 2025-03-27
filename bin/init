@@ -45,19 +45,21 @@ rm -rf "$projectName/.git"
 # Create data directory if it doesn't exist
 mkdir -p "$dataDir"
 
-# Store original directory
+# Get the directory where this script is located
 ORIGINAL_DIR=$(pwd)
-# Move into project directory
-cd "$projectName" || { echo "Failed to enter project directory"; exit 1; }
-# Install dependencies if not already installed
-if [ ! -d "node_modules" ]; then
-  bun install || { cd "$ORIGINAL_DIR"; echo "Failed to install dependencies"; exit 1; }
+SCRIPT_DIR=""
+if ! SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"; then
+    echo "Error: Failed to determine script location" >&2
+    exit 1
 fi
+cd "$ORIGINAL_DIR" # Return to original directory
+
+# Get the parent directory (project root)
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
 # Run create-agent script with bun
 export AGENTCOIN_FUN_API_URL=http://localhost:6900
-bun run ../../scripts/create-agent.ts "$dataDir" || { cd "$ORIGINAL_DIR"; echo "Failed to create agent"; exit 1; }
-# Return to original directory
-cd "$ORIGINAL_DIR"
+bun run "$PROJECT_ROOT/scripts/create-agent.ts" "$dataDir"
 
 # Display success message with a nice box
 boxWidth=70
