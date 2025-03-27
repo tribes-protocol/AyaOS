@@ -1,11 +1,78 @@
 #!/usr/bin/env bash
 
-# Download repo archive
-curl -L https://github.com/tribes-protocol/agent/archive/refs/heads/main.zip -o repo.zip
+# Check if Bun is installed globally
+if ! command -v bun &> /dev/null; then
+  echo "Bun is not installed. Please install it first:"
+  echo "curl -fsSL https://bun.sh/install | bash"
+  exit 1
+fi
 
-# Extract and rename
-unzip repo.zip
-mv agent-main agent
 
-# Cleanup
-rm repo.zip
+# 1. Ask user what they want to name the project
+read -p "What do you want to name the project? " projectName
+# 2. Where do you want the data directory to be?
+while true; do
+  read -p "Where do you want the data directory to be? (Please provide full path) " dataDir
+  # Exit if empty
+  if [[ -z "$dataDir" ]]; then
+    echo "Data directory path is required. Exiting..."
+    exit 1
+  fi
+  # Expand ~ to home directory if present
+  dataDir="${dataDir/#\~/$HOME}"
+  # Validate that dataDir is a full path
+  if [[ "$dataDir" != /* ]]; then
+    echo "Error: Please provide a full path starting with '/' or '~'"
+    continue
+  fi
+
+  break
+done
+
+
+# 3. What is your agent's name?
+read -p "What is your agent's name? " agentName
+# 4. What is your agent's purpose?
+read -p "What is your agent's purpose? " agentPurpose
+
+
+# Clone the repository into the project directory
+git clone https://github.com/tribes-protocol/agent "$projectName"
+# Remove .git directory
+rm -rf "$projectName/.git"
+
+
+# Create data directory if it doesn't exist
+mkdir -p "$dataDir"
+
+# Store original directory
+ORIGINAL_DIR=$(pwd)
+# Move into project directory
+cd "$projectName" || { echo "Failed to enter project directory"; exit 1; }
+# Install dependencies if not already installed
+if [ ! -d "node_modules" ]; then
+  bun install || { cd "$ORIGINAL_DIR"; echo "Failed to install dependencies"; exit 1; }
+fi
+# Run create-agent script with bun
+export AGENTCOIN_FUN_API_URL=http://localhost:6900
+bun run ../../scripts/create-agent.ts "$dataDir" || { cd "$ORIGINAL_DIR"; echo "Failed to create agent"; exit 1; }
+# Return to original directory
+cd "$ORIGINAL_DIR"
+
+# Display success message with a nice box
+boxWidth=70
+echo
+echo "┌──────────────────────────────────────────────────────────────────────┐"
+echo "│                                                                      │"
+echo "│  ✅ Repository cloned successfully!                                  │"
+echo "│                                                                      │"
+echo "│  Next steps:                                                         │"
+echo "│                                                                      │"
+echo "│  1. Add your OpenAI API key to .env:                                │"
+echo "│     OPENAI_API_KEY=your_api_key_here                                │"
+echo "│                                                                      │"
+echo "│  2. Install dependencies with: bun install                          │"
+echo "│                                                                      │"
+echo "└──────────────────────────────────────────────────────────────────────┘"
+echo
+
