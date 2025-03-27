@@ -7,6 +7,8 @@ import {
   AgentWallet,
   AgentWalletKind,
   AgentWalletSchema,
+  BaseCharacter,
+  BaseCharacterSchema,
   Character,
   CharacterSchema,
   ChatStatusBody,
@@ -229,7 +231,7 @@ export class AgentcoinAPI {
     publicKey: string,
     signature: string,
     cookie: string
-  ): Promise<[Agent, Character]> {
+  ): Promise<[Agent, BaseCharacter]> {
     const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/create-pure`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
@@ -245,7 +247,7 @@ export class AgentcoinAPI {
     }
 
     const responseData = await response.json()
-    return z.tuple([AgentSchema, CharacterSchema]).parse(responseData)
+    return z.tuple([AgentSchema, BaseCharacterSchema]).parse(responseData)
   }
 
   async createCliAuthRequest(): Promise<string> {
