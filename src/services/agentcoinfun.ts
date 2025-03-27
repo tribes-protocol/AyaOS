@@ -148,7 +148,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     const message = this.keychain.publicKey
     const signature = await this.keychain.sign(message)
 
-    const character = await this.api.createAgentFromCli(
+    const [agent, character] = await this.api.createAgent(
       message,
       this.keychain.publicKey,
       signature,
@@ -160,10 +160,8 @@ export class AgentcoinService extends Service implements IAgentcoinService {
       JSON.stringify(toJsonTree(character), null, 2)
     )
 
-    const agentId = AgentIdentitySchema.parse(`AGENT-${character.id}`)
-
     // Display agent creation success message
-    const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${agentId}`
+    const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${agent.id}`
     const boxWidth = Math.max(70, agentUrl.length + 6) // Ensure minimum width of 70 chars
 
     console.log('\n┌' + '─'.repeat(boxWidth) + '┐')
@@ -176,7 +174,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     console.log('│' + ' '.repeat(boxWidth) + '│')
     console.log('└' + '─'.repeat(boxWidth) + '┘\n')
 
-    return agentId
+    return agent.id
   }
 
   async getCliAuthToken(): Promise<string | undefined> {
