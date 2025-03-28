@@ -228,15 +228,17 @@ export class AgentcoinAPI {
     message: string,
     publicKey: string,
     signature: string,
-    cookie: string
+    cookie: string,
+    name?: string | undefined,
+    purpose?: string | undefined
   ): Promise<[Agent, Character]> {
     const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/create-pure`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
       body: JSON.stringify({
-        message,
-        publicKey,
-        signature
+        name,
+        purpose,
+        pubkeyProof: { message, publicKey, signature }
       })
     })
 

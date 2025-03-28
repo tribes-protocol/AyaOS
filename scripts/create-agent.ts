@@ -8,6 +8,9 @@ async function main(): Promise<void> {
   try {
     // get data directory from command line args
     const dataDir = process.argv[2]
+    const agentName = process.argv[3] || undefined
+    const agentPurpose = process.argv[4] || undefined
+
     if (isNull(dataDir)) {
       console.error('please provide a data directory path as the first argument')
       process.exit(1)
@@ -26,7 +29,7 @@ async function main(): Promise<void> {
     const agentcoinService = new AgentcoinService(keychainService, agentcoinAPI, pathResolver)
 
     // provision if needed
-    await agentcoinService.provisionIfNeeded()
+    await agentcoinService.provisionIfNeeded(agentName, agentPurpose)
 
     console.log('agent provisioning completed successfully')
   } catch (error) {
