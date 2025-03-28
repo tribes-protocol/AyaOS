@@ -40,6 +40,17 @@ read -p "What is your agent's purpose? " agentPurpose
 git clone https://github.com/tribes-protocol/agent "$projectName"
 # Remove .git directory
 rm -rf "$projectName/.git"
+# Create .env file with data directory
+echo "DATA_DIR=\"$dataDir\"" > "$projectName/.env"
+
+# Move into project directory and install dependencies
+ORIGINAL_DIR=$(pwd)
+(cd "$projectName" && bun i) || {
+  echo "Failed to install dependencies"
+  cd "$ORIGINAL_DIR"
+  exit 1
+}
+cd "$ORIGINAL_DIR"
 
 
 # Create data directory if it doesn't exist
@@ -59,21 +70,21 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Run create-agent script with bun
 export AGENTCOIN_FUN_API_URL=http://localhost:6900
-bun run "$PROJECT_ROOT/scripts/create-agent.ts" "$dataDir"
+bun run "$PROJECT_ROOT/scripts/create-agent.ts" "$dataDir" "$agentName" "$agentPurpose"
 
 # Display success message with a nice box
 boxWidth=70
 echo
 echo "┌──────────────────────────────────────────────────────────────────────┐"
 echo "│                                                                      │"
-echo "│  ✅ Repository cloned successfully!                                  │"
+echo "│  ✓ Repository cloned successfully!                                   │"
 echo "│                                                                      │"
 echo "│  Next steps:                                                         │"
 echo "│                                                                      │"
-echo "│  1. Add your OpenAI API key to .env:                                │"
-echo "│     OPENAI_API_KEY=your_api_key_here                                │"
+echo "│  1. Add your OpenAI API key to .env:                                 │"
+echo "│     OPENAI_API_KEY=your_api_key_here                                 │"
 echo "│                                                                      │"
-echo "│  2. Install dependencies with: bun install                          │"
+echo "│  2. Install dependencies with: bun install                           │"
 echo "│                                                                      │"
 echo "└──────────────────────────────────────────────────────────────────────┘"
 echo
