@@ -1,9 +1,7 @@
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { serializeIdentity, toJsonTree } from '@/common/functions'
 import {
-  Agent,
   AgentEventData,
-  AgentSchema,
   AgentWallet,
   AgentWalletKind,
   AgentWalletSchema,
@@ -13,6 +11,8 @@ import {
   CliAuthRequestSchema,
   CliAuthResponseSchema,
   CreateMessage,
+  CreatePureResponse,
+  CreatePureResponseSchema,
   ErrorResponseSchema,
   HydratedMessage,
   HydratedMessageSchema,
@@ -228,15 +228,17 @@ export class AgentcoinAPI {
     message: string,
     publicKey: string,
     signature: string,
-    cookie: string
-  ): Promise<[Agent, Character]> {
+    cookie: string,
+    name?: string | undefined,
+    purpose?: string | undefined
+  ): Promise<CreatePureResponse> {
     const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/create-pure`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
       body: JSON.stringify({
-        message,
-        publicKey,
-        signature
+        name,
+        purpose,
+        proof: { message, publicKey, signature }
       })
     })
 
@@ -245,7 +247,7 @@ export class AgentcoinAPI {
     }
 
     const responseData = await response.json()
-    return z.tuple([AgentSchema, CharacterSchema]).parse(responseData)
+    return CreatePureResponseSchema.parse(responseData)
   }
 
   async createCliAuthRequest(): Promise<string> {

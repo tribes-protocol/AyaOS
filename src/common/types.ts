@@ -527,3 +527,9 @@ export const AgentSchema = z
   .passthrough() // Partial schema
 
 export type Agent = z.infer<typeof AgentSchema>
+
+export const CreatePureResponseSchema = z.object({
+  agent: AgentSchema,
+  character: CharacterSchema
+})
+export type CreatePureResponse = z.infer<typeof CreatePureResponseSchema>

@@ -88,7 +88,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     return token
   }
 
-  async provisionIfNeeded(): Promise<void> {
+  async provisionIfNeeded(name?: string | undefined, purpose?: string | undefined): Promise<void> {
     ayaLogger.info('Checking if agent coin is provisioned...')
     if (await this.isProvisioned()) {
       return
@@ -99,7 +99,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     const regPath = this.pathResolver.registrationFile
 
     if (!fs.existsSync(regPath)) {
-      const agentId = await this.provisionPureAgent()
+      const agentId = await this.provisionPureAgent(name, purpose)
       ayaLogger.success('Agent coin provisioned successfully', agentId)
       return
     }
@@ -139,7 +139,10 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     return match[1]
   }
 
-  async provisionPureAgent(): Promise<AgentIdentity> {
+  async provisionPureAgent(
+    name?: string | undefined,
+    purpose?: string | undefined
+  ): Promise<AgentIdentity> {
     let token = await this.getCliAuthToken()
     if (isNull(token)) {
       token = await this.createCliAuthAndWaitForToken()
@@ -148,11 +151,13 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     const message = this.keychain.publicKey
     const signature = await this.keychain.sign(message)
 
-    const [agent, character] = await this.api.createAgent(
+    const { agent, character } = await this.api.createAgent(
       message,
       this.keychain.publicKey,
       signature,
-      `jwt_auth_token=${token}`
+      `jwt_auth_token=${token}`,
+      name,
+      purpose
     )
 
     fs.writeFileSync(
