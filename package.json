@@ -7,6 +7,9 @@
   "files": [
     "dist"
   ],
+  "bin": {
+    "ayaos": "bin/init"
+  },
   "publishConfig": {
     "access": "public"
   },

@@ -11,6 +11,8 @@ import {
   CliAuthRequestSchema,
   CliAuthResponseSchema,
   CreateMessage,
+  CreatePureResponse,
+  CreatePureResponseSchema,
   ErrorResponseSchema,
   HydratedMessage,
   HydratedMessageSchema,
@@ -222,19 +224,21 @@ export class AgentcoinAPI {
     return knowledges
   }
 
-  async createAgentFromCli(
+  async createAgent(
     message: string,
     publicKey: string,
     signature: string,
-    cookie: string
-  ): Promise<Character> {
-    const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/create-from-cli`, {
+    cookie: string,
+    name?: string | undefined,
+    purpose?: string | undefined
+  ): Promise<CreatePureResponse> {
+    const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/create-pure`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
       body: JSON.stringify({
-        message,
-        publicKey,
-        signature
+        name,
+        purpose,
+        proof: { message, publicKey, signature }
       })
     })
 
@@ -243,7 +247,7 @@ export class AgentcoinAPI {
     }
 
     const responseData = await response.json()
-    return CharacterSchema.parse(responseData)
+    return CreatePureResponseSchema.parse(responseData)
   }
 
   async createCliAuthRequest(): Promise<string> {
