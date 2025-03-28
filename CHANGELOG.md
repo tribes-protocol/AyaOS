@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.40
+
+### Patch Changes
+
+- 79ce7dc: add rate limiting
+
 ## 0.0.39
 
 ### Patch Changes
