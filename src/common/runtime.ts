@@ -5,7 +5,6 @@ import { PathResolver } from '@/common/path-resolver'
 import { Context, SdkEventKind } from '@/common/types'
 import { IAyaDatabaseAdapter } from '@/databases/interfaces'
 import { AyaRAGKnowledgeManager } from '@/managers/rag_knowledge'
-import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import {
   AgentRuntime,
@@ -218,28 +217,18 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
       return state
     }
 
-    // Since ElizaOS rag knowledge is currently broken on postgres adapter, we're just going
-    // to override the knowledge state with our own kb service results
-    const kbService = this.ensureService(KnowledgeService, 'Knowledge base service not found')
-    const memService = this.ensureService(MemoriesService, 'Memories service not found')
-    // Run both searches in parallel
-    const [kbItems, memItems] = await Promise.all([
-      kbService.search({
-        q: message.content.text,
-        limit: this.matchLimit,
-        matchThreshold: this.matchThreshold
-      }),
-      memService.search({
-        q: message.content.text,
-        limit: this.matchLimit,
-        type: 'fragments',
-        matchThreshold: this.matchThreshold
-      })
-    ])
+    // Reset RAG-based properties to empty values
+    state.ragKnowledgeData = []
+    state.ragKnowledge = ''
 
-    // Set RAG knowledge from kbService
-    state.ragKnowledgeData = kbItems
-    state.ragKnowledge = formatKnowledge(kbItems).trim()
+    // Get regular memories only
+    const memService = this.ensureService(MemoriesService, 'Memories service not found')
+    const memItems = await memService.search({
+      q: message.content.text,
+      limit: this.matchLimit,
+      type: 'fragments',
+      matchThreshold: this.matchThreshold
+    })
 
     // Set regular knowledge from memService
     const knowledgeItems: KnowledgeItem[] = memItems
