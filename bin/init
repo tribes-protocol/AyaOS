@@ -72,7 +72,6 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 bun run "$PROJECT_ROOT/scripts/create-agent.ts" "$dataDir" "$agentName" "$agentPurpose"
 
 # Display success message with a nice box
-boxWidth=70
 echo
 echo "┌──────────────────────────────────────────────────────────────────────┐"
 echo "│                                                                      │"
