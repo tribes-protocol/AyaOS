@@ -8,7 +8,7 @@
     "dist"
   ],
   "bin": {
-    "init": "bin/init"
+    "ayaos": "bin/init"
   },
   "publishConfig": {
     "access": "public"
