@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.36
+
+### Patch Changes
+
+- a615337: introduce cli init tool
+
 ## 0.0.35
 
 ### Patch Changes
