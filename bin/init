@@ -69,7 +69,6 @@ cd "$ORIGINAL_DIR" # Return to original directory
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Run create-agent script with bun
-export AGENTCOIN_FUN_API_URL=http://localhost:6900
 bun run "$PROJECT_ROOT/scripts/create-agent.ts" "$dataDir" "$agentName" "$agentPurpose"
 
 # Display success message with a nice box
