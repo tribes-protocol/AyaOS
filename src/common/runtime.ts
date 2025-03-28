@@ -312,7 +312,8 @@ ${this.character.system}
 RESPONSE TO VALIDATE:
 ${responseText}
 
-Return your analysis as a JSON object with the following structure:
+Return your analysis as a JSON object with the following structure. Make sure it's the 
+raw json. No markdown or anything else:
 {
   "valid": boolean,
   "correctedResponse": string // Original response if valid, corrected response if invalid
@@ -320,7 +321,7 @@ Return your analysis as a JSON object with the following structure:
 }`
 
     try {
-      console.log('Validating response:', responseText)
+      console.log('Validating request:', responseText)
       const validationResult = await generateText({
         runtime: this,
         context: validationPrompt,
@@ -331,7 +332,9 @@ Return your analysis as a JSON object with the following structure:
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           const parsed = ResponseValidationSchema.parse(JSON.parse(validationResult))
-          return parsed.valid ? responseText : parsed.correctedResponse
+          const t = parsed.valid ? responseText : parsed.correctedResponse
+          console.log('Validated response:', t)
+          return t
         } catch (parseError) {
           if (attempt === 2) {
             console.error('Failed to parse validation result after 3 attempts:', parseError)
