@@ -1,4 +1,4 @@
-import { AgentcoinClient } from '@/clients/agentcoin'
+import { AgentcoinClient } from '@/clients/aya/agentcoinfun'
 import { FarcasterManager } from '@/clients/farcaster'
 import { validateFarcasterConfig } from '@/clients/farcaster/environment'
 import { TelegramClient } from '@/clients/telegram/telegramClient'

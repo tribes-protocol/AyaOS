@@ -247,6 +247,10 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     state.knowledge = formatKnowledge(knowledgeItems).trim()
     state.knowledgeData = knowledgeItems
 
+    if (this.character.system) {
+      state.systemPrompt = this.character.system
+    }
+
     return state
   }
 
