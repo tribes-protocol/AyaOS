@@ -21,6 +21,7 @@ import {
   Identity,
   Message,
   MessageEventSchema,
+  MessageStatusEnum,
   SentinelCommand,
   SentinelCommandSchema
 } from '@/common/types'
@@ -232,6 +233,28 @@ export class AgentcoinClient implements Client {
     })
   }
 
+  private async sendStatus(
+    channel: ChatChannel,
+    status: MessageStatusEnum
+  ): Promise<() => Promise<void>> {
+    const agentcoinService = this.runtime.ensureService<AgentcoinService>(
+      AgentcoinService.serviceType,
+      'Agentcoin service not found'
+    )
+    await agentcoinService.sendStatus(channel, status)
+    const statusInterval = setInterval(async () => {
+      await agentcoinService.sendStatus(channel, status)
+    }, 5000)
+    return async () => {
+      clearInterval(statusInterval)
+      try {
+        await agentcoinService.sendStatus(channel, 'idle')
+      } catch {
+        // noop
+      }
+    }
+  }
+
   private async saveMessage({
     message,
     action,
@@ -285,7 +308,7 @@ export class AgentcoinClient implements Client {
       return
     }
 
-    await this.agentcoinService.sendStatus(channel, 'thinking')
+    let unsubscribeStatus = await this.sendStatus(channel, 'thinking')
 
     const roomId = stringToUuid(serializeChannel(channel))
     const userId = stringToUuid(serializeIdentity(message.sender))
@@ -321,17 +344,26 @@ export class AgentcoinClient implements Client {
 
     if (!shouldContinue) {
       ayaLogger.info('AgentcoinClient received prellm event but it was suppressed')
-      await this.agentcoinService.sendStatus(channel, 'idle')
+      await unsubscribeStatus()
       return
     }
 
-    await this.agentcoinService.sendStatus(channel, 'typing')
+    await unsubscribeStatus()
+    unsubscribeStatus = await this.sendStatus(channel, 'typing')
 
     const response = await generateMessageResponse({
       runtime: this.runtime,
       context,
       modelClass: ModelClass.LARGE
     })
+
+    const responseText = await this.runtime.validateResponse(response.text)
+    if (isNull(responseText)) {
+      await unsubscribeStatus()
+      return
+    } else {
+      response.text = responseText
+    }
 
     // `postllm` event
     shouldContinue = await this.runtime.handle('post:llm', {
@@ -343,12 +375,12 @@ export class AgentcoinClient implements Client {
 
     if (!shouldContinue) {
       ayaLogger.info('AgentcoinClient received postllm event but it was suppressed')
-      await this.agentcoinService.sendStatus(channel, 'idle')
+      await unsubscribeStatus()
       return
     }
 
     if (isNull(response.text) || response.text.trim().length === 0) {
-      await this.agentcoinService.sendStatus(channel, 'idle')
+      await unsubscribeStatus()
       return
     }
 
@@ -364,7 +396,7 @@ export class AgentcoinClient implements Client {
         content: response,
         channel
       })
-      await this.runtime.evaluate(responseMessage, state, true)
+      // await this.runtime.evaluate(responseMessage, state, true)
       messageResponses.push(responseMessage)
       state = await this.runtime.updateRecentMessageState(state)
     }
@@ -376,7 +408,8 @@ export class AgentcoinClient implements Client {
 
     if (messageResponses[0]?.content.action !== 'CONTINUE') {
       // if the action is not continue, we need to send a status update
-      await this.agentcoinService.sendStatus(channel, 'thinking')
+      await unsubscribeStatus()
+      unsubscribeStatus = await this.sendStatus(channel, 'thinking')
     }
 
     // `preaction` event
@@ -388,7 +421,7 @@ export class AgentcoinClient implements Client {
 
     if (!shouldContinue) {
       ayaLogger.info('AgentcoinClient received preaction event but it was suppressed')
-      await this.agentcoinService.sendStatus(channel, 'idle')
+      await unsubscribeStatus()
       return
     }
 

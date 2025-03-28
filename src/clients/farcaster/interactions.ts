@@ -9,7 +9,7 @@ import {
 } from '@/clients/farcaster/prompts'
 import type { Cast, Profile } from '@/clients/farcaster/types'
 import { castUuid } from '@/clients/farcaster/utils'
-import { hasActions } from '@/common/functions'
+import { hasActions, isNull } from '@/common/functions'
 import { IAyaRuntime } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
 import {
@@ -236,6 +236,13 @@ export class FarcasterInteractionManager {
       context,
       modelClass: ModelClass.LARGE
     })
+
+    const responseText = await this.runtime.validateResponse(responseContent.text)
+    if (isNull(responseText)) {
+      return { text: '', action: 'IGNORE' }
+    } else {
+      responseContent.text = responseText
+    }
 
     shouldContinue = await this.runtime.handle('post:llm', {
       state,

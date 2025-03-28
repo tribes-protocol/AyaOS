@@ -15,10 +15,12 @@ import {
   // eslint-disable-next-line no-restricted-imports
   Provider as ElizaProvider,
   Evaluator,
+  generateText,
   ICacheManager,
   IMemoryManager,
   KnowledgeItem,
   Memory,
+  ModelClass,
   ModelProviderName,
   Plugin,
   Service,
@@ -26,6 +28,13 @@ import {
   State,
   UUID
 } from '@elizaos/core'
+import { z } from 'zod'
+
+const ResponseValidationSchema = z.object({
+  valid: z.boolean(),
+  correctedResponse: z.string(),
+  explanation: z.string()
+})
 
 export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
   private eventHandler: AgentEventHandler | undefined
@@ -247,6 +256,10 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     state.knowledge = formatKnowledge(knowledgeItems).trim()
     state.knowledgeData = knowledgeItems
 
+    if (this.character.system) {
+      state.systemPrompt = this.character.system
+    }
+
     return state
   }
 
@@ -274,6 +287,67 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
         error
       )
       throw error
+    }
+  }
+
+  async validateResponse(responseText: string): Promise<string | undefined> {
+    if (isNull(this.character.system)) {
+      return responseText
+    }
+
+    const validationPrompt = `You are a response validator for an AI assistant. 
+Your task is to check if the following response strictly adheres to the system rules defined below.
+
+If the response violates ANY of the rules, you must:
+1. Return a JSON object with "valid": false and "correctedResponse" containing a polite decline 
+   and redirection to appropriate topics
+2. The corrected response should maintain the assistant's professional tone while staying 
+   within bounds
+
+If the response follows ALL rules, return a JSON with "valid": true and the original "response"
+
+SYSTEM RULES:
+${this.character.system}
+
+RESPONSE TO VALIDATE:
+${responseText}
+
+Return your analysis as a JSON object with the following structure. Make sure it's the 
+raw json. No markdown or anything else:
+{
+  "valid": boolean,
+  "correctedResponse": string // Original response if valid, corrected response if invalid
+  "explanation": string // Brief explanation of why the response was invalid (if applicable)
+}`
+
+    try {
+      console.log('Validating request:', responseText)
+      const validationResult = await generateText({
+        runtime: this,
+        context: validationPrompt,
+        modelClass: ModelClass.MEDIUM
+      })
+
+      // Try to parse the result up to three times
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const parsed = ResponseValidationSchema.parse(JSON.parse(validationResult))
+          const t = parsed.valid ? responseText : parsed.correctedResponse
+          console.log('Validated response:', t)
+          return t
+        } catch (parseError) {
+          if (attempt === 2) {
+            console.error('Failed to parse validation result after 3 attempts:', parseError)
+            return undefined
+          }
+          // Continue to next attempt
+        }
+      }
+
+      return undefined
+    } catch (error) {
+      console.error('Response validation failed:', error)
+      return undefined
     }
   }
 }

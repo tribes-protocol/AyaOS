@@ -1,6 +1,7 @@
 import type { ClientBase } from '@/clients/twitter/base'
 import { buildConversationThread, sendTweet, wait } from '@/clients/twitter/utils'
 import { isNull } from '@/common/functions'
+import { IAyaRuntime } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
 import {
   composeContext,
@@ -8,7 +9,6 @@ import {
   generateMessageResponse,
   generateText,
   type HandlerCallback,
-  type IAgentRuntime,
   type IImageDescriptionService,
   messageCompletionFooter,
   ModelClass,
@@ -49,11 +49,11 @@ No emojis. Use \\n\\n (double spaces) between statements.
 
 export class TwitterSearchClient {
   client: ClientBase
-  runtime: IAgentRuntime
+  runtime: IAyaRuntime
   twitterUsername: string
   private respondedTweets: Set<string> = new Set()
 
-  constructor(client: ClientBase, runtime: IAgentRuntime) {
+  constructor(client: ClientBase, runtime: IAyaRuntime) {
     this.client = client
     this.runtime = runtime
     this.twitterUsername = this.client.twitterConfig.TWITTER_USERNAME
@@ -245,6 +245,13 @@ export class TwitterSearchClient {
         context,
         modelClass: ModelClass.LARGE
       })
+
+      const responseText = await this.runtime.validateResponse(responseContent.text)
+      if (isNull(responseText)) {
+        return
+      } else {
+        responseContent.text = responseText
+      }
 
       responseContent.inReplyTo = message.id
 

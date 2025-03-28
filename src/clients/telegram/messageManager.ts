@@ -897,6 +897,13 @@ export class MessageManager {
       modelClass: ModelClass.LARGE
     })
 
+    const responseText = await this.runtime.validateResponse(response.text)
+    if (isNull(responseText)) {
+      return { text: '', action: 'IGNORE' }
+    } else {
+      response.text = responseText
+    }
+
     if (!response) {
       ayaLogger.error('❌ No response from generateMessageResponse')
       return { text: '', action: 'IGNORE' }
