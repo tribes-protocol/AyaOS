@@ -239,21 +239,20 @@ export const BaseCharacterSchema = z.object({
 export type BaseCharacter = z.infer<typeof BaseCharacterSchema>
 
 export const CharacterSchema = BaseCharacterSchema.extend({
-  id: z.string(),
+  id: z.string().optional().nullable(),
   name: z.string(),
   clients: z.array(z.string()),
   modelProvider: z.string(),
-  settings: z
-    .object({
-      secrets: z.record(z.string()).optional().nullable(),
-      voice: z
-        .object({
-          model: z.string()
-        })
-        .optional()
-        .nullable()
-    })
-    .passthrough(),
+  settings: z.object({
+    secrets: z.record(z.string()).optional().nullable(),
+    ragKnowledge: z.boolean().optional().nullable(),
+    voice: z
+      .object({
+        model: z.string()
+      })
+      .optional()
+      .nullable()
+  }),
   plugins: z.array(z.string())
 })
 
@@ -519,3 +518,18 @@ export const MemoryContentSchema = z
   .passthrough()
 
 export type MemoryContent = z.infer<typeof MemoryContentSchema>
+
+export const AgentSchema = z
+  .object({
+    id: AgentIdentitySchema,
+    name: z.string()
+  })
+  .passthrough() // Partial schema
+
+export type Agent = z.infer<typeof AgentSchema>
+
+export const CreatePureResponseSchema = z.object({
+  agent: AgentSchema,
+  character: CharacterSchema
+})
+export type CreatePureResponse = z.infer<typeof CreatePureResponseSchema>
