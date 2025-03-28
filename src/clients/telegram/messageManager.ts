@@ -503,13 +503,8 @@ export class MessageManager {
       message.reply_to_message?.from?.is_bot === true &&
       message.reply_to_message?.from?.username === botUsername
     const isMentioned = messageText.includes(`@${botUsername}`)
-    const hasUsername = messageText.toLowerCase().includes(botUsername.toLowerCase())
 
-    return (
-      isReplyToBot ||
-      isMentioned ||
-      (!this.runtime.character.clientConfig?.telegram?.shouldRespondOnlyToMentions && hasUsername)
-    )
+    return isReplyToBot || isMentioned
   }
 
   private _checkInterest(chatId: string): boolean {
@@ -578,22 +573,14 @@ export class MessageManager {
 
   // Decide if the bot should respond to the message
   private async _shouldRespond(message: Message, state: State): Promise<boolean> {
-    if (this.runtime.character.clientConfig?.telegram?.shouldRespondOnlyToMentions) {
-      return this._isMessageForMe(message)
-    }
-
-    // Respond if bot is mentioned
-    if (
-      'text' in message &&
-      message.text?.toLowerCase().includes(`@${this.bot.botInfo?.username.toLowerCase()}`)
-    ) {
-      ayaLogger.info(`Bot mentioned`)
-      return true
-    }
-
     // Respond to private chats
     if (message.chat.type === 'private') {
       return true
+    }
+
+    // For group chats, only respond to direct mentions
+    if (message.chat.type === 'group' || message.chat.type === 'supergroup') {
+      return this._isMessageForMe(message)
     }
 
     // Don't respond to images in group chats
@@ -1193,7 +1180,23 @@ export class MessageManager {
       }
 
       if (shouldRespond) {
+        // Start typing indicator that repeats every 5 seconds
+        const typingInterval = setInterval(async () => {
+          try {
+            if (ctx.chat) {
+              await ctx.telegram.sendChatAction(ctx.chat.id, 'typing')
+            }
+          } catch (error) {
+            clearInterval(typingInterval)
+            console.error('Failed to send typing action:', error)
+          }
+        }, 5000)
+
+        // Send initial typing indicator immediately
         await ctx.telegram.sendChatAction(ctx.chat.id, 'typing')
+
+        // We'll clear this interval after the response is sent
+        // This will be handled in the callback or at the end of this function
 
         // Generate response
         const context = composeContext({
@@ -1212,10 +1215,13 @@ export class MessageManager {
 
         if (!shouldContinue) {
           ayaLogger.info('TelegramMessageManager received pre:llm event but it was suppressed')
+          clearInterval(typingInterval)
           return
         }
 
         const responseContent = await this._generateResponse(memory, state, context)
+
+        clearInterval(typingInterval)
 
         if (!responseContent || !responseContent.text) return
 
