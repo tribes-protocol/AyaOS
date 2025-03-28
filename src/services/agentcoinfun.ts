@@ -151,7 +151,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     const message = this.keychain.publicKey
     const signature = await this.keychain.sign(message)
 
-    const [agent, character] = await this.api.createAgent(
+    const { agent, character } = await this.api.createAgent(
       message,
       this.keychain.publicKey,
       signature,
