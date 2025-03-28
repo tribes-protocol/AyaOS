@@ -147,7 +147,7 @@ export class TelegramClient implements Client {
     })
 
     this.bot.catch(async (err, ctx) => {
-      ayaLogger.error(`❌ Telegram Error for ${ctx.updateType}:`, err)
+      console.error(`❌ Telegram Error for ${ctx.updateType}:`, err)
 
       // we should not reply to the user here if error
       // await ctx.reply('An unexpected error occurred. Please try again later.')
