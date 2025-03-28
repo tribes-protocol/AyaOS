@@ -256,7 +256,7 @@ export class ClientBase extends EventEmitter {
       await this.setCookiesFromArray(cachedCookies)
     }
 
-    ayaLogger.log('Waiting for Twitter login')
+    ayaLogger.info('Waiting for Twitter login')
     while (retries > 0) {
       try {
         if (await this.twitterClient.isLoggedIn()) {
@@ -295,8 +295,8 @@ export class ClientBase extends EventEmitter {
     this.profile = await this.fetchProfile(username)
 
     if (this.profile) {
-      ayaLogger.log('Twitter user ID:', this.profile.id)
-      ayaLogger.log('Twitter loaded:', JSON.stringify(this.profile, null, 10))
+      ayaLogger.info('Twitter user ID:', this.profile.id)
+      ayaLogger.info('Twitter loaded:', JSON.stringify(this.profile, null, 10))
       // Store profile info for use in responses
       this.runtime.character.twitterProfile = {
         id: this.profile.id,
@@ -433,7 +433,7 @@ export class ClientBase extends EventEmitter {
 
         // Save the missing tweets as memories
         for (const tweet of tweetsToSave) {
-          ayaLogger.log('Saving Tweet', tweet.id)
+          ayaLogger.info('Saving Tweet', tweet.id)
 
           const roomId = stringToUuid(tweet.conversationId + '-' + this.runtime.agentId)
 
@@ -469,7 +469,7 @@ export class ClientBase extends EventEmitter {
               : undefined
           }
 
-          ayaLogger.log('Creating memory for tweet', tweet.id)
+          ayaLogger.info('Creating memory for tweet', tweet.id)
 
           // check if it already exists
           const memory = await this.runtime.messageManager.getMemoryById(
@@ -477,7 +477,7 @@ export class ClientBase extends EventEmitter {
           )
 
           if (memory) {
-            ayaLogger.log('Memory already exists, skipping timeline population')
+            ayaLogger.info('Memory already exists, skipping timeline population')
             break
           }
 
@@ -494,7 +494,7 @@ export class ClientBase extends EventEmitter {
           await this.cacheTweet(tweet)
         }
 
-        ayaLogger.log(`Populated ${tweetsToSave.length} missing tweets from the cache.`)
+        ayaLogger.info(`Populated ${tweetsToSave.length} missing tweets from the cache.`)
         return
       }
     }
@@ -552,7 +552,7 @@ export class ClientBase extends EventEmitter {
 
     // Save the new tweets as memories
     for (const tweet of tweetsToSave) {
-      ayaLogger.log('Saving Tweet', tweet.id)
+      ayaLogger.info('Saving Tweet', tweet.id)
 
       const roomId = stringToUuid(tweet.conversationId + '-' + this.runtime.agentId)
       const userId =

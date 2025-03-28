@@ -25,7 +25,7 @@ export class TelegramClient implements Client {
   private options?: Partial<Telegraf.Options<Context>>
 
   constructor(runtime: IAyaRuntime, botToken: string) {
-    ayaLogger.log('📱 Constructing new TelegramClient...')
+    ayaLogger.info('📱 Constructing new TelegramClient...')
     this.options = {
       telegram: {
         apiRoot:
@@ -40,7 +40,7 @@ export class TelegramClient implements Client {
     this.backend = runtime.getSetting('BACKEND_URL')
     this.backendToken = runtime.getSetting('BACKEND_TOKEN')
     this.tgTrader = runtime.getSetting('TG_TRADER') // boolean To Be added to the settings
-    ayaLogger.log('✅ TelegramClient constructor completed')
+    ayaLogger.info('✅ TelegramClient constructor completed')
   }
 
   public async start(runtime: IAyaRuntime): Promise<void> {
@@ -48,7 +48,7 @@ export class TelegramClient implements Client {
       throw new Error('Telegram client runtime mismatch')
     }
 
-    ayaLogger.log('🚀 Starting Telegram bot...')
+    ayaLogger.info('🚀 Starting Telegram bot...')
     try {
       await this.initializeBot()
       this.setupMessageHandlers()
@@ -102,7 +102,7 @@ export class TelegramClient implements Client {
   }
 
   private setupMessageHandlers(): void {
-    ayaLogger.log('Setting up message handler...')
+    ayaLogger.info('Setting up message handler...')
 
     this.bot.on('message', async (ctx) => {
       try {
@@ -139,11 +139,11 @@ export class TelegramClient implements Client {
     })
 
     this.bot.on('photo', (ctx) => {
-      ayaLogger.log('📸 Received photo message with caption:', ctx.message.caption)
+      ayaLogger.info('📸 Received photo message with caption:', ctx.message.caption)
     })
 
     this.bot.on('document', (ctx) => {
-      ayaLogger.log('📎 Received document message:', ctx.message.document.file_name)
+      ayaLogger.info('📎 Received document message:', ctx.message.document.file_name)
     })
 
     this.bot.catch(async (err, ctx) => {
@@ -156,10 +156,10 @@ export class TelegramClient implements Client {
 
   private setupShutdownHandlers(): void {
     const shutdownHandler = async (signal: string): Promise<void> => {
-      ayaLogger.log(`⚠️ Received ${signal}. Shutting down Telegram bot gracefully...`)
+      ayaLogger.info(`⚠️ Received ${signal}. Shutting down Telegram bot gracefully...`)
       try {
         await this.stop(this.runtime)
-        ayaLogger.log('🛑 Telegram bot stopped gracefully')
+        ayaLogger.info('🛑 Telegram bot stopped gracefully')
       } catch (error) {
         ayaLogger.error('❌ Error during Telegram bot shutdown:', error)
         throw error
@@ -176,9 +176,9 @@ export class TelegramClient implements Client {
       throw new Error('Telegram client runtime mismatch')
     }
 
-    ayaLogger.log('Stopping Telegram bot...')
+    ayaLogger.info('Stopping Telegram bot...')
     // await
     this.bot.stop()
-    ayaLogger.log('Telegram bot stopped')
+    ayaLogger.info('Telegram bot stopped')
   }
 }

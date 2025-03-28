@@ -129,7 +129,7 @@ export class TwitterInteractionClient {
   }
 
   async handleTwitterInteractions(): Promise<void> {
-    ayaLogger.log('Checking Twitter interactions')
+    ayaLogger.info('Checking Twitter interactions')
 
     const twitterUsername = this.client.profile?.username
     if (isNull(twitterUsername)) {
@@ -142,13 +142,13 @@ export class TwitterInteractionClient {
         await this.client.fetchSearchTweets(`@${twitterUsername}`, 20, SearchMode.Latest)
       ).tweets
 
-      ayaLogger.log('Completed checking mentioned tweets:', mentionCandidates.length)
+      ayaLogger.info('Completed checking mentioned tweets:', mentionCandidates.length)
       let uniqueTweetCandidates = [...mentionCandidates]
       // Only process target users if configured
       if (this.client.twitterConfig.TWITTER_TARGET_USERS.length) {
         const TARGET_USERS = this.client.twitterConfig.TWITTER_TARGET_USERS
 
-        ayaLogger.log('Processing target users:', TARGET_USERS)
+        ayaLogger.info('Processing target users:', TARGET_USERS)
 
         if (TARGET_USERS.length > 0) {
           // Create a map to store tweets by user
@@ -174,7 +174,7 @@ export class TwitterInteractionClient {
                   ? Date.now() - tweet.timestamp * 1000 < 2 * 60 * 60 * 1000
                   : false
 
-                ayaLogger.log(`Tweet ${tweet.id} checks:`, {
+                ayaLogger.info(`Tweet ${tweet.id} checks:`, {
                   isUnprocessed,
                   isRecent,
                   isReply: tweet.isReply,
@@ -186,7 +186,7 @@ export class TwitterInteractionClient {
 
               if (validTweets.length > 0) {
                 tweetsByUser.set(username, validTweets)
-                ayaLogger.log(`Found ${validTweets.length} valid tweets from ${username}`)
+                ayaLogger.info(`Found ${validTweets.length} valid tweets from ${username}`)
               }
             } catch (error) {
               ayaLogger.error(`Error fetching tweets for ${username}:`, error)
@@ -201,7 +201,7 @@ export class TwitterInteractionClient {
               // Randomly select one tweet from this user
               const randomTweet = tweets[Math.floor(Math.random() * tweets.length)]
               selectedTweets.push(randomTweet)
-              ayaLogger.log(
+              ayaLogger.info(
                 `Selected tweet from ${username}: ${randomTweet.text?.substring(0, 100)}`
               )
             }
@@ -211,7 +211,7 @@ export class TwitterInteractionClient {
           uniqueTweetCandidates = [...mentionCandidates, ...selectedTweets]
         }
       } else {
-        ayaLogger.log('No target users configured, processing only mentions')
+        ayaLogger.info('No target users configured, processing only mentions')
       }
 
       // Sort tweet candidates by ID in ascending order
@@ -234,10 +234,10 @@ export class TwitterInteractionClient {
           const existingResponse = await this.runtime.messageManager.getMemoryById(tweetId)
 
           if (existingResponse) {
-            ayaLogger.log(`Already responded to tweet ${tweet.id}, skipping`)
+            ayaLogger.info(`Already responded to tweet ${tweet.id}, skipping`)
             continue
           }
-          ayaLogger.log('New Tweet found', tweet.permanentUrl)
+          ayaLogger.info('New Tweet found', tweet.permanentUrl)
 
           const roomId = stringToUuid(tweet.conversationId + '-' + this.runtime.agentId)
 
@@ -282,7 +282,7 @@ export class TwitterInteractionClient {
       // Save the latest checked tweet ID to the file
       await this.client.cacheLatestCheckedTweetId()
 
-      ayaLogger.log('Finished checking Twitter interactions')
+      ayaLogger.info('Finished checking Twitter interactions')
     } catch (error) {
       ayaLogger.error('Error handling Twitter interactions:', error)
     }
@@ -307,11 +307,11 @@ export class TwitterInteractionClient {
     }
 
     if (!message.content.text) {
-      ayaLogger.log('Skipping Tweet with no text', tweet.id)
+      ayaLogger.info('Skipping Tweet with no text', tweet.id)
       return { text: '', action: 'IGNORE' }
     }
 
-    ayaLogger.log('Processing Tweet: ', tweet.id)
+    ayaLogger.info('Processing Tweet: ', tweet.id)
     const formatTweet = (tweet: Tweet): string => {
       return `ID: ${tweet.id} From: ${tweet.name} (@${tweet.username})
               Text: ${tweet.text}`
@@ -375,7 +375,7 @@ export class TwitterInteractionClient {
         ayaLogger.error('Tweet user ID or conversation ID is not set', tweet)
         return { text: '', action: 'IGNORE' }
       }
-      ayaLogger.log('tweet does not exist, saving')
+      ayaLogger.info('tweet does not exist, saving')
       const userIdUUID = stringToUuid(tweet.userId)
       const roomId = stringToUuid(tweet.conversationId)
 
@@ -416,7 +416,7 @@ export class TwitterInteractionClient {
 
     // Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
     if (shouldRespond !== 'RESPOND') {
-      ayaLogger.log('Not responding to message')
+      ayaLogger.info('Not responding to message')
       return { text: 'Response Decision:', action: shouldRespond ?? 'IGNORE' }
     }
 
@@ -588,19 +588,19 @@ export class TwitterInteractionClient {
     const visited: Set<string> = new Set()
 
     const processThread = async (currentTweet: Tweet, depth = 0): Promise<void> => {
-      ayaLogger.log('Processing tweet:', {
+      ayaLogger.info('Processing tweet:', {
         id: currentTweet.id,
         inReplyToStatusId: currentTweet.inReplyToStatusId,
         depth
       })
 
       if (!currentTweet) {
-        ayaLogger.log('No current tweet found for thread building')
+        ayaLogger.info('No current tweet found for thread building')
         return
       }
 
       if (depth >= maxReplies) {
-        ayaLogger.log('Reached maximum reply depth', depth)
+        ayaLogger.info('Reached maximum reply depth', depth)
         return
       }
 
@@ -652,7 +652,7 @@ export class TwitterInteractionClient {
       }
 
       if (visited.has(currentTweet.id)) {
-        ayaLogger.log('Already visited tweet:', currentTweet.id)
+        ayaLogger.info('Already visited tweet:', currentTweet.id)
         return
       }
 
@@ -660,27 +660,27 @@ export class TwitterInteractionClient {
       thread.unshift(currentTweet)
 
       if (currentTweet.inReplyToStatusId) {
-        ayaLogger.log('Fetching parent tweet:', currentTweet.inReplyToStatusId)
+        ayaLogger.info('Fetching parent tweet:', currentTweet.inReplyToStatusId)
         try {
           const parentTweet = await this.client.getTweet(currentTweet.inReplyToStatusId)
 
           if (parentTweet) {
-            ayaLogger.log('Found parent tweet:', {
+            ayaLogger.info('Found parent tweet:', {
               id: parentTweet.id,
               text: parentTweet.text?.slice(0, 50)
             })
             await processThread(parentTweet, depth + 1)
           } else {
-            ayaLogger.log('No parent tweet found for:', currentTweet.inReplyToStatusId)
+            ayaLogger.info('No parent tweet found for:', currentTweet.inReplyToStatusId)
           }
         } catch (error) {
-          ayaLogger.log('Error fetching parent tweet:', {
+          ayaLogger.info('Error fetching parent tweet:', {
             tweetId: currentTweet.inReplyToStatusId,
             error
           })
         }
       } else {
-        ayaLogger.log('Reached end of reply chain at:', currentTweet.id)
+        ayaLogger.info('Reached end of reply chain at:', currentTweet.id)
       }
     }
 

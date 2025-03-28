@@ -113,23 +113,23 @@ export class TwitterPostClient {
     this.isDryRun = this.client.twitterConfig.TWITTER_DRY_RUN
 
     // Log configuration on initialization
-    ayaLogger.log('Twitter Client Configuration:')
-    ayaLogger.log(`- Username: ${this.twitterUsername}`)
-    ayaLogger.log(`- Dry Run Mode: ${this.isDryRun ? 'enabled' : 'disabled'}`)
-    ayaLogger.log(
+    ayaLogger.info('Twitter Client Configuration:')
+    ayaLogger.info(`- Username: ${this.twitterUsername}`)
+    ayaLogger.info(`- Dry Run Mode: ${this.isDryRun ? 'enabled' : 'disabled'}`)
+    ayaLogger.info(
       // eslint-disable-next-line max-len
       `- Post Interval: ${this.client.twitterConfig.POST_INTERVAL_MIN}-${this.client.twitterConfig.POST_INTERVAL_MAX} minutes`
     )
-    ayaLogger.log(
+    ayaLogger.info(
       `- Action Processing: ${
         this.client.twitterConfig.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'
       }`
     )
-    ayaLogger.log(`- Action Interval: ${this.client.twitterConfig.ACTION_INTERVAL} minutes`)
-    ayaLogger.log(
+    ayaLogger.info(`- Action Interval: ${this.client.twitterConfig.ACTION_INTERVAL} minutes`)
+    ayaLogger.info(
       `- Post Immediately: ${this.client.twitterConfig.POST_IMMEDIATELY ? 'enabled' : 'disabled'}`
     )
-    ayaLogger.log(
+    ayaLogger.info(
       `- Search Enabled: ${
         this.client.twitterConfig.TWITTER_SEARCH_ENABLE ? 'enabled' : 'disabled'
       }`
@@ -137,11 +137,11 @@ export class TwitterPostClient {
 
     const targetUsers = this.client.twitterConfig.TWITTER_TARGET_USERS
     if (targetUsers) {
-      ayaLogger.log(`- Target Users: ${targetUsers}`)
+      ayaLogger.info(`- Target Users: ${targetUsers}`)
     }
 
     if (this.isDryRun) {
-      ayaLogger.log(
+      ayaLogger.info(
         'Twitter client initialized in dry run mode - no actual tweets should be posted'
       )
     }
@@ -186,7 +186,7 @@ export class TwitterPostClient {
       partials: [Partials.Channel, Partials.Message, Partials.Reaction]
     })
     this.discordClientForApproval.once(Events.ClientReady, (readyClient) => {
-      ayaLogger.log(`Discord bot is ready as ${readyClient.user.tag}!`)
+      ayaLogger.info(`Discord bot is ready as ${readyClient.user.tag}!`)
 
       // Generate invite link with required permissions
       // eslint-disable-next-line max-len
@@ -196,7 +196,7 @@ export class TwitterPostClient {
       // - Read Messages/View Channels
       // - Read Message History
 
-      ayaLogger.log(
+      ayaLogger.info(
         `Use this link to properly invite the Twitter Post Approval Discord bot: ${invite}`
       )
     })
@@ -233,7 +233,7 @@ export class TwitterPostClient {
         void generateNewTweetLoop() // Set up next iteration
       }, delay)
 
-      ayaLogger.log(`Next tweet scheduled in ${randomMinutes} minutes`)
+      ayaLogger.info(`Next tweet scheduled in ${randomMinutes} minutes`)
     }
 
     const processActionsLoop = async (): Promise<void> => {
@@ -243,8 +243,8 @@ export class TwitterPostClient {
         try {
           const results = await this.processTweetActions()
           if (results) {
-            ayaLogger.log(`Processed ${results.length} tweets`)
-            ayaLogger.log(`Next action processing scheduled in ${actionInterval} minutes`)
+            ayaLogger.info(`Processed ${results.length} tweets`)
+            ayaLogger.info(`Next action processing scheduled in ${actionInterval} minutes`)
             // Wait for the full interval before next processing
             await new Promise(
               (resolve) => setTimeout(resolve, actionInterval * 60 * 1000) // now in minutes
@@ -263,7 +263,7 @@ export class TwitterPostClient {
     }
 
     void generateNewTweetLoop()
-    ayaLogger.log('Tweet generation loop started')
+    ayaLogger.info('Tweet generation loop started')
 
     if (this.client.twitterConfig.ENABLE_ACTION_PROCESSING) {
       processActionsLoop().catch((error) => {
@@ -322,7 +322,7 @@ export class TwitterPostClient {
     await client.cacheTweet(tweet)
 
     // Log the posted tweet
-    ayaLogger.log(`Tweet posted:\n ${tweet.permanentUrl}`)
+    ayaLogger.info(`Tweet posted:\n ${tweet.permanentUrl}`)
 
     // Ensure the room and participant exist
     await runtime.ensureRoomExists(roomId)
@@ -421,7 +421,7 @@ export class TwitterPostClient {
     mediaData?: MediaData[]
   ): Promise<Tweet | null> {
     try {
-      ayaLogger.log(`Posting new tweet:\n`)
+      ayaLogger.info(`Posting new tweet:\n`)
 
       let result
 
@@ -446,7 +446,7 @@ export class TwitterPostClient {
    * Generates and posts a new tweet. If isDryRun is true, only logs what would have been posted.
    */
   async generateNewTweet(): Promise<void> {
-    ayaLogger.log('Generating new tweet')
+    ayaLogger.info('Generating new tweet')
 
     try {
       if (isNull(this.client.profile)) {
@@ -570,11 +570,11 @@ export class TwitterPostClient {
       try {
         if (this.approvalRequired) {
           // Send for approval instead of posting directly
-          ayaLogger.log(`Sending Tweet For Approval:\n ${tweetTextForPosting}`)
+          ayaLogger.info(`Sending Tweet For Approval:\n ${tweetTextForPosting}`)
           await this.sendForApproval(tweetTextForPosting, roomId, rawTweetContent)
-          ayaLogger.log('Tweet sent for approval')
+          ayaLogger.info('Tweet sent for approval')
         } else {
-          ayaLogger.log(`Posting new tweet:\n ${tweetTextForPosting}`)
+          ayaLogger.info(`Posting new tweet:\n ${tweetTextForPosting}`)
           void this.postTweet(
             this.runtime,
             this.client,
@@ -615,7 +615,7 @@ export class TwitterPostClient {
       modelClass: ModelClass.SMALL
     })
 
-    ayaLogger.log('generate tweet content response:\n' + response)
+    ayaLogger.info('generate tweet content response:\n' + response)
 
     // First clean up any markdown and newlines
     const cleanedResponse = cleanJsonResponse(response)
@@ -674,7 +674,7 @@ export class TwitterPostClient {
     }[]
   > {
     if (this.isProcessing) {
-      ayaLogger.log('Already processing tweet actions, skipping')
+      ayaLogger.info('Already processing tweet actions, skipping')
       return []
     }
 
@@ -682,7 +682,7 @@ export class TwitterPostClient {
       this.isProcessing = true
       this.lastProcessTime = Date.now()
 
-      ayaLogger.log('Processing tweet actions')
+      ayaLogger.info('Processing tweet actions')
 
       await this.runtime.ensureUserExists(
         this.runtime.agentId,
@@ -707,7 +707,7 @@ export class TwitterPostClient {
             stringToUuid(tweet.id + '-' + this.runtime.agentId)
           )
           if (memory) {
-            ayaLogger.log(`Already processed tweet ID: ${tweet.id}`)
+            ayaLogger.info(`Already processed tweet ID: ${tweet.id}`)
             continue
           }
 
@@ -740,7 +740,7 @@ export class TwitterPostClient {
           })
 
           if (!actionResponse) {
-            ayaLogger.log(`No valid actions generated for tweet ${tweet.id}`)
+            ayaLogger.info(`No valid actions generated for tweet ${tweet.id}`)
             continue
           }
           processedTimelines.push({
@@ -839,7 +839,7 @@ export class TwitterPostClient {
             try {
               await this.client.twitterClient.likeTweet(tweetId)
               executedActions.push('like')
-              ayaLogger.log(`Liked tweet ${tweetId}`)
+              ayaLogger.info(`Liked tweet ${tweetId}`)
             } catch (error) {
               ayaLogger.error(`Error liking tweet ${tweetId}:`, error)
             }
@@ -854,7 +854,7 @@ export class TwitterPostClient {
             try {
               await this.client.twitterClient.retweet(tweetId)
               executedActions.push('retweet')
-              ayaLogger.log(`Retweeted tweet ${tweetId}`)
+              ayaLogger.info(`Retweeted tweet ${tweetId}`)
             } catch (error) {
               ayaLogger.error(`Error retweeting tweet ${tweetId}:`, error)
             }
@@ -875,7 +875,7 @@ export class TwitterPostClient {
             // Generate image descriptions if present
             const imageDescriptions: { title: string; description: string }[] = []
             if (tweet.photos?.length > 0) {
-              ayaLogger.log('Processing images in tweet for context')
+              ayaLogger.info('Processing images in tweet for context')
               for (const photo of tweet.photos) {
                 const description = await this.runtime
                   .getService<IImageDescriptionService>(ServiceType.IMAGE_DESCRIPTION)
@@ -936,7 +936,7 @@ export class TwitterPostClient {
               return []
             }
 
-            ayaLogger.log('Generated quote tweet content:', quoteContent)
+            ayaLogger.info('Generated quote tweet content:', quoteContent)
             // Check for dry run mode
             if (this.isDryRun) {
               ayaLogger.info(
@@ -960,7 +960,7 @@ export class TwitterPostClient {
                 }
               } = await result.json()
               if (body?.data?.create_tweet?.tweet_results?.result) {
-                ayaLogger.log('Successfully posted quote tweet')
+                ayaLogger.info('Successfully posted quote tweet')
                 executedActions.push('quote')
 
                 // Cache generation context for debugging
@@ -1049,7 +1049,7 @@ export class TwitterPostClient {
       // Generate image descriptions if present
       const imageDescriptions: { title: string; description: string }[] = []
       if (tweet.photos?.length > 0) {
-        ayaLogger.log('Processing images in tweet for context')
+        ayaLogger.info('Processing images in tweet for context')
         for (const photo of tweet.photos) {
           const description = await this.runtime
             .getService<IImageDescriptionService>(ServiceType.IMAGE_DESCRIPTION)
@@ -1124,7 +1124,7 @@ export class TwitterPostClient {
       }
 
       if (result) {
-        ayaLogger.log('Successfully posted reply tweet')
+        ayaLogger.info('Successfully posted reply tweet')
         executedActions.push('reply')
 
         // Cache generation context for debugging
@@ -1212,7 +1212,7 @@ export class TwitterPostClient {
         this.discordApprovalChannelId ?? ''
       )
 
-      ayaLogger.log(`channel ${JSON.stringify(channel)}`)
+      ayaLogger.info(`channel ${JSON.stringify(channel)}`)
 
       if (!(channel instanceof TextChannel)) {
         ayaLogger.error('Invalid approval channel')
@@ -1275,7 +1275,7 @@ export class TwitterPostClient {
   }
 
   private async handlePendingTweet(): Promise<void> {
-    ayaLogger.log('Checking Pending Tweets...')
+    ayaLogger.info('Checking Pending Tweets...')
     const pendingTweetsKey = `twitter/${this.client.profile?.username}/pendingTweet`
     const pendingTweets =
       (await this.runtime.cacheManager.get<PendingTweet[]>(pendingTweetsKey)) || []
@@ -1285,7 +1285,7 @@ export class TwitterPostClient {
       const isExpired = Date.now() - pendingTweet.timestamp > 24 * 60 * 60 * 1000
 
       if (isExpired) {
-        ayaLogger.log('Pending tweet expired, cleaning up')
+        ayaLogger.info('Pending tweet expired, cleaning up')
 
         // Notify on Discord about expiration
         try {
@@ -1305,13 +1305,13 @@ export class TwitterPostClient {
       }
 
       // Check approval status
-      ayaLogger.log('Checking approval status...')
+      ayaLogger.info('Checking approval status...')
       const approvalStatus: PendingTweetApprovalStatus = await this.checkApprovalStatus(
         pendingTweet.discordMessageId
       )
 
       if (approvalStatus === 'APPROVED') {
-        ayaLogger.log('Tweet Approved, Posting')
+        ayaLogger.info('Tweet Approved, Posting')
         await this.postTweet(
           this.runtime,
           this.client,
@@ -1336,7 +1336,7 @@ export class TwitterPostClient {
 
         await this.cleanupPendingTweet(pendingTweet.discordMessageId)
       } else if (approvalStatus === 'REJECTED') {
-        ayaLogger.log('Tweet Rejected, Cleaning Up')
+        ayaLogger.info('Tweet Rejected, Cleaning Up')
         await this.cleanupPendingTweet(pendingTweet.discordMessageId)
         // Notify about Rejection of Tweet
         try {

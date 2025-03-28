@@ -254,7 +254,7 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
 
   async registerService(service: Service): Promise<void> {
     const serviceType = service.serviceType
-    ayaLogger.log(`${this.character.name}(${this.agentId}) - Registering service:`, serviceType)
+    ayaLogger.info(`${this.character.name}(${this.agentId}) - Registering service:`, serviceType)
 
     if (this.services.has(serviceType)) {
       ayaLogger.warn(

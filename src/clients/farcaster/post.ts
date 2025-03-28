@@ -27,28 +27,28 @@ export class FarcasterPostManager {
     this.isDryRun = this.client.farcasterConfig?.FARCASTER_DRY_RUN ?? false
 
     // Log configuration on initialization
-    ayaLogger.log('Farcaster Client Configuration:')
-    ayaLogger.log(`- FID: ${this.fid}`)
-    ayaLogger.log(`- Dry Run Mode: ${this.isDryRun ? 'enabled' : 'disabled'}`)
-    ayaLogger.log(
+    ayaLogger.info('Farcaster Client Configuration:')
+    ayaLogger.info(`- FID: ${this.fid}`)
+    ayaLogger.info(`- Dry Run Mode: ${this.isDryRun ? 'enabled' : 'disabled'}`)
+    ayaLogger.info(
       `- Enable Post: ${this.client.farcasterConfig.ENABLE_POST ? 'enabled' : 'disabled'}`
     )
     if (this.client.farcasterConfig.ENABLE_POST) {
-      ayaLogger.log(
+      ayaLogger.info(
         `- Post Interval: ${this.client.farcasterConfig.POST_INTERVAL_MIN}-
         ${this.client.farcasterConfig.POST_INTERVAL_MAX} minutes`
       )
-      ayaLogger.log(
+      ayaLogger.info(
         `- Post Immediately: ${this.client.farcasterConfig.POST_IMMEDIATELY ? 'enabled' : 'disabled'}`
       )
     }
-    ayaLogger.log(
+    ayaLogger.info(
       `- Action Processing: ${this.client.farcasterConfig.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'}`
     )
-    ayaLogger.log(`- Action Interval: ${this.client.farcasterConfig.ACTION_INTERVAL} minutes`)
+    ayaLogger.info(`- Action Interval: ${this.client.farcasterConfig.ACTION_INTERVAL} minutes`)
 
     if (this.isDryRun) {
-      ayaLogger.log(
+      ayaLogger.info(
         'Farcaster client initialized in dry run mode - no actual casts should be posted'
       )
     }
@@ -79,7 +79,7 @@ export class FarcasterPostManager {
         void generateNewCastLoop() // Set up next iteration
       }, delay)
 
-      ayaLogger.log(`Next cast scheduled in ${randomMinutes} minutes`)
+      ayaLogger.info(`Next cast scheduled in ${randomMinutes} minutes`)
     }
 
     if (this.client.farcasterConfig.ENABLE_POST) {
