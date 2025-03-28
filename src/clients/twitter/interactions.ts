@@ -465,6 +465,13 @@ export class TwitterInteractionClient {
       modelClass: ModelClass.LARGE
     })
 
+    const responseText = await this.runtime.validateResponse(response.text)
+    if (isNull(responseText)) {
+      return { text: '', action: 'IGNORE' }
+    } else {
+      response.text = responseText
+    }
+
     const removeQuotes = (str: string): string => str.replace(/^['"](.*)['"]$/, '$1')
 
     const stringId = stringToUuid(tweet.id + '-' + this.runtime.agentId)

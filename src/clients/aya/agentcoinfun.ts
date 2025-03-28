@@ -333,6 +333,14 @@ export class AgentcoinClient implements Client {
       modelClass: ModelClass.LARGE
     })
 
+    const responseText = await this.runtime.validateResponse(response.text)
+    if (isNull(responseText)) {
+      await this.agentcoinService.sendStatus(channel, 'idle')
+      return
+    } else {
+      response.text = responseText
+    }
+
     // `postllm` event
     shouldContinue = await this.runtime.handle('post:llm', {
       state,
@@ -364,7 +372,7 @@ export class AgentcoinClient implements Client {
         content: response,
         channel
       })
-      await this.runtime.evaluate(responseMessage, state, true)
+      // await this.runtime.evaluate(responseMessage, state, true)
       messageResponses.push(responseMessage)
       state = await this.runtime.updateRecentMessageState(state)
     }
