@@ -238,7 +238,7 @@ export class AgentcoinAPI {
       body: JSON.stringify({
         name,
         purpose,
-        pubkeyProof: { message, publicKey, signature }
+        proof: { message, publicKey, signature }
       })
     })
 
