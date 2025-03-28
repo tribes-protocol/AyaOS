@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.39
+
+### Patch Changes
+
+- a8b5f88: respond to mentions in group tg
+
 ## 0.0.38
 
 ### Patch Changes
