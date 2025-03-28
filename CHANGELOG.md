@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.37
+
+### Patch Changes
+
+- b7af9e2: add ability to check the response before sending
+
 ## 0.0.36
 
 ### Patch Changes
