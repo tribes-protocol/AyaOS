@@ -50,7 +50,7 @@ export class TwitterManager implements Client {
       throw new Error('Twitter client runtime mismatch')
     }
 
-    ayaLogger.log('Twitter client started')
+    ayaLogger.info('Twitter client started')
 
     // Initialize login/session
     await this.client.init()
@@ -82,7 +82,7 @@ export const TwitterClientInterface: Client = {
   async start(runtime: IAyaRuntime) {
     const twitterConfig: TwitterConfig = await validateTwitterConfig(runtime)
 
-    ayaLogger.log('Twitter client started')
+    ayaLogger.info('Twitter client started')
 
     const manager = new TwitterManager(runtime, twitterConfig)
 

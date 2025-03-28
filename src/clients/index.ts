@@ -5,6 +5,7 @@ import { TelegramClient } from '@/clients/telegram/telegramClient'
 import { TwitterManager } from '@/clients/twitter'
 import { validateTwitterConfig } from '@/clients/twitter/environment'
 import { Client, IAyaRuntime } from '@/common/iruntime'
+import { ayaLogger } from '@/common/logger'
 import { Character, Clients } from '@elizaos/core'
 
 export async function initializeClients(
@@ -13,6 +14,7 @@ export async function initializeClients(
 ): Promise<Record<string, Client>> {
   const clients: Record<string, Client> = {}
   const clientTypes = character.clients?.map((str) => str.toLowerCase()) || []
+  ayaLogger.info(`Initializing clients [${character.name}] [${clientTypes}]`)
 
   if (clientTypes.includes(Clients.TELEGRAM)) {
     const tg = new TelegramClient(

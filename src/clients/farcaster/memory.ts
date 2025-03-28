@@ -75,7 +75,7 @@ export async function buildConversationThread({
     const memory = await runtime.messageManager.getMemoryById(roomId)
 
     if (!memory) {
-      ayaLogger.log('Creating memory for cast', currentCast.hash)
+      ayaLogger.info('Creating memory for cast', currentCast.hash)
 
       const userId = stringToUuid(currentCast.authorFid.toString())
 
