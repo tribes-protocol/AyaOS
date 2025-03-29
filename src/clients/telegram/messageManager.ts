@@ -240,7 +240,7 @@ export class MessageManager {
 
           this.autoPostConfig.lastAutoPost = Date.now()
           state = await this.runtime.updateRecentMessageState(state)
-          await this.runtime.evaluate(memory, state, true)
+          // await this.runtime.evaluate(memory, state, true)
         } catch (error) {
           ayaLogger.warn('[AutoPost Telegram] Error:', error)
         }
@@ -345,7 +345,7 @@ export class MessageManager {
       }
 
       state = await this.runtime.updateRecentMessageState(state)
-      await this.runtime.evaluate(memory, state, true)
+      //  await this.runtime.evaluate(memory, state, true)
     } catch (error) {
       ayaLogger.warn(`[AutoPost Telegram] Error processing pinned message:`, error)
     }
@@ -1225,8 +1225,21 @@ export class MessageManager {
 
         if (!responseContent || !responseContent.text) return
 
-        // Execute callback to send messages and log memories
-        const messageResponses = await callback(responseContent)
+        // Check if the initial message should be suppressed based on action
+        const action = this.runtime.actions.find((a) => a.name === responseContent.action)
+        const shouldSuppressInitialMessage = action?.suppressInitialMessage === true
+
+        let messageResponses: Memory[] = []
+
+        if (shouldSuppressInitialMessage) {
+          ayaLogger.info(
+            'Telegram response is suppressed due to suppressInitialMessage action flag',
+            responseContent.action
+          )
+        } else {
+          // Execute callback to send messages and log memories
+          messageResponses = await callback(responseContent)
+        }
 
         shouldContinue = await this.runtime.handle('post:llm', {
           state,
@@ -1278,10 +1291,8 @@ export class MessageManager {
           return callback(newMessage)
         })
       }
-      await this.runtime.evaluate(memory, state, shouldRespond, callback)
     } catch (error) {
       ayaLogger.error('❌ Error handling message:', error)
-      ayaLogger.error('Error sending message:', error)
     }
   }
 }

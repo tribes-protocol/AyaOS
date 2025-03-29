@@ -357,40 +357,41 @@ export class AgentcoinClient implements Client {
       modelClass: ModelClass.LARGE
     })
 
-    const responseText = await this.runtime.validateResponse(response.text)
-    if (isNull(responseText)) {
-      await unsubscribeStatus()
-      return
-    } else {
-      response.text = responseText
-    }
-
-    // `postllm` event
-    shouldContinue = await this.runtime.handle('post:llm', {
-      state,
-      responses: [],
-      memory,
-      content: response
-    })
-
-    if (!shouldContinue) {
-      ayaLogger.info('AgentcoinClient received postllm event but it was suppressed')
-      await unsubscribeStatus()
-      return
-    }
-
-    if (isNull(response.text) || response.text.trim().length === 0) {
-      await unsubscribeStatus()
-      return
-    }
-
     const action = this.runtime.actions.find((a) => a.name === response.action)
-    const shouldSuppressInitialMessage = action?.suppressInitialMessage
+    const shouldSuppressInitialMessage = action?.suppressInitialMessage === true
 
     const messageResponses: Memory[] = []
+
     if (shouldSuppressInitialMessage) {
       ayaLogger.info('Agentcoin response is IGNORE', response)
     } else {
+      const responseText = await this.runtime.validateResponse(response.text)
+      if (isNull(responseText)) {
+        await unsubscribeStatus()
+        return
+      } else {
+        response.text = responseText
+      }
+
+      // `postllm` event
+      shouldContinue = await this.runtime.handle('post:llm', {
+        state,
+        responses: [],
+        memory,
+        content: response
+      })
+
+      if (!shouldContinue) {
+        ayaLogger.info('AgentcoinClient received postllm event but it was suppressed')
+        await unsubscribeStatus()
+        return
+      }
+
+      if (isNull(response.text) || response.text.trim().length === 0) {
+        await unsubscribeStatus()
+        return
+      }
+
       const responseMessage = await this.sendMessageAsAgent({
         identity,
         content: response,

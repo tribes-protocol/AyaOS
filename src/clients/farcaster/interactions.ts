@@ -299,7 +299,20 @@ export class FarcasterInteractionManager {
       }
     }
 
-    const messageResponses = await callback(responseContent)
+    // Check if the initial message should be suppressed based on action
+    const action = this.runtime.actions.find((a) => a.name === responseContent.action)
+    const shouldSuppressInitialMessage = action?.suppressInitialMessage === true
+
+    let messageResponses: Memory[] = []
+
+    if (shouldSuppressInitialMessage) {
+      ayaLogger.info(
+        'Farcaster response is suppressed due to suppressInitialMessage action flag',
+        responseContent.action
+      )
+    } else {
+      messageResponses = await callback(responseContent)
+    }
 
     const newState = await this.runtime.updateRecentMessageState(state)
 

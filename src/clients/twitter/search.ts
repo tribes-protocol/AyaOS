@@ -289,7 +289,7 @@ export class TwitterSearchClient {
 
         state = await this.runtime.updateRecentMessageState(state)
 
-        await this.runtime.evaluate(message, state)
+        // await this.runtime.evaluate(message, state)
 
         await this.runtime.processActions(message, responseMessages, state, callback)
 

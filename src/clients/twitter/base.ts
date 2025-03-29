@@ -605,7 +605,7 @@ export class ClientBase extends EventEmitter {
     await this.twitterClient.setCookies(cookieStrings)
   }
 
-  async saveRequestMessage(message: Memory, state: State): Promise<void> {
+  async saveRequestMessage(message: Memory, _state: State): Promise<void> {
     if (message.content.text) {
       const recentMessage = await this.runtime.messageManager.getMemories({
         roomId: message.roomId,
@@ -622,10 +622,10 @@ export class ClientBase extends EventEmitter {
         })
       }
 
-      await this.runtime.evaluate(message, {
-        ...state,
-        twitterClient: this.twitterClient
-      })
+      // await this.runtime.evaluate(message, {
+      //   ...state,
+      //   twitterClient: this.twitterClient
+      // })
     }
   }
 

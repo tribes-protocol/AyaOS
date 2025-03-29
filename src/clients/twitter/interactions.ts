@@ -514,19 +514,38 @@ export class TwitterInteractionClient {
             return memories
           }
 
-          const messageResponses = await callback(response)
+          // Check if the initial message should be suppressed based on action
+          const action = this.runtime.actions.find((a) => a.name === response.action)
+          const shouldSuppressInitialMessage = action?.suppressInitialMessage === true
+
+          let messageResponses: Memory[] = []
+
+          if (shouldSuppressInitialMessage) {
+            ayaLogger.info(
+              'Twitter response is suppressed due to suppressInitialMessage action flag',
+              response.action
+            )
+          } else {
+            messageResponses = await callback(response)
+          }
 
           state = await this.runtime.updateRecentMessageState(state)
 
-          for (const responseMessage of messageResponses) {
-            if (responseMessage === messageResponses[messageResponses.length - 1]) {
-              responseMessage.content.action = response.action
-            } else {
-              responseMessage.content.action = 'CONTINUE'
+          if (!shouldSuppressInitialMessage) {
+            for (const responseMessage of messageResponses) {
+              if (responseMessage === messageResponses[messageResponses.length - 1]) {
+                responseMessage.content.action = response.action
+              } else {
+                responseMessage.content.action = 'CONTINUE'
+              }
+              await this.runtime.messageManager.createMemory(responseMessage)
             }
-            await this.runtime.messageManager.createMemory(responseMessage)
           }
-          const responseTweetId = messageResponses[messageResponses.length - 1]?.content?.tweetId
+
+          const responseTweetId =
+            messageResponses.length > 0
+              ? messageResponses[messageResponses.length - 1]?.content?.tweetId
+              : undefined
 
           if (!hasActions(messageResponses)) {
             return { text: '', action: 'IGNORE' }
