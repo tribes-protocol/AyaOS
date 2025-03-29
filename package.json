@@ -47,7 +47,7 @@
     "fs": "0.0.1-security",
     "langchain": "0.3.19",
     "limiter": "3.0.0",
-    "lru-cache": "^11.1.0",
+    "lru-cache": "11.1.0",
     "mammoth": "1.9.0",
     "net": "1.0.2",
     "path": "0.12.7",
