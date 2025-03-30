@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.44
+
+### Patch Changes
+
+- 3d23712: correctly unsubscribe from sending status in aya client
+
 ## 0.0.43
 
 ### Patch Changes
