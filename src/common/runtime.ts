@@ -284,22 +284,33 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
       return responseText
     }
 
+    const actions = this.actions
+      .map((action) => `- $Name:{action.name}\nDescription: ${action.description}`)
+      .join('\n')
+
     const validationPrompt = `You are a response validator for an AI assistant. 
 Your task is to check if the following response strictly adheres to the system rules defined below.
 
-If the response violates ANY of the rules, you must:
-1. Return a JSON object with "valid": false and "correctedResponse" containing a polite decline 
-   and redirection to appropriate topics
-2. The corrected response should maintain the assistant's professional tone while staying 
-   within bounds
+If the response violates ANY of the rules, you must return a JSON object with "valid": false 
+and "correctedResponse" contains the updated response. If you're not ABSOLUTELY sure about the 
+updated response, return the original response.
 
 If the response follows ALL rules, return a JSON with "valid": true and the original "response"
 
 SYSTEM RULES:
+<SYSTEM_RULES>
 ${this.character.system}
+</SYSTEM_RULES>
+
+TOOLS:
+<TOOLS>
+${actions}
+</TOOLS>
 
 RESPONSE TO VALIDATE:
+<RESPONSE>
 ${responseText}
+</RESPONSE>
 
 Return your analysis as a JSON object with the following structure. Make sure it's the 
 raw json. No markdown or anything else:
@@ -322,7 +333,11 @@ raw json. No markdown or anything else:
         try {
           const parsed = ResponseValidationSchema.parse(JSON.parse(validationResult))
           const t = parsed.valid ? responseText : parsed.correctedResponse
-          console.log('Validated response:', t)
+          console.log('Validated response:', {
+            valid: parsed.valid,
+            correctedResponse: parsed.correctedResponse,
+            explanation: parsed.explanation
+          })
           return t
         } catch (parseError) {
           if (attempt === 2) {
