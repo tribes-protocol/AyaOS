@@ -246,8 +246,8 @@ export class AgentcoinClient implements Client {
       await agentcoinService.sendStatus(channel, status)
     }, 5000)
     return async () => {
-      clearInterval(statusInterval)
       try {
+        clearInterval(statusInterval)
         await agentcoinService.sendStatus(channel, 'idle')
       } catch {
         // noop
@@ -310,149 +310,150 @@ export class AgentcoinClient implements Client {
 
     let unsubscribeStatus = await this.sendStatus(channel, 'thinking')
 
-    const roomId = stringToUuid(serializeChannel(channel))
-    const userId = stringToUuid(serializeIdentity(message.sender))
+    try {
+      const roomId = stringToUuid(serializeChannel(channel))
+      const userId = stringToUuid(serializeIdentity(message.sender))
 
-    await this.runtime.ensureUserRoomConnection({
-      roomId,
-      userId,
-      username: user.username,
-      name: user.username,
-      email: user.identity,
-      bio: user.bio || undefined,
-      ethAddress: EthAddressSchema.safeParse(user.identity).success ? user.identity : undefined,
-      source: 'agentcoin'
-    })
+      await this.runtime.ensureUserRoomConnection({
+        roomId,
+        userId,
+        username: user.username,
+        name: user.username,
+        email: user.identity,
+        bio: user.bio || undefined,
+        ethAddress: EthAddressSchema.safeParse(user.identity).success ? user.identity : undefined,
+        source: 'agentcoin'
+      })
 
-    const memory: Memory = await this.saveMessage({ message })
+      const memory: Memory = await this.saveMessage({ message })
 
-    let state = await this.runtime.composeState(memory, {
-      agentName: this.runtime.character.name
-    })
+      let state = await this.runtime.composeState(memory, {
+        agentName: this.runtime.character.name
+      })
 
-    const context = composeContext({
-      state,
-      template: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
-    })
+      const context = composeContext({
+        state,
+        template: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
+      })
 
-    // `prellm` event
-    let shouldContinue = await this.runtime.handle('pre:llm', {
-      state,
-      responses: [],
-      memory
-    })
-
-    if (!shouldContinue) {
-      ayaLogger.info('AgentcoinClient received prellm event but it was suppressed')
-      await unsubscribeStatus()
-      return
-    }
-
-    await unsubscribeStatus()
-    unsubscribeStatus = await this.sendStatus(channel, 'typing')
-
-    const response = await generateMessageResponse({
-      runtime: this.runtime,
-      context,
-      modelClass: ModelClass.LARGE
-    })
-
-    const action = this.runtime.actions.find((a) => a.name === response.action)
-    const shouldSuppressInitialMessage = action?.suppressInitialMessage === true
-
-    const messageResponses: Memory[] = []
-
-    if (shouldSuppressInitialMessage) {
-      ayaLogger.info('Agentcoin response is IGNORE', response)
-    } else {
-      const responseText = await this.runtime.validateResponse(response.text)
-      if (isNull(responseText)) {
-        await unsubscribeStatus()
-        return
-      } else {
-        response.text = responseText
-      }
-
-      // `postllm` event
-      shouldContinue = await this.runtime.handle('post:llm', {
+      // `prellm` event
+      let shouldContinue = await this.runtime.handle('pre:llm', {
         state,
         responses: [],
-        memory,
-        content: response
+        memory
       })
 
       if (!shouldContinue) {
-        ayaLogger.info('AgentcoinClient received postllm event but it was suppressed')
-        await unsubscribeStatus()
+        ayaLogger.info('AgentcoinClient received prellm event but it was suppressed')
         return
       }
 
-      if (isNull(response.text) || response.text.trim().length === 0) {
-        await unsubscribeStatus()
-        return
-      }
+      await unsubscribeStatus()
+      unsubscribeStatus = await this.sendStatus(channel, 'typing')
 
-      const responseMessage = await this.sendMessageAsAgent({
-        identity,
-        content: response,
-        channel
+      const response = await generateMessageResponse({
+        runtime: this.runtime,
+        context,
+        modelClass: ModelClass.LARGE
       })
-      // await this.runtime.evaluate(responseMessage, state, true)
-      messageResponses.push(responseMessage)
-      state = await this.runtime.updateRecentMessageState(state)
-    }
 
-    if (!hasActions(messageResponses)) {
-      ayaLogger.info('AgentcoinClient received message with no actions. done!')
-      return
-    }
+      const action = this.runtime.actions.find((a) => a.name === response.action)
+      const shouldSuppressInitialMessage = action?.suppressInitialMessage === true
 
-    if (messageResponses[0]?.content.action !== 'CONTINUE') {
-      // if the action is not continue, we need to send a status update
-      await unsubscribeStatus()
-      unsubscribeStatus = await this.sendStatus(channel, 'thinking')
-    }
+      const messageResponses: Memory[] = []
 
-    // `preaction` event
-    shouldContinue = await this.runtime.handle('pre:action', {
-      state,
-      responses: messageResponses,
-      memory
-    })
+      if (shouldSuppressInitialMessage) {
+        ayaLogger.info('Agentcoin response is IGNORE', response)
+      } else {
+        const responseText = await this.runtime.validateResponse(response.text)
+        if (isNull(responseText)) {
+          return
+        } else {
+          response.text = responseText
+        }
 
-    if (!shouldContinue) {
-      ayaLogger.info('AgentcoinClient received preaction event but it was suppressed')
-      await unsubscribeStatus()
-      return
-    }
-
-    await this.runtime.processActions(memory, messageResponses, state, async (newMessage) => {
-      try {
-        // `postaction` event
-        shouldContinue = await this.runtime.handle('post:action', {
+        // `postllm` event
+        shouldContinue = await this.runtime.handle('post:llm', {
           state,
-          responses: messageResponses,
+          responses: [],
           memory,
-          content: newMessage
+          content: response
         })
 
         if (!shouldContinue) {
-          ayaLogger.info('AgentcoinClient received postaction event but it was suppressed')
-          return []
+          ayaLogger.info('AgentcoinClient received postllm event but it was suppressed')
+          return
         }
 
-        const newMemory = await this.sendMessageAsAgent({
+        if (isNull(response.text) || response.text.trim().length === 0) {
+          return
+        }
+
+        await unsubscribeStatus()
+        const responseMessage = await this.sendMessageAsAgent({
           identity,
-          content: newMessage,
+          content: response,
           channel
         })
-
-        return [newMemory]
-      } catch (e) {
-        ayaLogger.error(`error sending`, e)
-        throw e
+        // await this.runtime.evaluate(responseMessage, state, true)
+        messageResponses.push(responseMessage)
+        state = await this.runtime.updateRecentMessageState(state)
       }
-    })
+
+      if (!hasActions(messageResponses)) {
+        ayaLogger.info('AgentcoinClient received message with no actions. done!')
+        return
+      }
+
+      if (messageResponses[0]?.content.action !== 'CONTINUE') {
+        // if the action is not continue, we need to send a status update
+        await unsubscribeStatus()
+        unsubscribeStatus = await this.sendStatus(channel, 'thinking')
+      }
+
+      // `preaction` event
+      shouldContinue = await this.runtime.handle('pre:action', {
+        state,
+        responses: messageResponses,
+        memory
+      })
+
+      if (!shouldContinue) {
+        ayaLogger.info('AgentcoinClient received preaction event but it was suppressed')
+        return
+      }
+
+      await this.runtime.processActions(memory, messageResponses, state, async (newMessage) => {
+        try {
+          // `postaction` event
+          shouldContinue = await this.runtime.handle('post:action', {
+            state,
+            responses: messageResponses,
+            memory,
+            content: newMessage
+          })
+
+          if (!shouldContinue) {
+            ayaLogger.info('AgentcoinClient received postaction event but it was suppressed')
+            return []
+          }
+
+          await unsubscribeStatus()
+          const newMemory = await this.sendMessageAsAgent({
+            identity,
+            content: newMessage,
+            channel
+          })
+
+          return [newMemory]
+        } catch (e) {
+          ayaLogger.error(`error sending`, e)
+          throw e
+        }
+      })
+    } finally {
+      await unsubscribeStatus()
+    }
   }
 }
 
