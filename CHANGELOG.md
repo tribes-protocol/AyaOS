@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.43
+
+### Patch Changes
+
+- 3d5f7e0: update the validation step to include actions
+
 ## 0.0.42
 
 ### Patch Changes
