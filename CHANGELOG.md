@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.42
+
+### Patch Changes
+
+- aab2e87: fix ci
+
 ## 0.0.41
 
 ### Patch Changes
