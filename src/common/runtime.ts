@@ -279,7 +279,7 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     }
   }
 
-  async validateResponse(responseText: string): Promise<string | undefined> {
+  async validateResponse(responseText: string, requestText: string): Promise<string | undefined> {
     if (isNull(this.character.system)) {
       return responseText
     }
@@ -307,10 +307,15 @@ TOOLS:
 ${actions}
 </TOOLS>
 
-RESPONSE TO VALIDATE:
-<RESPONSE>
+QUESTION:
+<QUESTION>
+${requestText}
+</QUESTION>
+
+ANSWER TO VALIDATE:
+<ANSWER>
 ${responseText}
-</RESPONSE>
+</ANSWER>
 
 Return your analysis as a JSON object with the following structure. Make sure it's the 
 raw json. No markdown or anything else:

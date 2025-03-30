@@ -365,7 +365,7 @@ export class AgentcoinClient implements Client {
       if (shouldSuppressInitialMessage) {
         ayaLogger.info('Agentcoin response is IGNORE', response)
       } else {
-        const responseText = await this.runtime.validateResponse(response.text)
+        const responseText = await this.runtime.validateResponse(response.text, message.text)
         if (isNull(responseText)) {
           return
         } else {

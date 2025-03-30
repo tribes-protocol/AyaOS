@@ -465,7 +465,7 @@ export class TwitterInteractionClient {
       modelClass: ModelClass.LARGE
     })
 
-    const responseText = await this.runtime.validateResponse(response.text)
+    const responseText = await this.runtime.validateResponse(response.text, message.content.text)
     if (isNull(responseText)) {
       return { text: '', action: 'IGNORE' }
     } else {

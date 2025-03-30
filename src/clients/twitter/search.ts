@@ -246,7 +246,10 @@ export class TwitterSearchClient {
         modelClass: ModelClass.LARGE
       })
 
-      const responseText = await this.runtime.validateResponse(responseContent.text)
+      const responseText = await this.runtime.validateResponse(
+        responseContent.text,
+        message.content.text
+      )
       if (isNull(responseText)) {
         return
       } else {
