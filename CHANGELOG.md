@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.45
+
+### Patch Changes
+
+- d7cd624: add user question to the validate response function
+
 ## 0.0.44
 
 ### Patch Changes
