@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.47
+
+### Patch Changes
+
+- 59a50b2: improve response content validation instruction
+
 ## 0.0.46
 
 ### Patch Changes
