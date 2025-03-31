@@ -6,8 +6,8 @@ import { LRUCache } from 'lru-cache'
  * Configuration options for rate limiting
  */
 export interface RateLimiterOptions {
-  /** Number of tokens per interval */
-  tokensPerInterval: number
+  /** Number of requests per interval */
+  requestsPerInterval: number
   /** The time interval in milliseconds or 'second', 'minute', 'hour', 'day' */
   interval: Interval
 }
@@ -55,7 +55,7 @@ export class RateLimiter {
     }
 
     const newLimiter = new Limiter({
-      tokensPerInterval: this.options.tokensPerInterval,
+      tokensPerInterval: this.options.requestsPerInterval,
       interval: this.options.interval,
       fireImmediately: true
     })
