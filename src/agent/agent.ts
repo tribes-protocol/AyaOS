@@ -1,5 +1,6 @@
 import { IAyaAgent } from '@/agent/iagent'
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
+import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { isNull, isRequiredString } from '@/common/functions'
 import { Action, Provider } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
@@ -22,7 +23,6 @@ import {
   // eslint-disable-next-line no-restricted-imports
   Provider as ElizaProvider,
   Evaluator,
-  logger,
   Plugin,
   Service,
   UUID,
@@ -87,7 +87,7 @@ export class Agent implements IAyaAgent {
     let runtime: AyaRuntime | undefined
 
     try {
-      ayaLogger.info('Starting agent...')
+      console.info('Starting agent...', AGENTCOIN_FUN_API_URL)
 
       // step 1: provision the hardware if needed.
       const agentcoinAPI = new AgentcoinAPI()
@@ -197,10 +197,10 @@ export class Agent implements IAyaAgent {
             }
           }
 
-          logger.success('The End.')
+          console.log('The End.')
           process.exit(0)
         } catch (error) {
-          logger.error('Error shutting down:', error)
+          console.error('Error shutting down:', error)
           process.exit(1)
         }
       }

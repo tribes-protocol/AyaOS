@@ -1,5 +1,6 @@
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { serializeIdentity, toJsonTree } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import {
   AgentEventData,
   AgentWallet,
@@ -20,7 +21,6 @@ import {
   User,
   UserSchema
 } from '@/common/types'
-import { ayaLogger } from '@/common/logger'
 import { z } from 'zod'
 
 const MessageResponseSchema = z.object({
@@ -239,7 +239,9 @@ export class AgentcoinAPI {
     })
 
     if (response.status !== 200) {
-      throw new Error('Failed to create pure agent')
+      const errorBody = await response.text()
+      console.error('Failed to create pure agent', errorBody)
+      throw new Error(`Failed to create pure agent`)
     }
 
     const responseData = await response.json()
