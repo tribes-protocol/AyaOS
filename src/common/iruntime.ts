@@ -36,7 +36,11 @@ export interface IAyaRuntime extends IAgentRuntime {
     message?: string
   ): T
 
-  validateResponse(response: Content, requestText: string): Promise<Content | undefined>
+  validateResponse(params: {
+    context: string
+    response: Content
+    requestText: string
+  }): Promise<Content | undefined>
 
   ensureUserRoomConnection(options: {
     roomId: UUID

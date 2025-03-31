@@ -237,10 +237,11 @@ export class FarcasterInteractionManager {
       modelClass: ModelClass.LARGE
     })
 
-    const validatedResponse = await this.runtime.validateResponse(
-      responseContent,
-      memory.content.text
-    )
+    const validatedResponse = await this.runtime.validateResponse({
+      context,
+      response: responseContent,
+      requestText: memory.content.text
+    })
     const responseText = validatedResponse?.text
     if (isNull(responseText)) {
       return { text: '', action: 'IGNORE' }

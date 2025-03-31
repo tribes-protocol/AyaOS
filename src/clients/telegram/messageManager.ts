@@ -884,7 +884,11 @@ export class MessageManager {
       modelClass: ModelClass.LARGE
     })
 
-    const responseContent = await this.runtime.validateResponse(response, message.content.text)
+    const responseContent = await this.runtime.validateResponse({
+      context,
+      response,
+      requestText: message.content.text
+    })
     const responseText = responseContent?.text
     if (isNull(responseText)) {
       return { text: '', action: 'IGNORE' }

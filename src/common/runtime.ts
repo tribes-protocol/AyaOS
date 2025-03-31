@@ -281,15 +281,18 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     }
   }
 
-  async validateResponse(response: Content, requestText: string): Promise<Content | undefined> {
+  async validateResponse(params: {
+    context: string
+    response: Content
+    requestText: string
+  }): Promise<Content | undefined> {
     if (isNull(this.character.system)) {
-      return response
+      return params.response
     }
 
-    const actions = this.actions
-      .map((action) => `- $Name:{action.name}\nDescription: ${action.description}`)
-      .join('\n')
+    const { context, response, requestText } = params
 
+    /* eslint-disable max-len */
     const validationPrompt = `You are a response validator for an AI assistant. 
 Your task is to check if the following response strictly adheres to the system rules defined below.
 
@@ -304,10 +307,9 @@ SYSTEM RULES:
 ${this.character.system}
 </SYSTEM_RULES>
 
-TOOLS:
-<TOOLS>
-${actions}
-</TOOLS>
+<CONTEXT>
+${context}
+</CONTEXT>
 
 QUESTION:
 <QUESTION>
@@ -325,9 +327,10 @@ raw json. No markdown or anything else:
 {
   "valid": boolean,
   "correctedResponse": string // Original response if valid, corrected response if invalid
-  "correctedAction": string | null // Original action if valid, corrected action if invalid
+  "correctedAction": string | null // Original action if valid, corrected action if invalid (use ACTION.NAME)
   "explanation": string // Brief explanation of why the response was invalid (if applicable)
 }`
+    /* eslint-enable max-len */
 
     try {
       console.log('Validating request:', JSON.stringify(response, null, 2))
