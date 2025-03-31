@@ -339,17 +339,14 @@ raw json. No markdown or anything else:
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           const parsed = ResponseValidationSchema.parse(JSON.parse(validationResult))
-          const t = parsed.valid ? response.text : parsed.correctedResponse
-          const a = parsed.valid ? response.action : parsed.correctedAction
-          console.log('Validated response:', {
-            valid: parsed.valid,
-            correctedResponse: parsed.correctedResponse,
-            correctedAction: parsed.correctedAction,
-            explanation: parsed.explanation
-          })
+          if (parsed.valid) {
+            return response
+          }
+          console.log('Validated response:', JSON.stringify(parsed, null, 2))
           return {
-            text: t,
-            action: a ?? undefined
+            ...response,
+            text: parsed.correctedResponse,
+            action: parsed.correctedAction ?? undefined
           }
         } catch (parseError) {
           if (attempt === 2) {
