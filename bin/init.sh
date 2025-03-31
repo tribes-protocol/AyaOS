@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 # Validate command line arguments
 if [ $# -ne 1 ]; then
   echo "Error: 'init' command required"
