@@ -13,7 +13,23 @@ AyaOS is a high-level framework built on top of ElizaOS for creating autonomous 
 
 Choose one of these two options to get started:
 
-#### Option 1: Create a New Project
+#### Option 1: Use npx (Recommended)
+
+You can initialize a new project directly using npx:
+
+```bash
+npx @tribesxyz/ayaos init
+# or
+npx ayaos init # if globally installed
+```
+
+Or install globally first:
+
+```bash
+npm install -g @tribesxyz/ayaos
+```
+
+#### Option 2: Use the CLI
 
 Create a new directory for your project and initialize it:
 
@@ -27,27 +43,6 @@ Install AyaOS:
 
 ```bash
 bun add @tribesxyz/ayaos # or npm install @tribesxyz/ayaos
-```
-
-#### Option 2: Clone the Agent Template
-
-Alternatively, you can clone the agent template repository:
-
-```bash
-git clone https://github.com/tribes-protocol/agent
-cd agent
-```
-
-Install dependencies:
-
-```bash
-npm install
-# or
-yarn install
-# or
-pnpm install
-# or
-bun install
 ```
 
 #### Set Environment Variables
