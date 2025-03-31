@@ -12,6 +12,14 @@ import {
   UUID
 } from '@elizaos/core'
 
+// FIXME: hish - implement validator
+// const ResponseValidationSchema = z.object({
+//   valid: z.boolean(),
+//   correctedResponse: z.string(),
+//   correctedAction: z.string().optional().nullable(),
+//   explanation: z.string()
+// })
+
 export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
   public readonly pathResolver: PathResolver
   public constructor(opts: {

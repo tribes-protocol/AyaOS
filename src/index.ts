@@ -15,6 +15,7 @@ import {
 
 export { Agent } from '@/agent/agent'
 export type { IAyaAgent } from '@/agent/iagent'
+export { RateLimiter } from '@/agent/ratelimitter'
 export { ensureUUID } from '@/common/functions'
 export type { Action, Client, IAyaRuntime, Provider } from '@/common/iruntime'
 export { AyaRuntime as AgentcoinRuntime } from '@/common/runtime'

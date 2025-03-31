@@ -1,12 +1,16 @@
 {
   "name": "@tribesxyz/ayaos",
-  "version": "0.0.35",
+  "version": "0.0.49",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "files": [
     "dist"
   ],
+  "bin": {
+    "ayaos": "bin/init.sh",
+    "init": "bin/init.sh init"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -42,6 +46,8 @@
     "express": "4.21.2",
     "fs": "0.0.1-security",
     "langchain": "0.3.19",
+    "limiter": "3.0.0",
+    "lru-cache": "11.1.0",
     "mammoth": "1.9.0",
     "net": "1.0.2",
     "path": "0.12.7",

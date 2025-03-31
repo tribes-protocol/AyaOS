@@ -532,3 +532,18 @@ export const MemoryContentSchema = z
   .passthrough()
 
 export type MemoryContent = z.infer<typeof MemoryContentSchema>
+
+export const AgentSchema = z
+  .object({
+    id: AgentIdentitySchema,
+    name: z.string()
+  })
+  .passthrough() // Partial schema
+
+export type Agent = z.infer<typeof AgentSchema>
+
+export const CreatePureResponseSchema = z.object({
+  agent: AgentSchema,
+  character: CharacterSchema
+})
+export type CreatePureResponse = z.infer<typeof CreatePureResponseSchema>

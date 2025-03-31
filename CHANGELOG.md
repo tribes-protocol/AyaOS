@@ -1,5 +1,90 @@
 # @tribesxyz/ayaos
 
+## 0.0.49
+
+### Patch Changes
+
+- f163d6d: refresh npx building command
+
+## 0.0.48
+
+### Patch Changes
+
+- db8e21a: update to latest release
+- e429626: remove redundant system prompt
+
+## 0.0.47
+
+### Patch Changes
+
+- 59a50b2: improve response content validation instruction
+
+## 0.0.46
+
+### Patch Changes
+
+- 1fc1e7e: sent corrected text/action
+
+## 0.0.45
+
+### Patch Changes
+
+- d7cd624: add user question to the validate response function
+
+## 0.0.44
+
+### Patch Changes
+
+- 3d23712: correctly unsubscribe from sending status in aya client
+
+## 0.0.43
+
+### Patch Changes
+
+- 3d5f7e0: update the validation step to include actions
+
+## 0.0.42
+
+### Patch Changes
+
+- aab2e87: fix ci
+
+## 0.0.41
+
+### Patch Changes
+
+- d8f35ee: honor suppressinitialmessage flag
+
+## 0.0.40
+
+### Patch Changes
+
+- 79ce7dc: add rate limiting
+
+## 0.0.39
+
+### Patch Changes
+
+- a8b5f88: respond to mentions in group tg
+
+## 0.0.38
+
+### Patch Changes
+
+- 130eff9: remove rag knowledge from runtime
+
+## 0.0.37
+
+### Patch Changes
+
+- b7af9e2: add ability to check the response before sending
+
+## 0.0.36
+
+### Patch Changes
+
+- a615337: introduce cli init tool
+
 ## 0.0.35
 
 ### Patch Changes

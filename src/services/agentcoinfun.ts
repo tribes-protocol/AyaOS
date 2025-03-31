@@ -113,7 +113,7 @@ export class AgentcoinService extends Service {
     return token
   }
 
-  async provisionIfNeeded(): Promise<void> {
+  async provisionIfNeeded(name?: string | undefined, purpose?: string | undefined): Promise<void> {
     ayaLogger.info('Checking if agent coin is provisioned...')
     if (await this.isProvisioned()) {
       return
@@ -124,7 +124,7 @@ export class AgentcoinService extends Service {
     const regPath = this.pathResolver.registrationFile
 
     if (!fs.existsSync(regPath)) {
-      const agentId = await this.provisionPureAgent()
+      const agentId = await this.provisionPureAgent(name, purpose)
       ayaLogger.success('Agent coin provisioned successfully', agentId)
       return
     }
@@ -164,7 +164,10 @@ export class AgentcoinService extends Service {
     return match[1]
   }
 
-  async provisionPureAgent(): Promise<AgentIdentity> {
+  async provisionPureAgent(
+    name?: string | undefined,
+    purpose?: string | undefined
+  ): Promise<AgentIdentity> {
     let token = await this.getCliAuthToken()
     if (isNull(token)) {
       token = await this.createCliAuthAndWaitForToken()
@@ -173,11 +176,13 @@ export class AgentcoinService extends Service {
     const message = this.keychain.publicKey
     const signature = await this.keychain.sign(message)
 
-    const character = await this.api.createAgentFromCli(
+    const { agent, character } = await this.api.createAgent(
       message,
       this.keychain.publicKey,
       signature,
-      `jwt_auth_token=${token}`
+      `jwt_auth_token=${token}`,
+      name,
+      purpose
     )
 
     fs.writeFileSync(
@@ -185,10 +190,8 @@ export class AgentcoinService extends Service {
       JSON.stringify(toJsonTree(character), null, 2)
     )
 
-    const agentId = AgentIdentitySchema.parse(`AGENT-${character.id}`)
-
     // Display agent creation success message
-    const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${agentId}`
+    const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${agent.id}`
     const boxWidth = Math.max(70, agentUrl.length + 6) // Ensure minimum width of 70 chars
 
     console.log('\n┌' + '─'.repeat(boxWidth) + '┐')
@@ -201,7 +204,7 @@ export class AgentcoinService extends Service {
     console.log('│' + ' '.repeat(boxWidth) + '│')
     console.log('└' + '─'.repeat(boxWidth) + '┘\n')
 
-    return agentId
+    return agent.id
   }
 
   async getCliAuthToken(): Promise<string | undefined> {
