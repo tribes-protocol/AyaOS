@@ -15,18 +15,13 @@ Choose one of these two options to get started:
 
 #### Option 1: Use npx (Recommended)
 
-You can initialize a new project directly using npx:
+You can initialize a new project directly using npx (or bunx):
 
 ```bash
-npx @tribesxyz/ayaos init
+bunx @tribesxyz/ayaos init
 # or
-npx ayaos init # if globally installed
-```
-
-Or install globally first:
-
-```bash
-npm install -g @tribesxyz/ayaos
+bun install -g @tribesxyz/ayaos
+bunx ayaos init
 ```
 
 #### Option 2: Use the CLI
@@ -91,12 +86,6 @@ main().catch(console.error)
 ### Running Your Agent
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
 bun dev
 ```
 
