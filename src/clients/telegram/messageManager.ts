@@ -1,3 +1,4 @@
+import { Markup } from 'telegraf'
 import {
   MESSAGE_CONSTANTS,
   RESPONSE_CHANCES,
@@ -35,6 +36,7 @@ import {
 import type { Message } from '@telegraf/types'
 import fs from 'fs'
 import type { Context, Telegraf } from 'telegraf'
+import { Button, ButtonSchema } from '@/common/types'
 enum MediaType {
   PHOTO = 'photo',
   VIDEO = 'video',
@@ -782,12 +784,26 @@ export class MessageManager {
         throw new Error('Chat ID is not defined')
       }
 
+      const rawButtons = Array.isArray(content.buttons) ? content.buttons : []
+      const buttons = rawButtons
+        .filter((rawButton: unknown) => ButtonSchema.safeParse(rawButton).success)
+        .map((button: Button) => {
+          switch (button.kind) {
+            case 'login':
+              return Markup.button.login(button.text, button.url)
+            case 'url':
+              return Markup.button.url(button.text, button.url)
+          }
+          throw new Error('Unsupported button type')
+        })
+
       for (let i = 0; i < chunks.length; i++) {
         const chunk = convertMarkdownToTelegram(chunks[i])
         const sentMessage = await ctx.telegram.sendMessage(ctx.chat.id, chunk, {
           reply_parameters:
             i === 0 && replyToMessageId ? { message_id: replyToMessageId } : undefined,
-          parse_mode: 'MarkdownV2'
+          parse_mode: 'MarkdownV2',
+          ...Markup.inlineKeyboard(buttons)
         })
 
         sentMessages.push(sentMessage)
