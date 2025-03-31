@@ -3,8 +3,12 @@ on:
   push:
     branches:
       - '**'
+    paths-ignore:
+      - '.changeset/**'
   pull_request:
     types: [opened, edited]
+    paths-ignore:
+      - '.changeset/**'
 
 jobs:
   build:
