@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
 
+# Validate command line arguments
+if [ $# -ne 1 ]; then
+  echo "Error: 'init' command required"
+  echo "Usage: ayaos init"
+  exit 1
+fi
+
+if [ "$1" != "init" ]; then
+  echo "Error: Invalid argument '$1'"
+  echo "Usage: ayaos init"
+  exit 1
+fi
+
+
 # Check if Bun is installed globally
 if ! command -v bun &> /dev/null; then
   echo "Bun is not installed. Please install it first:"
