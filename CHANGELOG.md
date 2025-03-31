@@ -1,5 +1,12 @@
 # @tribesxyz/ayaos
 
+## 0.0.48
+
+### Patch Changes
+
+- db8e21a: update to latest release
+- e429626: remove redundant system prompt
+
 ## 0.0.47
 
 ### Patch Changes
