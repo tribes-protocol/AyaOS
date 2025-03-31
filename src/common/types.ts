@@ -533,3 +533,11 @@ export const CreatePureResponseSchema = z.object({
   character: CharacterSchema
 })
 export type CreatePureResponse = z.infer<typeof CreatePureResponseSchema>
+
+export const ButtonSchema = z.object({
+  text: z.string(),
+  url: z.string(),
+  kind: z.enum(['login', 'url'])
+})
+
+export type Button = z.infer<typeof ButtonSchema>
