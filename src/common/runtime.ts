@@ -9,6 +9,7 @@ import { MemoriesService } from '@/services/memories'
 import {
   AgentRuntime,
   Character,
+  Content,
   // eslint-disable-next-line no-restricted-imports
   Action as ElizaAction,
   // eslint-disable-next-line no-restricted-imports
@@ -32,6 +33,7 @@ import { z } from 'zod'
 const ResponseValidationSchema = z.object({
   valid: z.boolean(),
   correctedResponse: z.string(),
+  correctedAction: z.string().optional().nullable(),
   explanation: z.string()
 })
 
@@ -279,9 +281,9 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     }
   }
 
-  async validateResponse(responseText: string, requestText: string): Promise<string | undefined> {
+  async validateResponse(response: Content, requestText: string): Promise<Content | undefined> {
     if (isNull(this.character.system)) {
-      return responseText
+      return response
     }
 
     const actions = this.actions
@@ -314,7 +316,8 @@ ${requestText}
 
 ANSWER TO VALIDATE:
 <ANSWER>
-${responseText}
+  <TEXT>${response.text}</TEXT>
+  <ACTION>${response.action}</ACTION>
 </ANSWER>
 
 Return your analysis as a JSON object with the following structure. Make sure it's the 
@@ -322,11 +325,12 @@ raw json. No markdown or anything else:
 {
   "valid": boolean,
   "correctedResponse": string // Original response if valid, corrected response if invalid
+  "correctedAction": string | null // Original action if valid, corrected action if invalid
   "explanation": string // Brief explanation of why the response was invalid (if applicable)
 }`
 
     try {
-      console.log('Validating request:', responseText)
+      console.log('Validating request:', JSON.stringify(response, null, 2))
       const validationResult = await generateText({
         runtime: this,
         context: validationPrompt,
@@ -337,13 +341,18 @@ raw json. No markdown or anything else:
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           const parsed = ResponseValidationSchema.parse(JSON.parse(validationResult))
-          const t = parsed.valid ? responseText : parsed.correctedResponse
+          const t = parsed.valid ? response.text : parsed.correctedResponse
+          const a = parsed.valid ? response.action : parsed.correctedAction
           console.log('Validated response:', {
             valid: parsed.valid,
             correctedResponse: parsed.correctedResponse,
+            correctedAction: parsed.correctedAction,
             explanation: parsed.explanation
           })
-          return t
+          return {
+            text: t,
+            action: a ?? undefined
+          }
         } catch (parseError) {
           if (attempt === 2) {
             console.error('Failed to parse validation result after 3 attempts:', parseError)

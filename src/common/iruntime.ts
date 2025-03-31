@@ -4,6 +4,7 @@ import { IAyaDatabaseAdapter } from '@/databases/interfaces'
 import {
   ActionExample,
   Character,
+  Content,
   HandlerCallback,
   IAgentRuntime,
   Memory,
@@ -35,7 +36,7 @@ export interface IAyaRuntime extends IAgentRuntime {
     message?: string
   ): T
 
-  validateResponse(responseText: string, requestText: string): Promise<string | undefined>
+  validateResponse(response: Content, requestText: string): Promise<Content | undefined>
 
   ensureUserRoomConnection(options: {
     roomId: UUID

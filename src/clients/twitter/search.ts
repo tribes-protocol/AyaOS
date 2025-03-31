@@ -246,14 +246,16 @@ export class TwitterSearchClient {
         modelClass: ModelClass.LARGE
       })
 
-      const responseText = await this.runtime.validateResponse(
-        responseContent.text,
+      const validatedResponse = await this.runtime.validateResponse(
+        responseContent,
         message.content.text
       )
+      const responseText = validatedResponse?.text
       if (isNull(responseText)) {
         return
       } else {
         responseContent.text = responseText
+        responseContent.action = validatedResponse?.action
       }
 
       responseContent.inReplyTo = message.id
