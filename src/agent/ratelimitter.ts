@@ -34,7 +34,7 @@ export class RateLimiter {
    * @returns Promise that resolves to true if request is allowed, false if rate limited
    */
   async canProcess(memory: Memory): Promise<boolean> {
-    const limiter = this.getLimiterForUser(memory.userId)
+    const limiter = this.getLimiterForUser(memory.entityId)
 
     // Try to remove a token (consume 1 request)
     // If fireImmediately is true, this will return remaining tokens count
