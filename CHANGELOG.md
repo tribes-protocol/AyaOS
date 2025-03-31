@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.46
+
+### Patch Changes
+
+- 1fc1e7e: sent corrected text/action
+
 ## 0.0.45
 
 ### Patch Changes
