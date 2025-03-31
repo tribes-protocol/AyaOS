@@ -294,18 +294,13 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
 
     /* eslint-disable max-len */
     const validationPrompt = `You are a response validator for an AI assistant. 
-Your task is to check if the following response strictly adheres to the system rules defined below.
+Your task is to check if the following response strictly adheres to the system rules defined in the CONTEXT.
 
 If the response violates ANY of the rules, you must return a JSON object with "valid": false 
-and "correctedResponse" contains the updated response. If you're not ABSOLUTELY sure about the 
+and "correctedResponse" and "correctedAction" (if applicable) contains the updated response and action. If you're not ABSOLUTELY sure about the 
 updated response, return the original response.
 
-If the response follows ALL rules, return a JSON with "valid": true and the original "response"
-
-SYSTEM RULES:
-<SYSTEM_RULES>
-${this.character.system}
-</SYSTEM_RULES>
+If the response follows ALL rules, return a JSON with "valid": true and the original "response" and "action" (if applicable).
 
 <CONTEXT>
 ${context}
@@ -327,7 +322,7 @@ raw json. No markdown or anything else:
 {
   "valid": boolean,
   "correctedResponse": string // Original response if valid, corrected response if invalid
-  "correctedAction": string | null // Original action if valid, corrected action if invalid (use ACTION.NAME)
+  "correctedAction": string | null // Original action if valid, corrected action if invalid (use ACTION.NAME if applicable)
   "explanation": string // Brief explanation of why the response was invalid (if applicable)
 }`
     /* eslint-enable max-len */
