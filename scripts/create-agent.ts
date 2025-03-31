@@ -26,7 +26,11 @@ async function main(): Promise<void> {
     const agentcoinAPI = new AgentcoinAPI()
 
     // initialize agentcoin service
-    const agentcoinService = new AgentcoinService(keychainService, agentcoinAPI, pathResolver)
+    const agentcoinService = AgentcoinService.getInstance(
+      keychainService,
+      agentcoinAPI,
+      pathResolver
+    )
 
     // provision if needed
     await agentcoinService.provisionIfNeeded(agentName, agentPurpose)
