@@ -16,7 +16,6 @@ import {
   HydratedMessage,
   Identity,
   MessageStatusEnum,
-  ServiceKind,
   User
 } from '@/common/types'
 import { KeychainService } from '@/services/keychain'
@@ -26,7 +25,7 @@ import * as fs from 'fs'
 export class AgentcoinService extends Service {
   private cachedCookie: string | undefined
   private cachedIdentity: Identity | undefined
-  readonly serviceType = ServiceKind.agent
+  readonly serviceType = AgentcoinService.serviceType
   readonly capabilityDescription = ''
 
   private constructor(

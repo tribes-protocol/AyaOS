@@ -6,7 +6,7 @@ import { Action, Provider } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { AyaRuntime } from '@/common/runtime'
-import { AyaOSOptions } from '@/common/types'
+import { AyaOSOptions, EmbeddingsConfig } from '@/common/types'
 import ayaPlugin from '@/plugins/aya'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
@@ -41,8 +41,11 @@ export class Agent implements IAyaAgent {
   private runtime_: AyaRuntime | undefined
   private pathResolver: PathResolver
   private keychainService: KeychainService
+  private embeddingsConfig?: EmbeddingsConfig
 
   constructor(options?: AyaOSOptions) {
+    this.embeddingsConfig = options?.embeddings
+
     if (reservedAgentDirs.has(options?.dataDir)) {
       throw new Error('Data directory already used. Please provide a unique data directory.')
     }
@@ -143,6 +146,26 @@ export class Agent implements IAyaAgent {
         runtime,
         this.keychainService.turnkeyApiKeyStamper
       )
+
+      // register default models
+      // runtime.registerModel(ModelType.TEXT_EMBEDDING, async (params: { text: string }) => {
+      //   if (isNull(this.embeddingsConfig)) {
+      //     throw new Error('Embeddings config not found')
+      //   }
+
+      //   if (isNull(params.text) || params.text.length === 0) {
+      //     console.warn('Text is null or empty, returning empty embedding')
+      //     return Array(this.embeddingsConfig.dimensions).fill(0)
+      //   }
+
+      //   const embedding = await embed(params.text, this.embeddingsConfig)
+      //   return embedding
+      // })
+      // runtime.registerModel(ModelType.OBJECT_LARGE, async (params: { text: string }) => {
+      //   if (isNull(this.embeddingsConfig)) {
+      //     throw new Error('Embeddings config not found')
+      //   }
+      // })
 
       // register evaluators
       for (const evaluator of this.evaluators) {

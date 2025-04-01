@@ -1,4 +1,4 @@
-import { AyaService } from '@/plugins/aya/service'
+// import { AyaService } from '@/plugins/aya/service'
 import { Plugin } from '@elizaos/core'
 
 export const agentcoinPlugin: Plugin = {
@@ -7,7 +7,7 @@ export const agentcoinPlugin: Plugin = {
   actions: [],
   evaluators: [],
   providers: [],
-  services: [AyaService]
+  services: [] // FIXME: hish - uncomment [AyaService]
 }
 
 export default agentcoinPlugin

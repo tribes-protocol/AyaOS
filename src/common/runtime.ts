@@ -41,15 +41,18 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
         opts.eliza.character.plugins = []
       }
 
+      // FIXME: hish - make this configurable in the future
+      opts.eliza.character.plugins.push('@elizaos/plugin-openai')
+
       // Ensure Twitter plugin is included
       if (!opts.eliza.character.plugins.includes('@elizaos/plugin-twitter')) {
         opts.eliza.character.plugins.push('@elizaos/plugin-twitter')
       }
 
-      // Ensure Discord plugin is included
-      if (!opts.eliza.character.plugins.includes('@elizaos/plugin-discord')) {
-        opts.eliza.character.plugins.push('@elizaos/plugin-discord')
-      }
+      // // Ensure Discord plugin is included
+      // if (!opts.eliza.character.plugins.includes('@elizaos/plugin-discord')) {
+      //   opts.eliza.character.plugins.push('@elizaos/plugin-discord')
+      // }
 
       // Ensure sql plugin is included
       if (!opts.eliza.character.plugins.includes('@elizaos/plugin-sql')) {
@@ -57,6 +60,10 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
       }
 
       // FIXME: hish - need to add a plugin for the agentcoin and farcaster
+
+      if (!opts.eliza.character.plugins.includes('@elizaos/plugin-farcaster')) {
+        opts.eliza.character.plugins.push('@elizaos/plugin-farcaster')
+      }
     }
 
     super({ ...opts.eliza })

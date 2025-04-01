@@ -264,8 +264,9 @@ export const CharacterSchema = z.object({
   system: z.string().optional(),
   templates: z.record(z.string()).optional(),
   bio: z.union([z.string(), z.array(z.string())]),
-  messageExamples: z.array(z.array(CharacterMessageSchema)).optional(),
-  postExamples: z.array(z.string()).optional(),
+  // FIXME: hish - add these back in
+  // messageExamples: z.array(z.array(CharacterMessageSchema)).optional(),
+  // postExamples: z.array(z.string()).optional(),
   topics: z.array(z.string()).optional(),
   adjectives: z.array(z.string()).optional(),
   knowledge: z
@@ -480,8 +481,18 @@ export const CredentialsSchema = z.object({
 
 export type Credentials = z.infer<typeof CredentialsSchema>
 
+export const EmbeddingsConfigSchema = z.object({
+  model: z.string(),
+  dimensions: z.number(),
+  endpoint: z.string(),
+  apiKey: z.string()
+})
+
+export type EmbeddingsConfig = z.infer<typeof EmbeddingsConfigSchema>
+
 export interface AyaOSOptions {
   dataDir?: string
+  embeddings: EmbeddingsConfig
 }
 
 export const RagKnowledgeItemContentSchema = z.object({
