@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+- Always use zod for type safety
+- Never use `as` type assertion. If you can't find the type in schema.ts or types.ts. Create one in types.ts
+
