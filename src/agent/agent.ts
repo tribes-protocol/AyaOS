@@ -130,7 +130,7 @@ export class Agent implements IAyaAgent {
       runtime = new AyaRuntime({
         eliza: {
           character,
-          plugins: [ayaPlugin, ...this.plugins],
+          plugins: this.plugins,
           agentId: character.id
         },
         pathResolver: this.pathResolver
@@ -166,37 +166,6 @@ export class Agent implements IAyaAgent {
       //     throw new Error('Embeddings config not found')
       //   }
       // })
-
-      // register evaluators
-      for (const evaluator of this.evaluators) {
-        runtime.registerEvaluator(evaluator)
-      }
-
-      // register providers
-      for (const provider of this.providers) {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        runtime.registerContextProvider(provider as ElizaProvider)
-      }
-
-      // register actions
-      for (const action of this.actions) {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        runtime.registerAction(action as ElizaAction)
-      }
-
-      // register services
-      const ayaServices = [
-        AgentcoinService,
-        ConfigService,
-        KnowledgeService,
-        MemoriesService,
-        WalletService,
-        ...this.services
-      ]
-      for (const service of ayaServices) {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        await runtime.registerService(service as typeof Service)
-      }
 
       // shutdown handler
       let isShuttingDown = false
@@ -239,6 +208,39 @@ export class Agent implements IAyaAgent {
 
       // initialize the runtime
       await this.runtime.initialize()
+
+      // register evaluators
+      for (const evaluator of this.evaluators) {
+        runtime.registerEvaluator(evaluator)
+      }
+
+      // register providers
+      for (const provider of this.providers) {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        runtime.registerContextProvider(provider as ElizaProvider)
+      }
+
+      // register actions
+      for (const action of this.actions) {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        runtime.registerAction(action as ElizaAction)
+      }
+
+      // register services
+      const ayaServices = [
+        AgentcoinService,
+        ConfigService,
+        KnowledgeService,
+        MemoriesService,
+        WalletService,
+        ...this.services
+      ]
+      for (const service of ayaServices) {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        await runtime.registerService(service as typeof Service)
+      }
+
+      await this.runtime.registerPlugin(ayaPlugin)
 
       ayaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
