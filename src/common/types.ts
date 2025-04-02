@@ -309,11 +309,6 @@ export const SentinelSetGitCommandSchema = z.object({
   state: GitStateSchema
 })
 
-export const SentinelSetCharacterCommandSchema = z.object({
-  kind: z.literal('set_character'),
-  character: CharacterSchema
-})
-
 export const SentinelSetKnowledgeCommandSchema = z.object({
   kind: z.literal('set_knowledge'),
   url: z.string(),
@@ -329,8 +324,7 @@ export const SentinelDeleteKnowledgeCommandSchema = z.object({
 export const SentinelCommandSchema = z.discriminatedUnion('kind', [
   SentinelSetGitCommandSchema,
   SentinelSetKnowledgeCommandSchema,
-  SentinelDeleteKnowledgeCommandSchema,
-  SentinelSetCharacterCommandSchema
+  SentinelDeleteKnowledgeCommandSchema
 ])
 
 export type SentinelCommand = z.infer<typeof SentinelCommandSchema>
