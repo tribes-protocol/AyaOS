@@ -51,7 +51,7 @@ read -p "What is your agent's purpose? " agentPurpose
 
 
 # Clone the repository into the project directory
-git clone -b avp/characterUpdate https://github.com/tribes-protocol/ayaos "$projectName"
+git clone https://github.com/tribes-protocol/agent "$projectName"
 # Remove .git directory
 rm -rf "$projectName/.git"
 # Create .env file with data directory
