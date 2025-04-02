@@ -18,15 +18,15 @@
     "build": "bun run type-check && tsup src/index.ts --format esm --dts",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
-    "dev": "tsx src/example.ts",
+    "dev": "dotenv --e .env -- tsx src/example.ts",
     "check-packages": "bash ./scripts/check-packages.sh",
     "release": "changeset publish"
   },
   "dependencies": {
     "@elizaos/core": "1.0.0-beta.14",
-    "@elizaos/plugin-sql": "1.0.0-beta.14",
-    "@elizaos/plugin-openai": "1.0.0-beta.14",
     "@elizaos/plugin-farcaster": "1.0.0-beta.14",
+    "@elizaos/plugin-openai": "1.0.0-beta.14",
+    "@elizaos/plugin-sql": "1.0.0-beta.14",
     "@langchain/community": "0.3.31",
     "@langchain/core": "0.3.40",
     "@neynar/nodejs-sdk": "2.13.1",

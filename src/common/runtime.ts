@@ -26,7 +26,7 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     eliza: {
       conversationLength?: number
       agentId?: UUID
-      character?: Character
+      character: Character
       plugins?: Plugin[]
       fetch?: typeof fetch
       adapter?: IDatabaseAdapter
@@ -36,35 +36,39 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     }
     pathResolver: PathResolver
   }) {
-    if (opts.eliza.character) {
-      if (isNull(opts.eliza.character.plugins)) {
-        opts.eliza.character.plugins = []
-      }
-
-      // FIXME: hish - make this configurable in the future
-      opts.eliza.character.plugins.push('@elizaos/plugin-openai')
-
-      // Ensure Twitter plugin is included
-      // if (!opts.eliza.character.plugins.includes('@elizaos/plugin-twitter')) {
-      //   opts.eliza.character.plugins.push('@elizaos/plugin-twitter')
-      // }
-
-      // // Ensure Discord plugin is included
-      // if (!opts.eliza.character.plugins.includes('@elizaos/plugin-discord')) {
-      //   opts.eliza.character.plugins.push('@elizaos/plugin-discord')
-      // }
-
-      // Ensure sql plugin is included
-      if (!opts.eliza.character.plugins.includes('@elizaos/plugin-sql')) {
-        opts.eliza.character.plugins.push('@elizaos/plugin-sql')
-      }
-
-      // FIXME: hish - need to add a plugin for the agentcoin and farcaster
-
-      // if (!opts.eliza.character.plugins.includes('@elizaos/plugin-farcaster')) {
-      //   opts.eliza.character.plugins.push('@elizaos/plugin-farcaster')
-      // }
+    if (isNull(opts.eliza.character.plugins)) {
+      opts.eliza.character.plugins = []
     }
+
+    // FIXME: hish - remove hack once my PR in elizaos is merged
+    opts.eliza.character.secrets = opts.eliza.character.secrets || {}
+    if (process.env.FARCASTER_FID) {
+      opts.eliza.character.secrets.FARCASTER_FID = process.env.FARCASTER_FID
+    }
+
+    // require plugins
+    const requiredPlugins = ['@elizaos/plugin-openai', '@elizaos/plugin-sql']
+    for (const plugin of requiredPlugins) {
+      if (!opts.eliza.character.plugins.includes(plugin)) {
+        opts.eliza.character.plugins.push(plugin)
+      }
+    }
+
+    // Ensure Twitter plugin is included
+    // if (!opts.eliza.character.plugins.includes('@elizaos/plugin-twitter')) {
+    //   opts.eliza.character.plugins.push('@elizaos/plugin-twitter')
+    // }
+
+    // // Ensure Discord plugin is included
+    // if (!opts.eliza.character.plugins.includes('@elizaos/plugin-discord')) {
+    //   opts.eliza.character.plugins.push('@elizaos/plugin-discord')
+    // }
+
+    // FIXME: hish - need to add a plugin for the agentcoin and farcaster
+
+    // if (!opts.eliza.character.plugins.includes('@elizaos/plugin-farcaster')) {
+    //   opts.eliza.character.plugins.push('@elizaos/plugin-farcaster')
+    // }
 
     super({ ...opts.eliza })
     this.pathResolver = opts.pathResolver

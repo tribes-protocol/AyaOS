@@ -17,6 +17,7 @@ import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import { WalletService } from '@/services/wallet'
 import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
+import farcasterPlugin from '@elizaos/plugin-farcaster'
 import {
   // eslint-disable-next-line no-restricted-imports
   Action as ElizaAction,
@@ -241,6 +242,7 @@ export class Agent implements IAyaAgent {
       }
 
       await this.runtime.registerPlugin(ayaPlugin)
+      await this.runtime.registerPlugin(farcasterPlugin)
 
       ayaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
