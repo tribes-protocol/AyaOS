@@ -51,7 +51,7 @@ read -p "What is your agent's purpose? " agentPurpose
 
 
 # Clone the repository into the project directory
-git clone https://github.com/tribes-protocol/ayaos "$projectName"
+git clone -b avp/characterUpdate https://github.com/tribes-protocol/ayaos "$projectName"
 # Remove .git directory
 rm -rf "$projectName/.git"
 # Create .env file with data directory
@@ -86,19 +86,20 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 bun run "$PROJECT_ROOT/scripts/create-agent.ts" "$dataDir" "$agentName" "$agentPurpose"
 
 # Move character.json file from project root to the new project directory
-# Find and move any character.json files from project root to the new project directory
-for character_file in "$PROJECT_ROOT"/*-character.json "$PROJECT_ROOT"/character.json; do
+# Find and move any character.json files from src/characters to the new project's src/characters directory
+mkdir -p "$projectName/src/characters"
+for character_file in "$PROJECT_ROOT/src/characters"/*.character.json; do
   if [ -f "$character_file" ]; then
     filename=$(basename "$character_file")
-    echo "Moving $filename to $projectName directory..."
-    mv "$character_file" "$projectName/$filename"
+    echo "Moving $filename to $projectName/src/characters directory..."
+    mv "$character_file" "$projectName/src/characters/$filename"
     echo "$filename moved successfully."
   fi
 done
 
 # Check if any character files were found
-if [ ! -f "$projectName"/*-character.json ] && [ ! -f "$projectName/character.json" ]; then
-  echo "Warning: No character.json files found in $PROJECT_ROOT"
+if [ ! -f "$projectName/src/characters"/*.character.json ]; then
+  echo "Warning: No character.json files found in $PROJECT_ROOT/src/characters"
 fi
 
 

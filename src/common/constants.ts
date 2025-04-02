@@ -12,3 +12,8 @@ export const USER_CREDENTIALS_FILE = path.join(AGENTCOIN_FUN_DIR, 'credentials.j
 if (!fs.existsSync(AGENTCOIN_FUN_DIR)) {
   fs.mkdirSync(AGENTCOIN_FUN_DIR, { recursive: true })
 }
+
+export const CHARACTERS_DIR = path.join(process.cwd(), 'src', 'characters')
+if (!fs.existsSync(CHARACTERS_DIR)) {
+  fs.mkdirSync(CHARACTERS_DIR, { recursive: true })
+}

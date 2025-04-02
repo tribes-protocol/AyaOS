@@ -1,6 +1,6 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { createGenericCharacter } from '@/common/character'
-import { USER_CREDENTIALS_FILE } from '@/common/constants'
+import { CHARACTERS_DIR, USER_CREDENTIALS_FILE } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { ensureUUID, isNull, toJsonTree } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
@@ -281,7 +281,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     const character = createGenericCharacter(agent.name, characterId)
 
     fs.writeFileSync(
-      path.join(process.cwd(), `${characterId}-character.json`),
+      path.join(CHARACTERS_DIR, `${characterId}.character.json`),
       JSON.stringify(toJsonTree(character), null, 2)
     )
 

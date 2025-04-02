@@ -2,6 +2,7 @@ import { IAyaAgent } from '@/agent/iagent'
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { initializeClients } from '@/clients'
 import { getTokenForProvider } from '@/common/config'
+import { CHARACTERS_DIR } from '@/common/constants'
 import { ensure, ensureUUID, isNull } from '@/common/functions'
 import { Action, Provider } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
@@ -115,7 +116,7 @@ export class Agent implements IAyaAgent {
       const configService = new ConfigService(eventService, processService, this.pathResolver)
 
       const characterId = ensureUUID(agentcoinIdentity.substring(6))
-      const characterFile = path.join(process.cwd(), `${characterId}-character.json`)
+      const characterFile = path.join(CHARACTERS_DIR, `${characterId}.character.json`)
 
       // step 2: load character and initialize database
       ayaLogger.info('Loading character...')
