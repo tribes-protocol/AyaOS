@@ -7,6 +7,7 @@ import {
   Character,
   IDatabaseAdapter,
   Plugin,
+  RuntimeSettings,
   Service,
   ServiceTypeName,
   UUID
@@ -33,6 +34,7 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       events?: { [key: string]: ((params: any) => void)[] }
       ignoreBootstrap?: boolean
+      settings?: RuntimeSettings
     }
     pathResolver: PathResolver
   }) {
