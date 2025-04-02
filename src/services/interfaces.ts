@@ -26,10 +26,6 @@ export interface IAgentcoinService {
   getJwtAuthToken(): Promise<string>
 }
 
-export interface IConfigService {
-  checkCharacterUpdate(): Promise<void>
-}
-
 export interface IKnowledgeService {
   list(options: {
     limit?: number

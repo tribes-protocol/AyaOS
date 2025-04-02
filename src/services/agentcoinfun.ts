@@ -6,16 +6,16 @@ import { ensureUUID, isNull, toJsonTree } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import {
+  Agent,
   AgentIdentity,
-  AgentIdentitySchema,
   AgentRegistrationSchema,
-  CharacterSchema,
   ChatChannel,
   CreateMessage,
   CredentialsSchema,
   HydratedMessage,
   Identity,
   MessageStatusEnum,
+  ProvisionSchema,
   ServiceKind,
   User
 } from '@/common/types'
@@ -23,10 +23,11 @@ import { IAgentcoinService } from '@/services/interfaces'
 import { KeychainService } from '@/services/keychain'
 import { IAgentRuntime, Service, ServiceType } from '@elizaos/core'
 import * as fs from 'fs'
+import path from 'path'
 
 export class AgentcoinService extends Service implements IAgentcoinService {
   private cachedCookie: string | undefined
-  private cachedIdentity: Identity | undefined
+  private cachedIdentity: AgentIdentity | undefined
 
   static get serviceType(): ServiceType {
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
@@ -47,12 +48,12 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     return this.api.getUser(identity)
   }
 
-  async getIdentity(): Promise<Identity> {
+  async getIdentity(): Promise<AgentIdentity> {
     if (isNull(this.cachedIdentity)) {
-      const { id } = CharacterSchema.parse(
-        JSON.parse(fs.readFileSync(this.pathResolver.characterFile, 'utf-8'))
+      const { id } = ProvisionSchema.parse(
+        JSON.parse(fs.readFileSync(this.pathResolver.provisionFile, 'utf-8'))
       )
-      this.cachedIdentity = AgentIdentitySchema.parse(`AGENT-${id}`)
+      this.cachedIdentity = id
     }
     return this.cachedIdentity
   }
@@ -114,14 +115,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
 
     const agent = await this.api.provisionAgent(token, signature, publicKey)
 
-    const character = createGenericCharacter(agent.name, ensureUUID(agent.id.substring(6)))
-
-    fs.writeFileSync(
-      this.pathResolver.characterFile,
-      JSON.stringify(toJsonTree(character), null, 2)
-    )
-
-    ayaLogger.success('Agent coin provisioned successfully', character.id)
+    await this.provisionCharacter(agent)
 
     fs.unlinkSync(regPath)
   }
@@ -164,12 +158,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
       purpose
     )
 
-    const character = createGenericCharacter(agent.name, ensureUUID(agent.id.substring(6)))
-
-    fs.writeFileSync(
-      this.pathResolver.characterFile,
-      JSON.stringify(toJsonTree(character), null, 2)
-    )
+    await this.provisionCharacter(agent)
 
     // Display agent creation success message
     const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${agent.id}`
@@ -268,21 +257,39 @@ export class AgentcoinService extends Service implements IAgentcoinService {
 
   private async isProvisioned(): Promise<boolean> {
     try {
-      if (!fs.existsSync(this.pathResolver.characterFile)) {
+      if (!fs.existsSync(this.pathResolver.provisionFile)) {
         return false
       }
 
-      const character = CharacterSchema.parse(
-        JSON.parse(fs.readFileSync(this.pathResolver.characterFile, 'utf-8'))
+      const provision = ProvisionSchema.parse(
+        JSON.parse(fs.readFileSync(this.pathResolver.provisionFile, 'utf-8'))
       )
 
-      if (character.id) {
+      if (provision.id) {
         return true
       }
       return false
     } catch (error) {
-      console.log('Error parsing character file:', error)
+      console.log('Error parsing provision file:', error)
       return false
     }
+  }
+
+  private async provisionCharacter(agent: Agent): Promise<void> {
+    const characterId = ensureUUID(agent.id.substring(6))
+
+    const character = createGenericCharacter(agent.name, characterId)
+
+    fs.writeFileSync(
+      path.join(process.cwd(), `${characterId}-character.json`),
+      JSON.stringify(toJsonTree(character), null, 2)
+    )
+
+    fs.writeFileSync(
+      this.pathResolver.provisionFile,
+      JSON.stringify(toJsonTree({ id: agent.id }), null, 2)
+    )
+
+    ayaLogger.success('Agent coin provisioned successfully', characterId)
   }
 }

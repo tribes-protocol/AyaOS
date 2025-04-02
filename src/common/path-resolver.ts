@@ -5,7 +5,7 @@ import * as path from 'path'
 export class PathResolver {
   private rootDir: string
   public readonly dataDir: string
-  public readonly characterFile: string
+  public readonly provisionFile: string
   public readonly registrationFile: string
   public readonly keypairFile: string
   public readonly gitStateFile: string
@@ -22,7 +22,7 @@ export class PathResolver {
     this.rootDir = rootDir ?? path.join(os.homedir(), '.agentcoin-fun')
 
     this.dataDir = this.rootDir
-    this.characterFile = path.join(process.cwd(), 'character.json')
+    this.provisionFile = path.join(this.rootDir, 'provision.json')
     this.registrationFile = path.join(this.rootDir, 'registration.json')
     this.keypairFile = path.join(this.rootDir, 'agent-keypair.json')
     this.gitStateFile = path.join(this.rootDir, 'agent-git.json')

@@ -258,6 +258,12 @@ export const CharacterSchema = BaseCharacterSchema.extend({
 
 export type Character = z.infer<typeof CharacterSchema>
 
+export const ProvisionSchema = z.object({
+  id: AgentIdentitySchema
+})
+
+export type Provision = z.infer<typeof ProvisionSchema>
+
 // agent events
 
 const BaseAgentEventSchema = z.object({
