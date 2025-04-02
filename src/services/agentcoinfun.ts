@@ -2,7 +2,7 @@ import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { createGenericCharacter } from '@/common/character'
 import { USER_CREDENTIALS_FILE } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
-import { isNull, toJsonTree } from '@/common/functions'
+import { ensureUUID, isNull, toJsonTree } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import {
@@ -114,7 +114,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
 
     const agent = await this.api.provisionAgent(token, signature, publicKey)
 
-    const character = createGenericCharacter(agent.name, agent.id)
+    const character = createGenericCharacter(agent.name, ensureUUID(agent.id.substring(6)))
 
     fs.writeFileSync(
       this.pathResolver.characterFile,
