@@ -22,7 +22,7 @@ export class PathResolver {
     this.rootDir = rootDir ?? path.join(os.homedir(), '.agentcoin-fun')
 
     this.dataDir = this.rootDir
-    this.characterFile = path.join(this.rootDir, 'character.json')
+    this.characterFile = path.join(process.cwd(), 'character.json')
     this.registrationFile = path.join(this.rootDir, 'registration.json')
     this.keypairFile = path.join(this.rootDir, 'agent-keypair.json')
     this.gitStateFile = path.join(this.rootDir, 'agent-git.json')
