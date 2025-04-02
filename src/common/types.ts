@@ -528,12 +528,6 @@ export const AgentSchema = z
 
 export type Agent = z.infer<typeof AgentSchema>
 
-export const CreatePureResponseSchema = z.object({
-  agent: AgentSchema,
-  character: CharacterSchema
-})
-export type CreatePureResponse = z.infer<typeof CreatePureResponseSchema>
-
 export const ButtonSchema = z.object({
   text: z.string(),
   url: z.string(),

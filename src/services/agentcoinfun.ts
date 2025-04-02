@@ -155,7 +155,7 @@ export class AgentcoinService extends Service implements IAgentcoinService {
     const message = this.keychain.publicKey
     const signature = await this.keychain.sign(message)
 
-    const { agent, character } = await this.api.createAgent(
+    const agent = await this.api.createAgent(
       message,
       this.keychain.publicKey,
       signature,
@@ -163,6 +163,8 @@ export class AgentcoinService extends Service implements IAgentcoinService {
       name,
       purpose
     )
+
+    const character = createGenericCharacter(agent.name, ensureUUID(agent.id.substring(6)))
 
     fs.writeFileSync(
       this.pathResolver.characterFile,
