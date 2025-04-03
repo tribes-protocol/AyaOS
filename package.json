@@ -44,6 +44,7 @@
     "elliptic": "6.6.1",
     "express": "4.21.2",
     "fs": "0.0.1-security",
+    "js-tiktoken": "^1.0.19",
     "langchain": "0.3.19",
     "limiter": "3.0.0",
     "lru-cache": "11.1.0",
