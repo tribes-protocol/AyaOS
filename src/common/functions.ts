@@ -14,7 +14,8 @@ import {
 import { UUID } from '@elizaos/core'
 import crypto, { createHash } from 'crypto'
 import EC from 'elliptic'
-
+import fs from 'fs'
+import path from 'path'
 // eslint-disable-next-line new-cap
 export const ec = new EC.ec('p256')
 
@@ -224,4 +225,67 @@ export function ensureUUID(input?: string | null | undefined): UUID {
 
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return input as UUID
+}
+
+/**
+ * Reads a .env file and returns a record of all environment variables present.
+ * Only processes files with names starting with ".env" (e.g., .env, .env.production, .env.local).
+ *
+ * @param filePath - The path to the .env file
+ * @returns A record of environment variables as key-value pairs
+ * @throws Error if the file doesn't exist, isn't a .env file, or can't be read
+ */
+export function loadEnvFile(filePath: string): Record<string, string> {
+  if (!fs.existsSync(filePath)) {
+    return {}
+  }
+
+  // Validate that the file name starts with .env
+  const fileName = path.basename(filePath)
+  if (!fileName.startsWith('.env')) {
+    throw new Error(`Invalid env file name: ${fileName}. File name must start with ".env"`)
+  }
+
+  try {
+    // Read the file content
+    const fileContent = fs.readFileSync(filePath, 'utf8')
+
+    // Parse the content line by line
+    const envVars: Record<string, string> = {}
+
+    const lines = fileContent.split('\n')
+    for (const line of lines) {
+      // Skip empty lines and comments
+      const trimmedLine = line.trim()
+      if (isNull(trimmedLine) || trimmedLine.startsWith('#')) {
+        continue
+      }
+
+      // Split by the first equals sign
+      const equalSignIndex = trimmedLine.indexOf('=')
+      if (equalSignIndex !== -1) {
+        const key = trimmedLine.substring(0, equalSignIndex).trim()
+        let value = trimmedLine.substring(equalSignIndex + 1).trim()
+
+        // Remove surrounding quotes if present
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.substring(1, value.length - 1)
+        }
+
+        envVars[key] = value
+      }
+    }
+
+    return envVars
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      throw new Error(`Env file not found: ${filePath}`)
+    }
+    throw new Error(
+      `Error reading env file: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
 }

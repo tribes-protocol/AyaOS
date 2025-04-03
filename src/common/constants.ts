@@ -7,3 +7,5 @@ export const UUID_PATTERN = /^[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+$
 export const USER_CREDENTIALS_FILE = path.join(os.homedir(), '.agentcoin-fun', 'credentials.json')
 
 export const AYA_SOURCE = 'aya'
+
+export const AYA_PROXY = 'https://aya-proxies.hish.workers.dev/v1/tools/llm'
