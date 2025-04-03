@@ -1,13 +1,20 @@
 import { PathResolver } from '@/common/path-resolver'
 import {
   ActionExample,
+  Evaluator,
+  EventHandler,
+  EventPayload,
+  EventPayloadMap,
   HandlerCallback,
   IAgentRuntime,
+  IDatabaseAdapter,
   Memory,
   ProviderResult,
+  Route,
   Service,
   ServiceTypeName,
-  State
+  State,
+  TestSuite
 } from '@elizaos/core'
 
 export type ServiceLike = ServiceTypeName | string
@@ -74,4 +81,33 @@ export interface Provider {
   private?: boolean
   /** Data retrieval function */
   get: (runtime: IAyaRuntime, message: Memory, state: State) => Promise<ProviderResult>
+}
+
+export interface Plugin {
+  name: string
+  description: string
+  init?: (config: Record<string, string>, runtime: IAgentRuntime) => Promise<void>
+  config?: {
+    [key: string]: unknown
+  }
+  services?: (typeof Service)[]
+  componentTypes?: {
+    name: string
+    schema: Record<string, unknown>
+    validator?: (data: unknown) => boolean
+  }[]
+  actions?: Action[]
+  providers?: Provider[]
+  evaluators?: Evaluator[]
+  adapter?: IDatabaseAdapter
+  models?: {
+    [key: string]: (...args: unknown[]) => Promise<unknown>
+  }
+  events?: {
+    [K in keyof EventPayloadMap]?: EventHandler<K>[]
+  } & {
+    [key: string]: ((params: EventPayload) => Promise<unknown>)[]
+  }
+  routes?: Route[]
+  tests?: TestSuite[]
 }

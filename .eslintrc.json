@@ -108,7 +108,7 @@
           },
           {
             "name": "@elizaos/core",
-            "importNames": ["Client", "Action", "Provider", "elizaLogger"],
+            "importNames": ["Client", "Action", "Provider", "elizaLogger", "Plugin"],
             "message": "Do not import Client, Action or Provider from @elizaos/core."
           }
         ]
