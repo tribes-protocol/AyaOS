@@ -1,13 +1,13 @@
-// import { AyaService } from '@/plugins/aya/service'
+import { AyaService } from '@/plugins/aya/service'
 import { Plugin } from '@elizaos/core'
 
-export const agentcoinPlugin: Plugin = {
-  name: 'agentcoin',
-  description: 'Agentcoin plugin for interacting with the Agentcoin network',
+export const ayaPlugin: Plugin = {
+  name: 'aya',
+  description: 'Aya plugin for interacting with the Aya network',
   actions: [],
   evaluators: [],
   providers: [],
-  services: [] // FIXME: hish - uncomment [AyaService]
+  services: [AyaService]
 }
 
-export default agentcoinPlugin
+export default ayaPlugin

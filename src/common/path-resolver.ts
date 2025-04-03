@@ -18,7 +18,7 @@ export class PathResolver {
       rootDir = path.resolve(process.cwd(), rootDir)
     }
 
-    this.rootDir = rootDir ?? path.join(os.homedir(), '.agentcoin-fun')
+    this.rootDir = rootDir ?? path.join(os.homedir(), '.ayaos')
 
     this.dataDir = this.rootDir
     this.characterFile = path.join(this.rootDir, 'character.json')

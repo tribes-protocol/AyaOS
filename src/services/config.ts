@@ -51,6 +51,7 @@ export class ConfigService extends Service {
   }
 
   private async start(): Promise<void> {
+    console.log(`[aya] starting ${ConfigService.serviceType} service`)
     ayaLogger.info('Starting config service...')
     // disable in dev mode
     if (process.env.NODE_ENV !== 'production') {

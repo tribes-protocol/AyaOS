@@ -67,6 +67,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }
 
   static async start(_runtime: IAyaRuntime): Promise<Service> {
+    console.log(`[aya] starting ${KnowledgeService.serviceType} service`)
     if (isNull(instance)) {
       throw new Error('KnowledgeService not initialized')
     }

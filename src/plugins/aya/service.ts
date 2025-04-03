@@ -41,26 +41,39 @@ import {
 } from '@elizaos/core'
 import * as fs from 'fs'
 import { io, Socket } from 'socket.io-client'
-
 function messageIdToUuid(messageId: number): UUID {
   return stringToUuid('agentcoin:' + messageId.toString())
 }
 
 export class AyaService extends Service {
-  private socket?: Socket
+  static instances = new Map<UUID, AyaService>()
 
-  readonly capabilityDescription = 'The agent is able to send and receive messages on aya'
+  private socket?: Socket
+  readonly serviceType = 'aya_boot_service'
+  readonly capabilityDescription = 'The agent is able to send and receive messages on AyaOS.ai'
 
   constructor(readonly runtime: IAyaRuntime) {
+    console.log('AyaService constructor', runtime.agentId)
     super(runtime)
   }
 
-  static get serviceType(): string {
-    return 'aya'
+  async stop(): Promise<void> {
+    if (isNull(this.socket)) {
+      console.warn('AyaService not started', this.runtime.agentId)
+      return
+    }
+
+    this.socket.disconnect()
+    this.socket = undefined
   }
 
-  static async start(runtime: IAyaRuntime): Promise<Service> {
-    const agentcoinService = runtime.ensureService<AgentcoinService>(
+  private async start(): Promise<void> {
+    if (this.socket) {
+      console.warn('AyaService already started', this.runtime.agentId)
+      return
+    }
+
+    const agentcoinService = this.runtime.ensureService<AgentcoinService>(
       AgentcoinService.serviceType,
       'Agentcoin service not found'
     )
@@ -89,8 +102,7 @@ export class AyaService extends Service {
       }
     })
 
-    const instance = new AyaService(runtime)
-    instance.socket = socket
+    this.socket = socket
 
     const identity = await agentcoinService.getIdentity()
     const eventName = `user:${serializeIdentity(identity)}`
@@ -100,7 +112,7 @@ export class AyaService extends Service {
     )
 
     // listen on DMs
-    instance.socket.on(eventName, async (data: unknown) => {
+    this.socket.on(eventName, async (data: unknown) => {
       // ayaLogger.info('Agentcoin client received event', data)
       try {
         const event = MessageEventSchema.parse(data)
@@ -120,7 +132,7 @@ export class AyaService extends Service {
         switch (event.kind) {
           case 'message': {
             // process message if allowed
-            await instance.processMessage(channel, event.data)
+            await this.processMessage(channel, event.data)
             break
           }
           case 'status':
@@ -135,7 +147,7 @@ export class AyaService extends Service {
 
     // listen on admin commands
     if (AGENTCOIN_MONITORING_ENABLED) {
-      instance.socket.on(`admin:${identity}`, async (payload: string) => {
+      this.socket.on(`admin:${identity}`, async (payload: string) => {
         try {
           const jsonObj = JSON.parse(payload)
           const { content, signature } = jsonObj
@@ -148,22 +160,34 @@ export class AyaService extends Service {
           }
 
           const command = SentinelCommandSchema.parse(JSON.parse(content))
-          await instance.handleAdminCommand(command)
+          await this.handleAdminCommand(command)
         } catch (e) {
           console.error('Error handling admin command:', e, payload)
         }
       })
     }
+  }
+
+  static async start(_runtime: IAyaRuntime): Promise<Service> {
+    console.log('start Aya Service for', _runtime.agentId)
+    const cachedInstance = AyaService.instances.get(_runtime.agentId)
+    if (cachedInstance) {
+      return cachedInstance
+    }
+
+    const instance = new AyaService(_runtime)
+    AyaService.instances.set(_runtime.agentId, instance)
+    await instance.start()
     return instance
   }
 
-  // static stop(_runtime: IAyaRuntime): Promise<unknown> {
-  //   return Promise.resolve()
-  // }
-
-  public async stop(): Promise<void> {
-    this.socket?.disconnect()
-    this.socket = undefined
+  static async stop(runtime: IAyaRuntime): Promise<unknown> {
+    const instance = AyaService.instances.get(runtime.agentId)
+    if (instance) {
+      await instance.stop()
+    }
+    AyaService.instances.delete(runtime.agentId)
+    return Promise.resolve()
   }
 
   private async handleAdminCommand(command: SentinelCommand): Promise<void> {
@@ -308,7 +332,7 @@ export class AyaService extends Service {
 
     const { text, actions, inReplyTo, attachments } = content
 
-    // FIXME: hish - need to update code to handle multiple attachments
+    // TODO: hish - need to update code to handle multiple attachments
     const firstAttachment = attachments?.[0]
     const imageUrl = firstAttachment?.url
     const messageText = imageUrl ? text + ` ${imageUrl}` : text

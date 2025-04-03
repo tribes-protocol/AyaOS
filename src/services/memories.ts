@@ -35,6 +35,7 @@ export class MemoriesService extends Service implements IMemoriesService {
   }
 
   static async start(_runtime: IAyaRuntime): Promise<Service> {
+    console.log(`[aya] starting ${MemoriesService.serviceType} service`)
     if (isNull(instance)) {
       instance = new MemoriesService(_runtime)
     }

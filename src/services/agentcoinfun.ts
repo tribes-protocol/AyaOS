@@ -28,7 +28,7 @@ export class AgentcoinService extends Service {
   readonly serviceType = AgentcoinService.serviceType
   readonly capabilityDescription = ''
 
-  private constructor(
+  constructor(
     private readonly keychain: KeychainService,
     private readonly api: AgentcoinAPI,
     private readonly pathResolver: PathResolver
@@ -48,6 +48,7 @@ export class AgentcoinService extends Service {
   }
 
   static async start(_runtime: IAyaRuntime): Promise<Service> {
+    console.log(`[aya] starting ${AgentcoinService.serviceType} service`)
     if (isNull(instance)) {
       throw new Error('AgentcoinService not initialized')
     }

@@ -59,6 +59,7 @@ export class WalletService extends Service implements IWalletService {
   }
 
   static async start(_runtime: IAyaRuntime): Promise<Service> {
+    console.log(`[aya] starting ${WalletService.serviceType} service`)
     if (isNull(instance)) {
       throw new Error('WalletService not initialized')
     }
