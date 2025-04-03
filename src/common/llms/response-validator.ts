@@ -1,6 +1,5 @@
 import { isNull } from '@/common/functions'
-import { IAyaRuntime } from '@/index'
-import { Content, ModelType } from '@elizaos/core'
+import { Content, IAgentRuntime, ModelType } from '@elizaos/core'
 import { z } from 'zod'
 
 const ResponseValidationSchema = z.object({
@@ -14,7 +13,7 @@ type ResponseValidatorParams = {
   context: string
   response: Content
   requestText: string
-  runtime: IAyaRuntime
+  runtime: IAgentRuntime
 }
 
 export async function validateResponse({

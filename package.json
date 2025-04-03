@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@elizaos/core": "1.0.0-beta.14",
+    "@elizaos/plugin-bootstrap": "1.0.0-beta.14",
     "@elizaos/plugin-farcaster": "1.0.0-beta.14",
     "@elizaos/plugin-openai": "1.0.0-beta.14",
     "@elizaos/plugin-sql": "1.0.0-beta.14",
@@ -57,6 +58,7 @@
     "socket.io-client": "4.8.1",
     "telegraf": "4.16.3",
     "url": "0.11.4",
+    "uuid": "^11.1.0",
     "viem": "2.21.49",
     "whatwg-url": "7.1.0",
     "ws": "8.18.0",
