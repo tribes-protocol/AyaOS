@@ -56,7 +56,7 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     }
 
     // require plugins
-    const requiredPlugins = ['@elizaos/plugin-openai', '@elizaos/plugin-sql']
+    const requiredPlugins = ['@elizaos/plugin-sql']
     for (const plugin of requiredPlugins) {
       if (!opts.eliza.character.plugins.includes(plugin)) {
         opts.eliza.character.plugins.push(plugin)

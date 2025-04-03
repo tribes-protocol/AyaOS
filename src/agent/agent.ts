@@ -1,13 +1,15 @@
 import { IAyaAgent } from '@/agent/iagent'
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
+import { AYA_PROXY } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { isNull, isRequiredString } from '@/common/functions'
 import { Action, Provider } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { AyaRuntime } from '@/common/runtime'
-import { AyaOSOptions, EmbeddingsConfig } from '@/common/types'
+import { AyaOSOptions } from '@/common/types'
 import ayaPlugin from '@/plugins/aya'
+import openaiPlugin from '@/plugins/openai'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
 import { EventService } from '@/services/event'
@@ -17,7 +19,6 @@ import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import { WalletService } from '@/services/wallet'
 import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
-import farcasterPlugin from '@elizaos/plugin-farcaster'
 import {
   // eslint-disable-next-line no-restricted-imports
   Action as ElizaAction,
@@ -29,6 +30,7 @@ import {
   UUID,
   type Character
 } from '@elizaos/core'
+import farcasterPlugin from '@elizaos/plugin-farcaster'
 import fs from 'fs'
 
 const reservedAgentDirs = new Set<string | undefined>()
@@ -42,11 +44,8 @@ export class Agent implements IAyaAgent {
   private runtime_: AyaRuntime | undefined
   private pathResolver: PathResolver
   private keychainService: KeychainService
-  private embeddingsConfig?: EmbeddingsConfig
 
   constructor(options?: AyaOSOptions) {
-    this.embeddingsConfig = options?.embeddings
-
     if (reservedAgentDirs.has(options?.dataDir)) {
       throw new Error('Data directory already used. Please provide a unique data directory.')
     }
@@ -125,6 +124,14 @@ export class Agent implements IAyaAgent {
         ...character.templates,
         messageHandlerTemplate: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
       }
+
+      const jwtToken = await agentcoinService.getJwtAuthToken()
+
+      if (character.settings?.OPENAI_BASE_URL === AYA_PROXY) {
+        character.settings.OPENAI_API_KEY = jwtToken
+      }
+
+      this.plugins.push(openaiPlugin)
 
       ayaLogger.info('Creating runtime for character', character.name)
 
