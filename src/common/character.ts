@@ -1,3 +1,4 @@
+import { AYA_PROXY } from '@/common/constants'
 import { Character, UUID } from '@elizaos/core'
 
 export function createGenericCharacter(name: string, id: UUID): Character {
@@ -35,7 +36,11 @@ export function createGenericCharacter(name: string, id: UUID): Character {
         ' can assist in planning trips, from booking flights and accommodations to suggesting itineraries.'
     ],
     settings: {
-      secrets: {}
+      OPENAI_BASE_URL: AYA_PROXY,
+      OPENAI_SMALL_MODEL: 'qwen/qwq-32b',
+      OPENAI_LARGE_MODEL: 'meta/llama-3.3-70b-instruct-fp8',
+      OPENAI_EMBEDDING_MODEL: 'baai/bge-large-en-v1.5',
+      OPENAI_EMBEDDING_DIMENSIONS: '1024'
     },
     style: {
       all: ['professional', 'friendly', 'efficient'],
