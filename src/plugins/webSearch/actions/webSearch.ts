@@ -3,7 +3,7 @@ import { Action, IAyaRuntime } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
 import { WebSearchService } from '@/plugins/websearch/services/websearch'
 import type { SearchResult } from '@/plugins/websearch/types'
-import { type HandlerCallback, type IAgentRuntime, type Memory, type State } from '@elizaos/core'
+import { type HandlerCallback, type Memory, type State } from '@elizaos/core'
 import { encodingForModel, type TiktokenModel } from 'js-tiktoken'
 
 const DEFAULT_MAX_WEB_SEARCH_TOKENS = 4000
@@ -38,10 +38,8 @@ export const webSearch: Action = {
     'FIND_INFORMATION'
   ],
   description: 'Perform a web search to find information related to the message.',
-  validate: async (runtime: IAgentRuntime) => {
-    const tavilyApiKeyOk = !!runtime.getSetting('TAVILY_API_KEY')
-
-    return tavilyApiKeyOk
+  validate: async (runtime: IAyaRuntime) => {
+    return !isNull(runtime.getSetting('TAVILY_API_KEY'))
   },
   handler: async (
     runtime: IAyaRuntime,

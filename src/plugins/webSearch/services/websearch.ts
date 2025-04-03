@@ -1,11 +1,12 @@
 import { isNull } from '@/common/functions'
+import { IAyaRuntime } from '@/common/iruntime'
 import {
   TavilySearchResponseSchema,
   type IWebSearchService,
   type SearchOptions,
   type SearchResponse
 } from '@/plugins/websearch/types'
-import { Service, ServiceTypeName, UUID, type IAgentRuntime } from '@elizaos/core'
+import { Service, ServiceTypeName, UUID } from '@elizaos/core'
 
 export class WebSearchService extends Service implements IWebSearchService {
   private static services = new Map<UUID, WebSearchService>()
@@ -13,7 +14,7 @@ export class WebSearchService extends Service implements IWebSearchService {
   private apiKey: string
   private apiUrl: string = 'https://api.tavily.com/search'
 
-  private constructor(runtime: IAgentRuntime) {
+  constructor(runtime: IAyaRuntime) {
     super(runtime)
     this.apiKey = runtime.getSetting('TAVILY_API_KEY')
     const customApiUrl = runtime.getSetting('TAVILY_API_URL')
@@ -27,7 +28,7 @@ export class WebSearchService extends Service implements IWebSearchService {
   }
 
   /** Start service connection */
-  static async start(_runtime: IAgentRuntime): Promise<Service> {
+  static async start(_runtime: IAyaRuntime): Promise<Service> {
     const cached = WebSearchService.services.get(_runtime.agentId)
     if (cached) {
       return cached
@@ -38,7 +39,7 @@ export class WebSearchService extends Service implements IWebSearchService {
   }
 
   /** Stop service connection */
-  static async stop(_runtime: IAgentRuntime): Promise<unknown> {
+  static async stop(_runtime: IAyaRuntime): Promise<unknown> {
     const cached = WebSearchService.services.get(_runtime.agentId)
     if (cached) {
       await cached.stop()

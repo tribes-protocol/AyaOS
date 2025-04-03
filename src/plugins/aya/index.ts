@@ -1,5 +1,5 @@
 // import { AyaService } from '@/plugins/aya/service'
-import { Plugin } from '@elizaos/core'
+import { Plugin } from '@/common/iruntime'
 
 export const agentcoinPlugin: Plugin = {
   name: 'agentcoin',

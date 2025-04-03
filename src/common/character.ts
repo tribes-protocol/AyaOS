@@ -1,4 +1,4 @@
-import { AYA_PROXY } from '@/common/constants'
+import { LLM_PROXY, WEBSEARCH_PROXY } from '@/common/constants'
 import { Character, UUID } from '@elizaos/core'
 
 export function createGenericCharacter(name: string, id: UUID): Character {
@@ -23,11 +23,12 @@ export function createGenericCharacter(name: string, id: UUID): Character {
       'Appreciates different perspectives and viewpoints.'
     ],
     settings: {
-      OPENAI_BASE_URL: AYA_PROXY,
+      OPENAI_BASE_URL: LLM_PROXY,
       OPENAI_SMALL_MODEL: 'qwen/qwq-32b',
       OPENAI_LARGE_MODEL: 'meta/llama-3.3-70b-instruct-fp8',
       OPENAI_EMBEDDING_MODEL: 'baai/bge-large-en-v1.5',
-      OPENAI_EMBEDDING_DIMENSIONS: '1024'
+      OPENAI_EMBEDDING_DIMENSIONS: '1024',
+      TAVILY_API_URL: WEBSEARCH_PROXY
     },
     style: {
       all: ['friendly', 'genuine', 'supportive'],
