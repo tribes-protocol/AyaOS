@@ -1,10 +1,9 @@
-import { AGENTCOIN_MONITORING_ENABLED } from '@/common/env'
 import { isNull, isRequiredString } from '@/common/functions'
 import { IAyaRuntime } from '@/common/iruntime'
 import { OperationQueue } from '@/common/lang/operation_queue'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
-import { CharacterSchema, ServiceKind } from '@/common/types'
+import { ServiceKind } from '@/common/types'
 import { EventService } from '@/services/event'
 import { Service } from '@elizaos/core'
 import crypto from 'crypto'
@@ -17,7 +16,7 @@ export class ConfigService extends Service {
   private readonly operationQueue = new OperationQueue(1)
   private isRunning = false
   private gitCommitHash: string | undefined
-  private characterChecksum: string | undefined
+  private envvarsChecksum: string | undefined
   private server: net.Server | undefined
   private shutdownFunc?: (signal?: string) => Promise<void>
 
@@ -57,6 +56,8 @@ export class ConfigService extends Service {
       ayaLogger.info('Config service disabled in dev mode')
       return
     }
+
+    const AGENTCOIN_MONITORING_ENABLED = this.runtime.getSetting('AGENTCOIN_MONITORING_ENABLED')
 
     if (!AGENTCOIN_MONITORING_ENABLED) {
       ayaLogger.info('Agentcoin monitoring disabled')
@@ -104,28 +105,24 @@ export class ConfigService extends Service {
     this.server = app.listen(this.pathResolver.runtimeServerSocketFile)
 
     while (this.isRunning) {
-      await Promise.all([this.checkCodeUpdate(), this.checkCharacterUpdate()])
+      await Promise.all([this.checkCodeUpdate(), this.checkEnvUpdate()])
       await new Promise((resolve) => setTimeout(resolve, 30000))
     }
   }
 
-  async checkCharacterUpdate(): Promise<void> {
+  async checkEnvUpdate(): Promise<void> {
     await this.operationQueue.submit(async () => {
-      // read character file
-      const character = fs.readFileSync(this.pathResolver.characterFile, 'utf8')
-      const checksum = crypto.createHash('md5').update(character).digest('hex')
-      if (isNull(this.characterChecksum) || this.characterChecksum === checksum) {
-        this.characterChecksum = checksum
+      const envvars = fs.readFileSync(this.pathResolver.envFile, 'utf8')
+      const checksum = crypto.createHash('md5').update(envvars).digest('hex')
+      if (isNull(this.envvarsChecksum) || this.envvarsChecksum === checksum) {
+        this.envvarsChecksum = checksum
         return
       }
 
-      // kill the process and docker container should restart it
-      ayaLogger.info(`New character file detected. Restarting agent...`)
-      const characterObject = CharacterSchema.parse(
-        JSON.parse(fs.readFileSync(this.pathResolver.characterFile, 'utf8'))
-      )
-      this.characterChecksum = checksum
-      await this.eventService.publishCharacterChangeEvent(characterObject)
+      ayaLogger.info(`New envvars file detected. Restarting agent...`)
+      await this.eventService.publishEnvChangeEvent(envvars)
+      this.envvarsChecksum = checksum
+
       if (process.env.NODE_ENV === 'production') {
         await this.kill()
       }

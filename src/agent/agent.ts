@@ -2,7 +2,7 @@ import { IAyaAgent } from '@/agent/iagent'
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { AYA_PROXY } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
-import { isNull, isRequiredString } from '@/common/functions'
+import { isNull, isRequiredString, loadEnvFile } from '@/common/functions'
 import { Action, Provider } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
@@ -32,6 +32,7 @@ import {
 } from '@elizaos/core'
 import farcasterPlugin from '@elizaos/plugin-farcaster'
 import fs from 'fs'
+import path from 'path'
 
 const reservedAgentDirs = new Set<string | undefined>()
 
@@ -111,11 +112,8 @@ export class Agent implements IAyaAgent {
 
       // step 2: load character and initialize database
       ayaLogger.info('Loading character...')
-      const [charString] = await Promise.all([
-        fs.promises.readFile(this.pathResolver.characterFile, 'utf8')
-      ])
-
-      const character: Character = this.processCharacterSecrets(JSON.parse(charString))
+      const charString = await fs.promises.readFile(this.pathResolver.characterFile, 'utf8')
+      const character: Character = JSON.parse(charString)
       if (isNull(character.id)) {
         throw new Error('Character id not found')
       }
@@ -135,11 +133,18 @@ export class Agent implements IAyaAgent {
 
       ayaLogger.info('Creating runtime for character', character.name)
 
+      const settings = fs.existsSync(this.pathResolver.envFile)
+        ? loadEnvFile(this.pathResolver.envFile)
+        : loadEnvFile(path.join(process.cwd(), '.env'))
+
+      this.processSecrets(settings)
+
       runtime = new AyaRuntime({
         eliza: {
           character,
           plugins: this.plugins,
-          agentId: character.id
+          agentId: character.id,
+          settings
         },
         pathResolver: this.pathResolver
       })
@@ -313,20 +318,15 @@ export class Agent implements IAyaAgent {
     }
   }
 
-  private processCharacterSecrets(character: Character): Character {
-    const secrets: {
-      [key: string]: string | boolean | number
-    } = character.settings?.secrets || {}
-
-    Object.entries(secrets).forEach(([key, value]) => {
+  private processSecrets(env: Record<string, string>): void {
+    Object.entries(env).forEach(([key, value]) => {
       if (key.startsWith('AGENTCOIN_ENC_') && isRequiredString(value)) {
         const decryptedValue = this.keychainService.decrypt(value)
         const newKey = key.substring(14)
-        ayaLogger.info('Decrypted secret', newKey)
-        secrets[newKey] = decryptedValue
+        ayaLogger.info('Decrypted secret:', newKey)
+        env[newKey] = decryptedValue
+        delete env[key]
       }
     })
-
-    return character
   }
 }
