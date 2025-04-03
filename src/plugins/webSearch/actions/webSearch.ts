@@ -1,8 +1,8 @@
 import { isNull } from '@/common/functions'
-import { Action } from '@/common/iruntime'
+import { Action, IAyaRuntime } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
-import { WebSearchService } from '@/plugins/webSearch/services/webSearchService'
-import type { SearchResult } from '@/plugins/webSearch/types'
+import { WebSearchService } from '@/plugins/websearch/services/websearch'
+import type { SearchResult } from '@/plugins/websearch/types'
 import { type HandlerCallback, type IAgentRuntime, type Memory, type State } from '@elizaos/core'
 import { encodingForModel, type TiktokenModel } from 'js-tiktoken'
 
@@ -44,7 +44,7 @@ export const webSearch: Action = {
     return tavilyApiKeyOk
   },
   handler: async (
-    runtime: IAgentRuntime,
+    runtime: IAyaRuntime,
     message: Memory,
     state: State | undefined,
     options?: {
@@ -60,8 +60,9 @@ export const webSearch: Action = {
     const webSearchPrompt = message.content.text
     ayaLogger.log('web search prompt received:', webSearchPrompt)
 
-    const webSearchService = new WebSearchService()
-    await webSearchService.initialize(runtime)
+    const webSearchService = await runtime.ensureService<WebSearchService>(
+      WebSearchService.serviceType
+    )
     if (isNull(webSearchPrompt)) {
       ayaLogger.error('web search prompt is empty')
       return

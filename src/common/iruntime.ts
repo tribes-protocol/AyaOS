@@ -15,7 +15,7 @@ export type ServiceLike = ServiceTypeName | string
 export interface IAyaRuntime extends IAgentRuntime {
   readonly pathResolver: PathResolver
 
-  ensureService<T extends Service>(service: ServiceLike, message?: string): T
+  ensureService<T extends Service>(service: ServiceLike, message?: string): Promise<T>
 
   ensureSetting(key: string, message?: string): string
 

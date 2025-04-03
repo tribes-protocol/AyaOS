@@ -1,5 +1,5 @@
-import { webSearch } from '@/plugins/webSearch/actions/webSearch'
-import { WebSearchService } from '@/plugins/webSearch/services/webSearchService'
+import { webSearch } from '@/plugins/websearch/actions/websearch'
+import { WebSearchService } from '@/plugins/websearch/services/websearch'
 
 export const webSearchPlugin = {
   name: 'webSearch',
@@ -7,7 +7,7 @@ export const webSearchPlugin = {
   actions: [webSearch],
   evaluators: [],
   providers: [],
-  services: [new WebSearchService()],
+  services: [WebSearchService],
   clients: [],
   adapters: []
 }

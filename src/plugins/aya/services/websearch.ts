@@ -4,15 +4,17 @@ import {
   type IWebSearchService,
   type SearchOptions,
   type SearchResponse
-} from '@/plugins/webSearch/types'
-import { Service, ServiceTypeName, type IAgentRuntime } from '@elizaos/core'
+} from '@/plugins/websearch/types'
+import { Service, ServiceTypeName, UUID, type IAgentRuntime } from '@elizaos/core'
 
 export class WebSearchService extends Service implements IWebSearchService {
+  private static services = new Map<UUID, WebSearchService>()
   readonly capabilityDescription = 'The agent is able to search the web for information'
-  private apiKey: string | null = null
+  private apiKey: string
   private apiUrl: string = 'https://api.tavily.com/search'
 
-  async initialize(runtime: IAgentRuntime): Promise<void> {
+  private constructor(runtime: IAgentRuntime) {
+    super(runtime)
     this.apiKey = runtime.getSetting('TAVILY_API_KEY')
     const customApiUrl = runtime.getSetting('TAVILY_API_URL')
 
@@ -22,6 +24,27 @@ export class WebSearchService extends Service implements IWebSearchService {
     if (customApiUrl) {
       this.apiUrl = customApiUrl
     }
+  }
+
+  /** Start service connection */
+  static async start(_runtime: IAgentRuntime): Promise<Service> {
+    const cached = WebSearchService.services.get(_runtime.agentId)
+    if (cached) {
+      return cached
+    }
+    const service = new WebSearchService(_runtime)
+    WebSearchService.services.set(_runtime.agentId, service)
+    return service
+  }
+
+  /** Stop service connection */
+  static async stop(_runtime: IAgentRuntime): Promise<unknown> {
+    const cached = WebSearchService.services.get(_runtime.agentId)
+    if (cached) {
+      await cached.stop()
+      WebSearchService.services.delete(_runtime.agentId)
+    }
+    return undefined
   }
 
   static get serviceType(): ServiceTypeName {
@@ -39,7 +62,7 @@ export class WebSearchService extends Service implements IWebSearchService {
       query,
       topic: options?.topic || 'general',
       search_depth: options?.searchDepth || 'basic',
-      max_results: options?.limit || 5, // Default to 5 as per Tavily docs
+      max_results: options?.limit || 20, // Default to 5 as per Tavily docs
       include_answer: options?.includeAnswer ?? false, // Default to false as per Tavily docs
       include_raw_content: options?.includeRawContent || false,
       include_images: options?.includeImages || false,
