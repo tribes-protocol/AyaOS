@@ -2,7 +2,9 @@ import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { serializeIdentity, toJsonTree } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import {
+  Agent,
   AgentEventData,
+  AgentSchema,
   AgentWallet,
   AgentWalletKind,
   AgentWalletSchema,
@@ -12,8 +14,6 @@ import {
   CliAuthRequestSchema,
   CliAuthResponseSchema,
   CreateMessage,
-  CreatePureResponse,
-  CreatePureResponseSchema,
   ErrorResponseSchema,
   HydratedMessage,
   HydratedMessageSchema,
@@ -231,7 +231,7 @@ export class AgentcoinAPI {
     cookie: string,
     name?: string | undefined,
     purpose?: string | undefined
-  ): Promise<CreatePureResponse> {
+  ): Promise<Agent> {
     const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/create-pure`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
@@ -249,7 +249,7 @@ export class AgentcoinAPI {
     }
 
     const responseData = await response.json()
-    return CreatePureResponseSchema.parse(responseData)
+    return AgentSchema.parse(responseData)
   }
 
   async createCliAuthRequest(): Promise<string> {
