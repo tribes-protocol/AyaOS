@@ -1,5 +1,4 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
-import { Character } from '@/common/types'
 import { ayaLogger } from '@/common/logger'
 
 export class EventService {
@@ -74,17 +73,6 @@ export class EventService {
       {
         cookie: this.agentcoinCookie
       }
-    )
-  }
-
-  async publishCharacterChangeEvent(character: Character): Promise<void> {
-    await this.agentcoinAPI.publishEvent(
-      {
-        kind: 'character_change',
-        character,
-        sentAt: new Date()
-      },
-      { cookie: this.agentcoinCookie }
     )
   }
 
