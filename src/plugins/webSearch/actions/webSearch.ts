@@ -60,9 +60,7 @@ export const webSearch: Action = {
     const webSearchPrompt = message.content.text
     ayaLogger.log('web search prompt received:', webSearchPrompt)
 
-    const webSearchService = await runtime.ensureService<WebSearchService>(
-      WebSearchService.serviceType
-    )
+    const webSearchService = runtime.ensureService<WebSearchService>(WebSearchService.serviceType)
     if (isNull(webSearchPrompt)) {
       ayaLogger.error('web search prompt is empty')
       return

@@ -17,7 +17,6 @@ import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import { WalletService } from '@/services/wallet'
 import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
-import farcasterPlugin from '@elizaos/plugin-farcaster'
 import {
   // eslint-disable-next-line no-restricted-imports
   Action as ElizaAction,
@@ -29,6 +28,7 @@ import {
   UUID,
   type Character
 } from '@elizaos/core'
+import farcasterPlugin from '@elizaos/plugin-farcaster'
 import fs from 'fs'
 
 const reservedAgentDirs = new Set<string | undefined>()

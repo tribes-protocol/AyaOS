@@ -82,7 +82,7 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     return super.getService(service as ServiceTypeName) as T
   }
 
-  async ensureService<T extends Service>(service: ServiceLike, message?: string): Promise<T> {
+  ensureService<T extends Service>(service: ServiceLike, message?: string): T {
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return ensure(this.getService(service), message) as T
   }
