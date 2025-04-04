@@ -1,8 +1,8 @@
 import { isNull } from '@/common/functions'
 import { Action, IAyaRuntime } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
-import { WebSearchService } from '@/plugins/websearch/services/websearch'
-import type { SearchResult } from '@/plugins/websearch/types'
+import { WebSearchService } from '@/plugins/aya/services/websearch'
+import type { SearchResult } from '@/plugins/aya/types'
 import { type HandlerCallback, type Memory, type State } from '@elizaos/core'
 import { encodingForModel, type TiktokenModel } from 'js-tiktoken'
 
