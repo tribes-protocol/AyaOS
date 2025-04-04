@@ -1,4 +1,11 @@
-import { LLM_PROXY, WEBSEARCH_PROXY } from '@/common/constants'
+import {
+  DEFAULT_EMBEDDING_DIMENSIONS,
+  DEFAULT_EMBEDDING_MODEL,
+  DEFAULT_LARGE_MODEL,
+  DEFAULT_SMALL_MODEL,
+  LLM_PROXY,
+  WEBSEARCH_PROXY
+} from '@/common/constants'
 import { Character, UUID } from '@elizaos/core'
 
 export function createGenericCharacter(name: string, id: UUID): Character {
@@ -24,10 +31,10 @@ export function createGenericCharacter(name: string, id: UUID): Character {
     ],
     settings: {
       OPENAI_BASE_URL: LLM_PROXY,
-      OPENAI_SMALL_MODEL: 'qwen/qwq-32b',
-      OPENAI_LARGE_MODEL: 'meta/llama-3.3-70b-instruct-fp8',
-      OPENAI_EMBEDDING_MODEL: 'baai/bge-large-en-v1.5',
-      OPENAI_EMBEDDING_DIMENSIONS: '1024',
+      OPENAI_SMALL_MODEL: DEFAULT_SMALL_MODEL,
+      OPENAI_LARGE_MODEL: DEFAULT_LARGE_MODEL,
+      OPENAI_EMBEDDING_MODEL: DEFAULT_EMBEDDING_MODEL,
+      OPENAI_EMBEDDING_DIMENSIONS: DEFAULT_EMBEDDING_DIMENSIONS,
       TAVILY_API_URL: WEBSEARCH_PROXY
     },
     style: {

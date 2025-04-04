@@ -1,6 +1,13 @@
 import { IAyaAgent } from '@/agent/iagent'
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
-import { LLM_PROXY, WEBSEARCH_PROXY } from '@/common/constants'
+import {
+  DEFAULT_EMBEDDING_DIMENSIONS,
+  DEFAULT_EMBEDDING_MODEL,
+  DEFAULT_LARGE_MODEL,
+  DEFAULT_SMALL_MODEL,
+  LLM_PROXY,
+  WEBSEARCH_PROXY
+} from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { isNull, isRequiredString, loadEnvFile } from '@/common/functions'
 import { Action, Plugin, Provider } from '@/common/iruntime'
@@ -124,13 +131,26 @@ export class Agent implements IAyaAgent {
       }
 
       const jwtToken = await agentcoinService.getJwtAuthToken()
+      character.settings = character.settings || {}
 
-      if (character.settings?.OPENAI_BASE_URL === LLM_PROXY) {
-        character.settings.OPENAI_API_KEY = jwtToken
+      // setup websearch
+      if (isNull(character.settings.TAVILY_API_URL)) {
+        character.settings.TAVILY_API_URL = WEBSEARCH_PROXY
+      }
+      if (character.settings.TAVILY_API_URL === WEBSEARCH_PROXY) {
+        character.settings.TAVILY_API_KEY = jwtToken
       }
 
-      if (character.settings?.TAVILY_API_URL === WEBSEARCH_PROXY) {
-        character.settings.TAVILY_API_KEY = jwtToken
+      // setup llm
+      if (isNull(character.settings.OPENAI_BASE_URL)) {
+        character.settings.OPENAI_BASE_URL = LLM_PROXY
+        character.settings.OPENAI_SMALL_MODEL = DEFAULT_SMALL_MODEL
+        character.settings.OPENAI_LARGE_MODEL = DEFAULT_LARGE_MODEL
+        character.settings.OPENAI_EMBEDDING_MODEL = DEFAULT_EMBEDDING_MODEL
+        character.settings.OPENAI_EMBEDDING_DIMENSIONS = DEFAULT_EMBEDDING_DIMENSIONS
+      }
+      if (character.settings.OPENAI_BASE_URL === LLM_PROXY) {
+        character.settings.OPENAI_API_KEY = jwtToken
       }
 
       this.plugins.push(openaiPlugin)
