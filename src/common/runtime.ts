@@ -28,6 +28,7 @@ import {
   UUID
 } from '@elizaos/core'
 import bootstrapPlugin from '@elizaos/plugin-bootstrap'
+import sqlPlugin from '@elizaos/plugin-sql'
 import { v4 } from 'uuid'
 
 export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
@@ -47,23 +48,7 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     }
     pathResolver: PathResolver
   }) {
-    if (isNull(opts.eliza.character.plugins)) {
-      opts.eliza.character.plugins = []
-    }
-
-    // FIXME: hish - remove hack once my PR in elizaos is merged
-    opts.eliza.character.secrets = opts.eliza.character.secrets || {}
-    if (process.env.FARCASTER_FID) {
-      opts.eliza.character.secrets.FARCASTER_FID = process.env.FARCASTER_FID
-    }
-
-    // require plugins
-    const requiredPlugins = ['@elizaos/plugin-sql']
-    for (const plugin of requiredPlugins) {
-      if (!opts.eliza.character.plugins.includes(plugin)) {
-        opts.eliza.character.plugins.push(plugin)
-      }
-    }
+    opts.eliza.character.plugins = opts.eliza.character.plugins || []
 
     // Inject our own bootstrap plugin
     const ayaBootstrapPlugin: Plugin = {
@@ -93,7 +78,7 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     // ayaBootstrapPlugin.events[EventType.VOICE_MESSAGE_RECEIVED] =[]
 
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const plugins = [...(opts.eliza.plugins || []), ayaBootstrapPlugin] as ElizaPlugin[]
+    const plugins = [sqlPlugin, ...(opts.eliza.plugins || []), ayaBootstrapPlugin] as ElizaPlugin[]
 
     super({ ...opts.eliza, plugins })
     this.pathResolver = opts.pathResolver
