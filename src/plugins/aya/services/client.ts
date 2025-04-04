@@ -1,4 +1,11 @@
-import { AYA_AGENT_IDENTITY_KEY, AYA_JWT_SETTINGS_KEY, AYA_SOURCE } from '@/common/constants'
+import { AgentRegistry } from '@/agent/registry'
+import { AyaAuthAPI } from '@/apis/aya-auth'
+import {
+  AYA_AGENT_DATA_DIR_KEY,
+  AYA_AGENT_IDENTITY_KEY,
+  AYA_JWT_SETTINGS_KEY,
+  AYA_SOURCE
+} from '@/common/constants'
 import { AGENT_ADMIN_PUBLIC_KEY, AGENTCOIN_FUN_API_URL } from '@/common/env'
 import {
   ensureStringSetting,
@@ -8,8 +15,6 @@ import {
   serializeChannel,
   serializeIdentity
 } from '@/common/functions'
-
-import { AyaAuthAPI } from '@/apis/aya-auth'
 import { ayaLogger } from '@/common/logger'
 import {
   AgentIdentitySchema,
@@ -35,6 +40,7 @@ import {
   stringToUuid,
   UUID
 } from '@elizaos/core'
+import fs from 'fs'
 import { io, Socket } from 'socket.io-client'
 function messageIdToUuid(messageId: number): UUID {
   return stringToUuid('agentcoin:' + messageId.toString())
@@ -209,19 +215,16 @@ export class AyaClientService extends Service {
     }
   }
 
-  private async handleSetEnvvars(_envVars: Record<string, string>): Promise<void> {
-    // FIXME: hish - handle this
-    // const envContent = Object.entries(envVars)
-    //   .map(([key, value]) => `${key}=${value}`)
-    //   .join('\n')
-    // const pathResolver = getPathResolver(this.runtime)
-    // await fs.promises.writeFile(pathResolver.envFile, envContent)
-    // const configService = ensureRuntimeService<ConfigManager>(
-    //   this.runtime,
-    //   ConfigManager.serviceType,
-    //   'Config service not found'
-    // )
-    // await configService.checkEnvUpdate()
+  private async handleSetEnvvars(envVars: Record<string, string>): Promise<void> {
+    const dataDir = ensureStringSetting(this.runtime, AYA_AGENT_DATA_DIR_KEY)
+    const { managers } = AgentRegistry.get(dataDir)
+    const envContent = Object.entries(envVars)
+      .map(([key, value]) => `${key}=${value}`)
+      .join('\n')
+    const pathResolver = managers.path
+    await fs.promises.writeFile(pathResolver.envFile, envContent)
+
+    await managers.config.checkEnvUpdate()
   }
 
   private async sendStatus(channel: ChatChannel, status: MessageStatusEnum): Promise<() => void> {
