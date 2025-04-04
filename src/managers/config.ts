@@ -1,8 +1,8 @@
 import { isNull, isRequiredString } from '@/common/functions'
 import { OperationQueue } from '@/common/lang/operation_queue'
 import { ayaLogger } from '@/common/logger'
-import { PathResolver } from '@/common/path-resolver'
 import { EventManager } from '@/managers/event'
+import { PathManager } from '@/managers/path'
 import crypto from 'crypto'
 import express from 'express'
 import fs from 'fs'
@@ -19,7 +19,7 @@ export class ConfigManager {
 
   constructor(
     private readonly eventService: EventManager,
-    private readonly pathResolver: PathResolver
+    private readonly pathResolver: PathManager
   ) {}
 
   setShutdownFunc(func: (signal?: string) => Promise<void>): void {

@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 
-export class PathResolver {
+export class PathManager {
   public readonly dataDir: string
   public readonly envFile: string
   public readonly characterFile: string

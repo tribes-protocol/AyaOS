@@ -548,3 +548,8 @@ export const CreatePureResponseSchema = z.object({
   character: CharacterSchema
 })
 export type CreatePureResponse = z.infer<typeof CreatePureResponseSchema>
+
+export interface AuthInfo {
+  identity: Identity
+  token: string
+}

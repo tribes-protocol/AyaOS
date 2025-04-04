@@ -1,5 +1,10 @@
+import { AgentRegistry } from '@/agent/registry'
 import { AyaAuthAPI } from '@/apis/aya-auth'
-import { AYA_AGENT_IDENTITY_KEY, AYA_JWT_SETTINGS_KEY } from '@/common/constants'
+import {
+  AYA_AGENT_DATA_DIR_KEY,
+  AYA_AGENT_IDENTITY_KEY,
+  AYA_JWT_SETTINGS_KEY
+} from '@/common/constants'
 import { ensureStringSetting, isNull } from '@/common/functions'
 import {
   AgentIdentitySchema,
@@ -9,7 +14,6 @@ import {
   Identity,
   Transaction
 } from '@/common/types'
-import { KeychainFactory } from '@/managers/keychain'
 import { IWalletService } from '@/services/interfaces'
 import { IAgentRuntime, Service, UUID } from '@elizaos/core'
 import { TurnkeyClient } from '@turnkey/http'
@@ -30,17 +34,16 @@ export class WalletService extends Service implements IWalletService {
     super(runtime)
     const token = ensureStringSetting(runtime, AYA_JWT_SETTINGS_KEY)
     const identity = ensureStringSetting(runtime, AYA_AGENT_IDENTITY_KEY)
+    const dataDir = ensureStringSetting(runtime, AYA_AGENT_DATA_DIR_KEY)
     this.authAPI = new AyaAuthAPI(token)
     this.identity = AgentIdentitySchema.parse(identity)
-    const keychain = KeychainFactory.get(this.identity)
-    if (isNull(keychain)) {
-      throw new Error(`Keychain not found for agent ${this.identity}`)
-    }
+    const context = AgentRegistry.get(dataDir)
+
     this.turnkey = new TurnkeyClient(
       {
         baseUrl: 'https://api.turnkey.com'
       },
-      keychain.turnkeyApiKeyStamper
+      context.managers.keychain.turnkeyApiKeyStamper
     )
   }
 

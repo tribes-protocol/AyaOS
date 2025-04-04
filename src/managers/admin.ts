@@ -4,24 +4,25 @@ import { AYA_JWT_COOKIE_NAME, USER_CREDENTIALS_FILE } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { ensureUUID, isNull, toJsonTree } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
-import { PathResolver } from '@/common/path-resolver'
 import {
   AgentIdentity,
   AgentIdentitySchema,
   AgentRegistrationSchema,
+  AuthInfo,
   CharacterSchema,
   CredentialsSchema,
   Identity,
   User
 } from '@/common/types'
 import { KeychainManager } from '@/managers/keychain'
+import { PathManager } from '@/managers/path'
 import * as fs from 'fs'
 
 export class LoginManager {
   private readonly api = new AgentcoinAPI()
   constructor(
     private readonly keychain: KeychainManager,
-    private readonly pathResolver: PathResolver
+    private readonly pathResolver: PathManager
   ) {}
 
   async getUser(identity: Identity): Promise<User | undefined> {
@@ -45,7 +46,7 @@ export class LoginManager {
   async provisionIfNeeded(
     name?: string | undefined,
     purpose?: string | undefined
-  ): Promise<{ identity: Identity; token: string; cookie: string }> {
+  ): Promise<AuthInfo> {
     ayaLogger.info('Checking if agent coin is provisioned...')
     if (await this.isProvisioned()) {
       return this.getAuthInfo()

@@ -1,0 +1,80 @@
+import { isNull } from '@/common/functions'
+import { AuthInfo } from '@/common/types'
+import { LoginManager } from '@/managers/admin'
+import { ConfigManager } from '@/managers/config'
+import { EventManager } from '@/managers/event'
+import { KeychainManager } from '@/managers/keychain'
+import { PathManager } from '@/managers/path'
+import { logger } from '@elizaos/core'
+export interface AgentContext {
+  auth: AuthInfo
+  dataDir: string
+  managers: {
+    event: EventManager
+    config: ConfigManager
+    keychain: KeychainManager
+    login: LoginManager
+    path: PathManager
+  }
+}
+
+export const AgentRegistry = {
+  instances: new Map<string, AgentContext>(),
+
+  async setup(dataDir: string): Promise<AgentContext> {
+    if (this.instances.has(dataDir)) {
+      throw new Error('Agent already registered: ' + dataDir)
+    }
+
+    const pathResolver = new PathManager(dataDir)
+    const keychain = new KeychainManager(pathResolver.keypairFile)
+    const loginManager = new LoginManager(keychain, pathResolver)
+    const authInfo = await loginManager.provisionIfNeeded()
+
+    // eagerly setup managers and start event manager
+    const eventManager = new EventManager(authInfo.token)
+    const configManager = new ConfigManager(eventManager, pathResolver)
+    void eventManager.start()
+
+    const context: AgentContext = {
+      auth: authInfo,
+      dataDir,
+      managers: {
+        event: eventManager,
+        config: configManager,
+        keychain,
+        login: loginManager,
+        path: pathResolver
+      }
+    }
+
+    this.instances.set(dataDir, context)
+    return context
+  },
+
+  get(dataDir: string): AgentContext {
+    const context = this.instances.get(dataDir)
+    if (isNull(context)) {
+      throw new Error('Agent not registered: ' + dataDir)
+    }
+    return context
+  },
+
+  async destroy(dataDir: string): Promise<void> {
+    const context = this.instances.get(dataDir)
+    if (isNull(context)) {
+      logger.warn('Agent not registered: ' + dataDir)
+      return
+    }
+
+    await context.managers.event.stop()
+    await context.managers.config.stop()
+    this.instances.delete(dataDir)
+  },
+
+  async destroyAll(): Promise<void> {
+    for (const dataDir of this.instances.keys()) {
+      await this.destroy(dataDir)
+    }
+  }
+}

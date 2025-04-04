@@ -1,7 +1,7 @@
 import { isNull } from '@/common/functions'
-import { PathResolver } from '@/common/path-resolver'
 import { LoginManager } from '@/managers/admin'
 import { KeychainManager } from '@/managers/keychain'
+import { PathManager } from '@/managers/path'
 
 async function main(): Promise<void> {
   try {
@@ -16,7 +16,7 @@ async function main(): Promise<void> {
     }
 
     // initialize path resolver with data directory
-    const pathResolver = new PathResolver(dataDir)
+    const pathResolver = new PathManager(dataDir)
 
     // initialize keychain service
     const keychainManager = new KeychainManager(pathResolver.keypairFile)

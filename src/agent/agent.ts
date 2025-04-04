@@ -13,12 +13,8 @@ import {
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { ensureRuntimeService, isNull, isRequiredString, loadEnvFile } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
-import { PathResolver } from '@/common/path-resolver'
 import { AyaOSOptions } from '@/common/types'
-import { LoginManager } from '@/managers/admin'
-import { ConfigManager } from '@/managers/config'
-import { EventManager } from '@/managers/event'
-import { KeychainFactory, KeychainManager } from '@/managers/keychain'
+import { PathManager } from '@/managers/path'
 import { ayaPlugin } from '@/plugins/aya'
 import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
@@ -39,12 +35,11 @@ import {
   type Character
 } from '@elizaos/core'
 // import farcasterPlugin from '@elizaos/plugin-farcaster'
+import { AgentContext, AgentRegistry } from '@/agent/registry'
 import openaiPlugin from '@elizaos/plugin-openai'
 import sqlPlugin from '@elizaos/plugin-sql'
 import fs from 'fs'
 import path from 'path'
-
-const reservedAgentDirs = new Set<string | undefined>()
 
 export class Agent implements IAyaAgent {
   private services: (typeof Service)[] = []
@@ -53,17 +48,12 @@ export class Agent implements IAyaAgent {
   private plugins: Plugin[] = []
   private evaluators: Evaluator[] = []
   private runtime_: AgentRuntime | undefined
-  private pathResolver: PathResolver
-  private keychain: KeychainManager
-  private loginManager: LoginManager
+  private dataDir: string
+  private context_?: AgentContext
+
   constructor(options?: AyaOSOptions) {
-    if (reservedAgentDirs.has(options?.dataDir)) {
-      throw new Error('Data directory already used. Please provide a unique data directory.')
-    }
-    reservedAgentDirs.add(options?.dataDir)
-    this.pathResolver = new PathResolver(options?.dataDir)
-    this.keychain = new KeychainManager(this.pathResolver.keypairFile)
-    this.loginManager = new LoginManager(this.keychain, this.pathResolver)
+    const pathResolver = new PathManager(options?.dataDir)
+    this.dataDir = pathResolver.dataDir
   }
 
   get runtime(): AgentRuntime {
@@ -71,6 +61,13 @@ export class Agent implements IAyaAgent {
       throw new Error('Runtime not initialized. Call start() first.')
     }
     return this.runtime_
+  }
+
+  get context(): AgentContext {
+    if (!this.context_) {
+      throw new Error('Context not initialized. Call start() first.')
+    }
+    return this.context_
   }
 
   get agentId(): UUID {
@@ -108,16 +105,10 @@ export class Agent implements IAyaAgent {
       logger.info('Starting agent...', AGENTCOIN_FUN_API_URL)
 
       // step 1: provision the hardware if needed.
-      const authInfo = await this.loginManager.provisionIfNeeded()
-      KeychainFactory.associate(authInfo.identity, this.keychain)
-
-      // eagerly setup managers and start event manager
-      const eventManager = new EventManager(authInfo.token)
-      const configManager = new ConfigManager(eventManager, this.pathResolver)
-      void eventManager.start()
+      const { auth, managers } = await AgentRegistry.setup(this.dataDir)
 
       // step 2: load character and initialize database
-      const character: Character = await this.setupCharacter(authInfo)
+      const character: Character = await this.setupCharacter(auth)
 
       // step 3: initialize required plugins
       this.plugins.push(sqlPlugin)
@@ -149,8 +140,7 @@ export class Agent implements IAyaAgent {
               const agentId = runtime.agentId
               ayaLogger.warn('Stopping agent runtime...', agentId)
               await runtime.stop()
-              await configManager.stop()
-              await eventManager.stop()
+              await AgentRegistry.destroy(this.dataDir)
               ayaLogger.success('Agent runtime stopped successfully!', agentId)
             } catch (error) {
               ayaLogger.error('Error stopping agent:', error)
@@ -165,7 +155,7 @@ export class Agent implements IAyaAgent {
         }
       }
 
-      configManager.setShutdownFunc(shutdown)
+      managers.config.setShutdownFunc(shutdown)
 
       process.once('SIGINT', () => {
         void shutdown('SIGINT')
@@ -205,7 +195,7 @@ export class Agent implements IAyaAgent {
 
       if (AGENTCOIN_MONITORING_ENABLED) {
         ayaLogger.info('Agentcoin monitoring enabled')
-        await configManager.start()
+        await managers.config.start()
       }
 
       logger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
@@ -272,7 +262,7 @@ export class Agent implements IAyaAgent {
 
   private async setupCharacter(authInfo: { token: string; identity: string }): Promise<Character> {
     logger.info('Loading character...')
-    const charString = await fs.promises.readFile(this.pathResolver.characterFile, 'utf8')
+    const charString = await fs.promises.readFile(this.context.managers.path.characterFile, 'utf8')
     const character: Character = JSON.parse(charString)
     if (isNull(character.id)) {
       throw new Error('Character id not found')
@@ -288,7 +278,7 @@ export class Agent implements IAyaAgent {
     // setup ayaos token
     character.secrets[AYA_JWT_SETTINGS_KEY] = authInfo.token
     character.secrets[AYA_AGENT_IDENTITY_KEY] = authInfo.identity
-    character.secrets[AYA_AGENT_DATA_DIR_KEY] = this.pathResolver.dataDir
+    character.secrets[AYA_AGENT_DATA_DIR_KEY] = this.context.dataDir
 
     // setup websearch
     if (isNull(character.secrets.TAVILY_API_URL)) {
@@ -316,13 +306,13 @@ export class Agent implements IAyaAgent {
   }
 
   private processSettings(): Record<string, string> {
-    const env = fs.existsSync(this.pathResolver.envFile)
-      ? loadEnvFile(this.pathResolver.envFile)
+    const env = fs.existsSync(this.context.managers.path.envFile)
+      ? loadEnvFile(this.context.managers.path.envFile)
       : loadEnvFile(path.join(process.cwd(), '.env'))
 
     Object.entries(env).forEach(([key, value]) => {
       if (key.startsWith('AGENTCOIN_ENC_') && isRequiredString(value)) {
-        const decryptedValue = this.keychain.decrypt(value)
+        const decryptedValue = this.context.managers.keychain.decrypt(value)
         const newKey = key.substring(14)
         ayaLogger.info('Decrypted secret:', newKey)
         env[newKey] = decryptedValue
