@@ -33,8 +33,7 @@ import path from 'path'
 export class KnowledgeService extends Service implements IKnowledgeService {
   private isRunning = false
 
-  readonly serviceType = ServiceKind.knowledge
-  readonly capabilityDescription = ''
+  readonly capabilityDescription = 'This service is responsible for knowledge management.'
 
   private constructor(
     readonly runtime: IAyaRuntime,
@@ -44,6 +43,10 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     private readonly pathResolver: PathResolver
   ) {
     super(undefined)
+  }
+
+  static get serviceType(): string {
+    return ServiceKind.knowledge
   }
 
   static getInstance(
@@ -130,16 +133,17 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       cursor = knowledges[knowledges.length - 1].id
     }
 
-    ayaLogger.debug(`Found ${allKnowledge.length} knowledges`)
+    ayaLogger.info(`Found ${allKnowledge.length} knowledges`)
 
     return allKnowledge
   }
 
   private async syncKnowledge(): Promise<void> {
-    ayaLogger.debug('Syncing knowledge...')
+    ayaLogger.info('Syncing knowledge...')
     try {
+      ayaLogger.info('Getting all knowledges...')
       const knowledges = await this.getAllKnowledge()
-
+      ayaLogger.info(`Found ${knowledges.length} knowledges`)
       const existingKnowledgeIds = new Set<UUID>()
 
       let cursor: number | undefined
@@ -152,7 +156,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           tableName: DOCUMENT_TABLE_NAME
         })
 
-        ayaLogger.debug(`Found ${results.length} knowledge items in page ${i++}`)
+        ayaLogger.info(`Found ${results.length} knowledge items in page ${i++}`)
 
         for (const knowledge of results) {
           if (isNull(knowledge.id)) {
@@ -184,7 +188,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         await this.remove(knowledgeId)
       }
 
-      ayaLogger.debug(
+      ayaLogger.info(
         `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ` +
           `${knowledgeIdsToRemove.length} items removed`
       )

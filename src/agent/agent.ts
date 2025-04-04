@@ -156,7 +156,13 @@ export class Agent implements IAyaAgent {
 
       this.runtime_ = runtime
 
-      KnowledgeService.getInstance(runtime, agentcoinAPI, agentcoinCookie, agentcoinIdentity)
+      KnowledgeService.getInstance(
+        runtime,
+        agentcoinAPI,
+        agentcoinCookie,
+        agentcoinIdentity,
+        this.pathResolver
+      )
       WalletService.getInstance(
         agentcoinCookie,
         agentcoinIdentity,
