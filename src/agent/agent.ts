@@ -27,6 +27,9 @@ import {
   Action,
   AgentRuntime,
   Evaluator,
+  IAgentRuntime,
+  logger,
+  ModelTypeName,
   Plugin,
   Provider,
   Service,
@@ -252,8 +255,8 @@ export class Agent implements IAyaAgent {
         await runtime.registerService(service as typeof Service)
       }
 
-      await this.runtime.registerPlugin(ayaPlugin)
-      await this.runtime.registerPlugin(farcasterPlugin)
+      await hackRegisterPlugin(ayaPlugin, this.runtime)
+      // await hackRegisterPlugin(farcasterPlugin, this.runtime)
 
       ayaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
@@ -326,6 +329,112 @@ export class Agent implements IAyaAgent {
         env[newKey] = decryptedValue
         delete env[key]
       }
+    })
+  }
+}
+
+// FIXME: hish - delete this function after my fix goes into elizaos/core
+
+async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promise<void> {
+  if (!plugin) {
+    console.error('*** registerPlugin plugin is undefined')
+    throw new Error('*** registerPlugin plugin is undefined')
+  }
+
+  // Add to plugins array if not already present - but only if it was not passed there initially
+  // (otherwise we can't add to readonly array)
+  if (!runtime.plugins.some((p) => p.name === plugin.name)) {
+    // Push to plugins array - this works because we're modifying the array, not reassigning it
+    runtime.plugins.push(plugin)
+    console.info(`Success: Plugin ${plugin.name} registered successfully`)
+  }
+
+  // Initialize the plugin if it has an init function
+  if (plugin.init) {
+    try {
+      await plugin.init(plugin.config || {}, runtime)
+      console.info(`Success: Plugin ${plugin.name} initialized successfully`)
+    } catch (error) {
+      // Check if the error is related to missing API keys
+      const errorMessage = error instanceof Error ? error.message : String(error)
+
+      if (
+        errorMessage.includes('API key') ||
+        errorMessage.includes('environment variables') ||
+        errorMessage.includes('Invalid plugin configuration')
+      ) {
+        // Instead of throwing an error, log a friendly message
+        console.warn(`Plugin ${plugin.name} requires configuration. ${errorMessage}`)
+        console.warn(
+          'Please check your environment variables and ensure all required API keys are set.'
+        )
+        console.warn('You can set these in your .eliza/.env file.')
+
+        // We don't throw here, allowing the application to continue
+        // with reduced functionality
+      } else {
+        // For other types of errors, rethrow
+        throw error
+      }
+    }
+  }
+
+  // Register plugin adapter
+  if (plugin.adapter) {
+    console.info(`Registering database adapter for plugin ${plugin.name}`)
+    runtime.registerDatabaseAdapter(plugin.adapter)
+  }
+
+  // Register plugin actions
+  if (plugin.actions) {
+    for (const action of plugin.actions) {
+      runtime.registerAction(action)
+    }
+  }
+
+  // Register plugin evaluators
+  if (plugin.evaluators) {
+    for (const evaluator of plugin.evaluators) {
+      runtime.registerEvaluator(evaluator)
+    }
+  }
+
+  // Register plugin providers
+  if (plugin.providers) {
+    for (const provider of plugin.providers) {
+      runtime.registerProvider(provider)
+    }
+  }
+
+  // Register plugin models
+  if (plugin.models) {
+    for (const [modelType, handler] of Object.entries(plugin.models)) {
+      // eslint-disable-next-line max-len
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
+      runtime.registerModel(modelType as ModelTypeName, handler as (params: any) => Promise<any>)
+    }
+  }
+
+  // Register plugin routes
+  if (plugin.routes) {
+    for (const route of plugin.routes) {
+      runtime.routes.push(route)
+    }
+  }
+
+  // Register plugin events
+  if (plugin.events) {
+    for (const [eventName, eventHandlers] of Object.entries(plugin.events)) {
+      for (const eventHandler of eventHandlers) {
+        runtime.registerEvent(eventName, eventHandler)
+      }
+    }
+  }
+
+  if (plugin.services) {
+    plugin.services.forEach((service) => {
+      logger.info(`[aya] registering service ${service.name} for plugin ${plugin.name}`)
+      runtime.registerService(service)
     })
   }
 }
