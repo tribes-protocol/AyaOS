@@ -55,7 +55,7 @@ export class Agent implements IAyaAgent {
   private runtime_: AgentRuntime | undefined
   private pathResolver: PathResolver
   private keychain: KeychainManager
-
+  private loginManager: LoginManager
   constructor(options?: AyaOSOptions) {
     if (reservedAgentDirs.has(options?.dataDir)) {
       throw new Error('Data directory already used. Please provide a unique data directory.')
@@ -63,6 +63,7 @@ export class Agent implements IAyaAgent {
     reservedAgentDirs.add(options?.dataDir)
     this.pathResolver = new PathResolver(options?.dataDir)
     this.keychain = new KeychainManager(this.pathResolver.keypairFile)
+    this.loginManager = new LoginManager(this.keychain, this.pathResolver)
   }
 
   get runtime(): AgentRuntime {
@@ -107,8 +108,7 @@ export class Agent implements IAyaAgent {
       logger.info('Starting agent...', AGENTCOIN_FUN_API_URL)
 
       // step 1: provision the hardware if needed.
-      const adminManager = new LoginManager(this.keychain, this.pathResolver)
-      const authInfo = await adminManager.provisionIfNeeded()
+      const authInfo = await this.loginManager.provisionIfNeeded()
       KeychainFactory.associate(authInfo.identity, this.keychain)
 
       // eagerly setup managers and start event manager
@@ -157,10 +157,10 @@ export class Agent implements IAyaAgent {
             }
           }
 
-          console.log('The End.')
+          logger.info('The End.')
           process.exit(0)
         } catch (error) {
-          console.error('Error shutting down:', error)
+          logger.error('Error shutting down:', error)
           process.exit(1)
         }
       }
@@ -310,7 +310,7 @@ export class Agent implements IAyaAgent {
       character.secrets.OPENAI_API_KEY = authInfo.token
     }
 
-    logger.info('character', JSON.stringify(character, null, 2))
+    // logger.info('character', JSON.stringify(character, null, 2))
 
     return character
   }
@@ -347,14 +347,14 @@ async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promi
   if (!runtime.plugins.some((p) => p.name === plugin.name)) {
     // Push to plugins array - this works because we're modifying the array, not reassigning it
     runtime.plugins.push(plugin)
-    console.info(`Success: Plugin ${plugin.name} registered successfully`)
+    logger.info(`Success: Plugin ${plugin.name} registered successfully`)
   }
 
   // Initialize the plugin if it has an init function
   if (plugin.init) {
     try {
       await plugin.init(plugin.config || {}, runtime)
-      console.info(`Success: Plugin ${plugin.name} initialized successfully`)
+      logger.info(`Success: Plugin ${plugin.name} initialized successfully`)
     } catch (error) {
       // Check if the error is related to missing API keys
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -365,11 +365,11 @@ async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promi
         errorMessage.includes('Invalid plugin configuration')
       ) {
         // Instead of throwing an error, log a friendly message
-        console.warn(`Plugin ${plugin.name} requires configuration. ${errorMessage}`)
-        console.warn(
+        logger.warn(`Plugin ${plugin.name} requires configuration. ${errorMessage}`)
+        logger.warn(
           'Please check your environment variables and ensure all required API keys are set.'
         )
-        console.warn('You can set these in your .eliza/.env file.')
+        logger.warn('You can set these in your .eliza/.env file.')
 
         // We don't throw here, allowing the application to continue
         // with reduced functionality
@@ -382,7 +382,7 @@ async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promi
 
   // Register plugin adapter
   if (plugin.adapter) {
-    console.info(`Registering database adapter for plugin ${plugin.name}`)
+    logger.info(`Registering database adapter for plugin ${plugin.name}`)
     runtime.registerDatabaseAdapter(plugin.adapter)
   }
 
@@ -445,20 +445,14 @@ async function hackRegisterService(service: typeof Service, runtime: IAgentRunti
   if (!serviceType) {
     return
   }
-  console.info(`${runtime.character.name}(${runtime.agentId}) - Registering service:`, serviceType)
 
   if (runtime.services.has(serviceType)) {
-    console.warn(
-      `${runtime.character.name}(${runtime.agentId}) - Service ${serviceType}` +
-        ` is already registered. Skipping registration.`
-    )
+    logger.warn(`(${runtime.agentId}) - Service ${serviceType} is already registered.`)
     return
   }
 
   const serviceInstance = await service.start(runtime)
   // Add the service to the services map
   runtime.services.set(serviceType, serviceInstance)
-  console.info(
-    `${runtime.character.name}(${runtime.agentId}) - Service ${serviceType} registered successfully`
-  )
+  logger.info(`(${runtime.agentId}) - Service ${serviceType} registered successfully`)
 }

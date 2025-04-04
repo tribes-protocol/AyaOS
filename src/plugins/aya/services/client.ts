@@ -71,11 +71,10 @@ export class AyaClientService extends Service {
 
   private async start(): Promise<void> {
     if (this.socket) {
-      console.warn('AyaService already started', this.runtime.agentId)
+      logger.warn(`Aya client already started for ${this.runtime.agentId}`)
       return
     }
-    console.log('starting AyaClientService', this.runtime.agentId)
-    logger.info(`[aya] starting AyaClientService for ${this.runtime.agentId}`)
+    logger.info(`Starting Aya client for ${this.runtime.agentId}`)
 
     const socket = io(AGENTCOIN_FUN_API_URL, {
       reconnection: true,
@@ -110,7 +109,7 @@ export class AyaClientService extends Service {
 
     // listen on DMs
     this.socket.on(eventName, async (data: unknown) => {
-      // ayaLogger.info('Agentcoin client received event', data)
+      logger.info('Agentcoin client received event', data)
       try {
         const event = MessageEventSchema.parse(data)
         const channel = event.channel

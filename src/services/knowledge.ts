@@ -62,7 +62,6 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }
 
   static async start(_runtime: IAgentRuntime): Promise<Service> {
-    console.log(`[aya] starting ${KnowledgeService.serviceType} service`)
     let instance = KnowledgeService.instances.get(_runtime.agentId)
     if (instance) {
       return instance

@@ -30,7 +30,6 @@ export class MemoriesService extends Service implements IMemoriesService {
   }
 
   static async start(_runtime: IAgentRuntime): Promise<Service> {
-    console.log(`[aya] starting ${MemoriesService.serviceType} service`)
     let instance = MemoriesService.instances.get(_runtime.agentId)
     if (instance) {
       return instance

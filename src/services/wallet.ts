@@ -45,7 +45,6 @@ export class WalletService extends Service implements IWalletService {
   }
 
   static async start(_runtime: IAgentRuntime): Promise<Service> {
-    console.log(`[aya] starting ${WalletService.serviceType} service`)
     let instance = WalletService.instances.get(_runtime.agentId)
     if (instance) {
       return instance
