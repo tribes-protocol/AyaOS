@@ -37,13 +37,13 @@ export class WalletService extends Service implements IWalletService {
     const dataDir = ensureStringSetting(runtime, AYA_AGENT_DATA_DIR_KEY)
     this.authAPI = new AyaAuthAPI(token)
     this.identity = AgentIdentitySchema.parse(identity)
-    const context = AgentRegistry.get(dataDir)
+    const { managers } = AgentRegistry.get(dataDir)
 
     this.turnkey = new TurnkeyClient(
       {
         baseUrl: 'https://api.turnkey.com'
       },
-      context.managers.keychain.turnkeyApiKeyStamper
+      managers.keychain.turnkeyApiKeyStamper
     )
   }
 
