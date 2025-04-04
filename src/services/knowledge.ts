@@ -1,10 +1,9 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { isNull } from '@/common/functions'
-import { IAyaRuntime } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
 import { Identity, RAGKnowledgeItem, RagKnowledgeItemContent, ServiceKind } from '@/common/types'
 import { IKnowledgeService } from '@/services/interfaces'
-import { Service, UUID } from '@elizaos/core'
+import { IAgentRuntime, Service, UUID } from '@elizaos/core'
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 
 export class KnowledgeService extends Service implements IKnowledgeService {
@@ -19,7 +18,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   readonly capabilityDescription = ''
 
   private constructor(
-    readonly runtime: IAyaRuntime,
+    readonly runtime: IAgentRuntime,
     private readonly agentCoinApi: AgentcoinAPI,
     private readonly agentCoinCookie: string,
     private readonly agentCoinIdentity: Identity
@@ -28,7 +27,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }
 
   static getInstance(
-    runtime: IAyaRuntime,
+    runtime: IAgentRuntime,
     agentCoinApi: AgentcoinAPI,
     agentCoinCookie: string,
     agentCoinIdentity: Identity
@@ -66,7 +65,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     ayaLogger.info('Knowledge sync service stopped')
   }
 
-  static async start(_runtime: IAyaRuntime): Promise<Service> {
+  static async start(_runtime: IAgentRuntime): Promise<Service> {
     console.log(`[aya] starting ${KnowledgeService.serviceType} service`)
     if (isNull(instance)) {
       throw new Error('KnowledgeService not initialized')
@@ -76,7 +75,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     return instance
   }
 
-  static async stop(_runtime: IAyaRuntime): Promise<unknown> {
+  static async stop(_runtime: IAgentRuntime): Promise<unknown> {
     if (isNull(instance)) {
       throw new Error('ConfigService not initialized')
     }

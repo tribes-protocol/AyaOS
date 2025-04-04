@@ -1,9 +1,8 @@
-import { isNull } from '@/common/functions'
-import { Action, IAyaRuntime } from '@/common/iruntime'
+import { ensureRuntimeService, isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { WebSearchService } from '@/plugins/aya/services/websearch'
 import type { SearchResult } from '@/plugins/aya/types'
-import { type HandlerCallback, type Memory, type State } from '@elizaos/core'
+import { Action, IAgentRuntime, type HandlerCallback, type Memory, type State } from '@elizaos/core'
 import { encodingForModel, type TiktokenModel } from 'js-tiktoken'
 
 const DEFAULT_MAX_WEB_SEARCH_TOKENS = 4000
@@ -38,11 +37,11 @@ export const webSearch: Action = {
     'FIND_INFORMATION'
   ],
   description: 'Perform a web search to find information related to the message.',
-  validate: async (runtime: IAyaRuntime) => {
+  validate: async (runtime: IAgentRuntime) => {
     return !isNull(runtime.getSetting('TAVILY_API_KEY'))
   },
   handler: async (
-    runtime: IAyaRuntime,
+    runtime: IAgentRuntime,
     message: Memory,
     state: State | undefined,
     options?: {
@@ -58,7 +57,10 @@ export const webSearch: Action = {
     const webSearchPrompt = message.content.text
     ayaLogger.log('web search prompt received:', webSearchPrompt)
 
-    const webSearchService = runtime.ensureService<WebSearchService>(WebSearchService.serviceType)
+    const webSearchService = ensureRuntimeService<WebSearchService>(
+      runtime,
+      WebSearchService.serviceType
+    )
     if (isNull(webSearchPrompt)) {
       ayaLogger.error('web search prompt is empty')
       return

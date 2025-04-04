@@ -1,5 +1,6 @@
-import { UUID_PATTERN } from '@/common/constants'
+import { AYA_OS_AGENT_PATH_RESOLVER, UUID_PATTERN } from '@/common/constants'
 import { ayaLogger } from '@/common/logger'
+import { PathResolver } from '@/common/path-resolver'
 import {
   ChatChannel,
   ChatChannelKind,
@@ -11,11 +12,12 @@ import {
   Identity,
   IdentitySchema
 } from '@/common/types'
-import { UUID } from '@elizaos/core'
+import { IAgentRuntime, Service, ServiceTypeName, UUID } from '@elizaos/core'
 import crypto, { createHash } from 'crypto'
 import EC from 'elliptic'
 import fs from 'fs'
 import path from 'path'
+
 // eslint-disable-next-line new-cap
 export const ec = new EC.ec('p256')
 
@@ -288,4 +290,22 @@ export function loadEnvFile(filePath: string): Record<string, string> {
       `Error reading env file: ${error instanceof Error ? error.message : String(error)}`
     )
   }
+}
+
+export type ServiceLike = ServiceTypeName | string
+
+export function ensureRuntimeService<T extends Service>(
+  runtime: IAgentRuntime,
+  service: ServiceLike,
+  message?: string
+): T {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  return ensure(runtime.getService(service as ServiceTypeName), message) as T
+}
+
+export function getPathResolver(runtime: IAgentRuntime): PathResolver {
+  return ensure(
+    runtime.getSetting(AYA_OS_AGENT_PATH_RESOLVER),
+    `Path resolver not found for ${runtime.agentId}`
+  )
 }

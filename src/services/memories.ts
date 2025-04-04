@@ -1,14 +1,13 @@
 import { isNull } from '@/common/functions'
-import { IAyaRuntime } from '@/common/iruntime'
 import { ServiceKind } from '@/common/types'
 import { IMemoriesService } from '@/services/interfaces'
-import { Memory, Service } from '@elizaos/core'
+import { IAgentRuntime, Memory, Service } from '@elizaos/core'
 
 export class MemoriesService extends Service implements IMemoriesService {
   public readonly capabilityDescription: string = 'Allows the agent to search for memories'
-  protected readonly runtime: IAyaRuntime
+  protected readonly runtime: IAgentRuntime
 
-  private constructor(runtime: IAyaRuntime) {
+  private constructor(runtime: IAgentRuntime) {
     super(runtime)
     this.runtime = runtime
   }
@@ -34,7 +33,7 @@ export class MemoriesService extends Service implements IMemoriesService {
     // })
   }
 
-  static async start(_runtime: IAyaRuntime): Promise<Service> {
+  static async start(_runtime: IAgentRuntime): Promise<Service> {
     console.log(`[aya] starting ${MemoriesService.serviceType} service`)
     if (isNull(instance)) {
       instance = new MemoriesService(_runtime)
@@ -42,7 +41,7 @@ export class MemoriesService extends Service implements IMemoriesService {
     return instance
   }
 
-  static async stop(_runtime: IAyaRuntime): Promise<void> {
+  static async stop(_runtime: IAgentRuntime): Promise<void> {
     if (isNull(instance)) {
       throw new Error('MemoriesService not initialized')
     }

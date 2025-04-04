@@ -3,7 +3,6 @@ import { createGenericCharacter } from '@/common/character'
 import { USER_CREDENTIALS_FILE } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { ensureUUID, isNull, toJsonTree } from '@/common/functions'
-import { IAyaRuntime } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import {
@@ -20,7 +19,7 @@ import {
   User
 } from '@/common/types'
 import { KeychainService } from '@/services/keychain'
-import { Service } from '@elizaos/core'
+import { IAgentRuntime, Service } from '@elizaos/core'
 import * as fs from 'fs'
 
 export class AgentcoinService extends Service {
@@ -48,7 +47,7 @@ export class AgentcoinService extends Service {
     return instance
   }
 
-  static async start(_runtime: IAyaRuntime): Promise<Service> {
+  static async start(_runtime: IAgentRuntime): Promise<Service> {
     console.log(`[aya] starting ${AgentcoinService.serviceType} service`)
     if (isNull(instance)) {
       throw new Error('AgentcoinService not initialized')
@@ -56,7 +55,7 @@ export class AgentcoinService extends Service {
     return instance
   }
 
-  static async stop(_runtime: IAyaRuntime): Promise<unknown> {
+  static async stop(_runtime: IAgentRuntime): Promise<unknown> {
     if (isNull(instance)) {
       throw new Error('AgentcoinService not initialized')
     }

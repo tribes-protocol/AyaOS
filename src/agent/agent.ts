@@ -1,6 +1,7 @@
 import { IAyaAgent } from '@/agent/iagent'
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import {
+  AYA_OS_AGENT_PATH_RESOLVER,
   DEFAULT_EMBEDDING_DIMENSIONS,
   DEFAULT_EMBEDDING_MODEL,
   DEFAULT_LARGE_MODEL,
@@ -9,14 +10,11 @@ import {
   WEBSEARCH_PROXY
 } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
-import { isNull, isRequiredString, loadEnvFile } from '@/common/functions'
-import { Action, Plugin, Provider } from '@/common/iruntime'
+import { ensureRuntimeService, isNull, isRequiredString, loadEnvFile } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
-import { AyaRuntime } from '@/common/runtime'
 import { AyaOSOptions } from '@/common/types'
-import ayaPlugin from '@/plugins/aya'
-import openaiPlugin from '@/plugins/openai'
+import { ayaPlugin } from '@/plugins/aya'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
 import { EventService } from '@/services/event'
@@ -25,18 +23,18 @@ import { KeychainService } from '@/services/keychain'
 import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import { WalletService } from '@/services/wallet'
-import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
 import {
-  // eslint-disable-next-line no-restricted-imports
-  Action as ElizaAction,
-  // eslint-disable-next-line no-restricted-imports
-  Provider as ElizaProvider,
+  Action,
+  AgentRuntime,
   Evaluator,
+  Plugin,
+  Provider,
   Service,
   UUID,
   type Character
 } from '@elizaos/core'
 import farcasterPlugin from '@elizaos/plugin-farcaster'
+import openaiPlugin from '@elizaos/plugin-openai'
 import fs from 'fs'
 import path from 'path'
 
@@ -48,7 +46,7 @@ export class Agent implements IAyaAgent {
   private actions: Action[] = []
   private plugins: Plugin[] = []
   private evaluators: Evaluator[] = []
-  private runtime_: AyaRuntime | undefined
+  private runtime_: AgentRuntime | undefined
   private pathResolver: PathResolver
   private keychainService: KeychainService
 
@@ -61,7 +59,7 @@ export class Agent implements IAyaAgent {
     this.keychainService = new KeychainService(this.pathResolver.keypairFile)
   }
 
-  get runtime(): AyaRuntime {
+  get runtime(): AgentRuntime {
     if (!this.runtime_) {
       throw new Error('Runtime not initialized. Call start() first.')
     }
@@ -73,28 +71,31 @@ export class Agent implements IAyaAgent {
   }
 
   get knowledge(): IKnowledgeService {
-    return this.runtime.ensureService<KnowledgeService>(
+    return ensureRuntimeService<KnowledgeService>(
+      this.runtime,
       KnowledgeService.serviceType,
       'Knowledge base service not found'
     )
   }
 
   get memories(): IMemoriesService {
-    return this.runtime.ensureService<MemoriesService>(
+    return ensureRuntimeService<MemoriesService>(
+      this.runtime,
       MemoriesService.serviceType,
       'Memories service not found'
     )
   }
 
   get wallet(): IWalletService {
-    return this.runtime.ensureService<WalletService>(
+    return ensureRuntimeService<WalletService>(
+      this.runtime,
       WalletService.serviceType,
       'Wallet service not found'
     )
   }
 
   async start(): Promise<void> {
-    let runtime: AyaRuntime | undefined
+    let runtime: AgentRuntime | undefined
 
     try {
       console.info('Starting agent...', AGENTCOIN_FUN_API_URL)
@@ -124,10 +125,10 @@ export class Agent implements IAyaAgent {
         throw new Error('Character id not found')
       }
 
-      character.templates = {
-        ...character.templates,
-        messageHandlerTemplate: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
-      }
+      // character.templates = {
+      //   ...character.templates,
+      //   messageHandlerTemplate: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
+      // }
 
       const jwtToken = await agentcoinService.getJwtAuthToken()
       character.settings = character.settings || {}
@@ -162,17 +163,16 @@ export class Agent implements IAyaAgent {
 
       this.processSecrets(settings)
 
-      runtime = new AyaRuntime({
-        eliza: {
-          character,
-          plugins: this.plugins,
-          agentId: character.id,
-          settings
-        },
-        pathResolver: this.pathResolver
+      runtime = new AgentRuntime({
+        character,
+        plugins: this.plugins,
+        agentId: character.id,
+        settings
       })
 
       this.runtime_ = runtime
+
+      runtime.setSetting(AYA_OS_AGENT_PATH_RESOLVER, this.pathResolver)
 
       KnowledgeService.getInstance(runtime, agentcoinAPI, agentcoinCookie, agentcoinIdentity)
       WalletService.getInstance(
@@ -182,26 +182,6 @@ export class Agent implements IAyaAgent {
         runtime,
         this.keychainService.turnkeyApiKeyStamper
       )
-
-      // register default models
-      // runtime.registerModel(ModelType.TEXT_EMBEDDING, async (params: { text: string }) => {
-      //   if (isNull(this.embeddingsConfig)) {
-      //     throw new Error('Embeddings config not found')
-      //   }
-
-      //   if (isNull(params.text) || params.text.length === 0) {
-      //     console.warn('Text is null or empty, returning empty embedding')
-      //     return Array(this.embeddingsConfig.dimensions).fill(0)
-      //   }
-
-      //   const embedding = await embed(params.text, this.embeddingsConfig)
-      //   return embedding
-      // })
-      // runtime.registerModel(ModelType.OBJECT_LARGE, async (params: { text: string }) => {
-      //   if (isNull(this.embeddingsConfig)) {
-      //     throw new Error('Embeddings config not found')
-      //   }
-      // })
 
       // shutdown handler
       let isShuttingDown = false
@@ -246,21 +226,15 @@ export class Agent implements IAyaAgent {
       await this.runtime.initialize()
 
       // register evaluators
-      for (const evaluator of this.evaluators) {
-        runtime.registerEvaluator(evaluator)
-      }
+      this.evaluators.forEach(runtime.registerEvaluator)
 
       // register providers
-      for (const provider of this.providers) {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        runtime.registerContextProvider(provider as ElizaProvider)
-      }
+      this.providers.forEach(runtime.registerContextProvider)
 
       // register actions
-      for (const action of this.actions) {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        runtime.registerAction(action as ElizaAction)
-      }
+      this.actions.forEach(runtime.registerAction)
+
+      // register services
 
       // register services
       const ayaServices = [

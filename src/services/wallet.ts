@@ -1,6 +1,5 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { isNull } from '@/common/functions'
-import { IAyaRuntime } from '@/common/iruntime'
 import {
   AgentWallet,
   AgentWalletKind,
@@ -10,7 +9,7 @@ import {
   Transaction
 } from '@/common/types'
 import { IWalletService } from '@/services/interfaces'
-import { Service } from '@elizaos/core'
+import { IAgentRuntime, Service } from '@elizaos/core'
 import { TurnkeyClient } from '@turnkey/http'
 import { ApiKeyStamper } from '@turnkey/sdk-server'
 import { createAccountWithAddress } from '@turnkey/viem'
@@ -27,7 +26,7 @@ export class WalletService extends Service implements IWalletService {
     private readonly agentcoinCookie: string,
     private readonly agentcoinIdentity: Identity,
     private readonly agentcoinAPI: AgentcoinAPI,
-    readonly runtime: IAyaRuntime,
+    readonly runtime: IAgentRuntime,
     apiKeyStamper: ApiKeyStamper
   ) {
     super(runtime)
@@ -43,7 +42,7 @@ export class WalletService extends Service implements IWalletService {
     agentcoinCookie: string,
     agentcoinIdentity: Identity,
     agentcoinAPI: AgentcoinAPI,
-    runtime: IAyaRuntime,
+    runtime: IAgentRuntime,
     apiKeyStamper: ApiKeyStamper
   ): IWalletService {
     if (isNull(instance)) {
@@ -58,7 +57,7 @@ export class WalletService extends Service implements IWalletService {
     return instance
   }
 
-  static async start(_runtime: IAyaRuntime): Promise<Service> {
+  static async start(_runtime: IAgentRuntime): Promise<Service> {
     console.log(`[aya] starting ${WalletService.serviceType} service`)
     if (isNull(instance)) {
       throw new Error('WalletService not initialized')
@@ -66,7 +65,7 @@ export class WalletService extends Service implements IWalletService {
     return instance
   }
 
-  static async stop(_runtime: IAyaRuntime): Promise<unknown> {
+  static async stop(_runtime: IAgentRuntime): Promise<unknown> {
     if (isNull(instance)) {
       throw new Error('WalletService not initialized')
     }

@@ -19,3 +19,5 @@ export const DEFAULT_LARGE_MODEL = 'meta/llama-3.3-70b-instruct-fp8'
 export const DEFAULT_EMBEDDING_MODEL = 'baai/bge-large-en-v1.5'
 
 export const DEFAULT_EMBEDDING_DIMENSIONS = '1024'
+
+export const AYA_OS_AGENT_PATH_RESOLVER = '__AYA_OS_AGENT_PATH_RESOLVER'

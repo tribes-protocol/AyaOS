@@ -1,13 +1,15 @@
 import { AYA_SOURCE } from '@/common/constants'
 import { AGENT_ADMIN_PUBLIC_KEY, AGENTCOIN_FUN_API_URL } from '@/common/env'
 import {
+  ensureRuntimeService,
+  getPathResolver,
   isNull,
   isRequiredString,
   isValidSignature,
   serializeChannel,
   serializeIdentity
 } from '@/common/functions'
-import { IAyaRuntime } from '@/common/iruntime'
+
 import { ayaLogger } from '@/common/logger'
 import {
   AgentIdentitySchema,
@@ -28,6 +30,7 @@ import {
   Content,
   EventType,
   HandlerCallback,
+  IAgentRuntime,
   logger,
   Memory,
   Service,
@@ -47,7 +50,7 @@ export class AyaService extends Service {
   readonly serviceType = 'aya_boot_service'
   readonly capabilityDescription = 'The agent is able to send and receive messages on AyaOS.ai'
 
-  constructor(readonly runtime: IAyaRuntime) {
+  constructor(readonly runtime: IAgentRuntime) {
     console.log('AyaService constructor', runtime.agentId)
     super(runtime)
   }
@@ -68,7 +71,8 @@ export class AyaService extends Service {
       return
     }
 
-    const agentcoinService = this.runtime.ensureService<AgentcoinService>(
+    const agentcoinService = ensureRuntimeService<AgentcoinService>(
+      this.runtime,
       AgentcoinService.serviceType,
       'Agentcoin service not found'
     )
@@ -165,7 +169,7 @@ export class AyaService extends Service {
     }
   }
 
-  static async start(_runtime: IAyaRuntime): Promise<Service> {
+  static async start(_runtime: IAgentRuntime): Promise<Service> {
     console.log('start Aya Service for', _runtime.agentId)
     const cachedInstance = AyaService.instances.get(_runtime.agentId)
     if (cachedInstance) {
@@ -178,7 +182,7 @@ export class AyaService extends Service {
     return instance
   }
 
-  static async stop(runtime: IAyaRuntime): Promise<unknown> {
+  static async stop(runtime: IAgentRuntime): Promise<unknown> {
     const instance = AyaService.instances.get(runtime.agentId)
     if (instance) {
       await instance.stop()
@@ -213,9 +217,11 @@ export class AyaService extends Service {
       .map(([key, value]) => `${key}=${value}`)
       .join('\n')
 
-    await fs.promises.writeFile(this.runtime.pathResolver.envFile, envContent)
+    const pathResolver = getPathResolver(this.runtime)
+    await fs.promises.writeFile(pathResolver.envFile, envContent)
 
-    const configService = this.runtime.ensureService<ConfigService>(
+    const configService = ensureRuntimeService<ConfigService>(
+      this.runtime,
       ConfigService.serviceType,
       'Config service not found'
     )
@@ -223,7 +229,8 @@ export class AyaService extends Service {
   }
 
   private async sendStatus(channel: ChatChannel, status: MessageStatusEnum): Promise<() => void> {
-    const agentcoinService = this.runtime.ensureService<AgentcoinService>(
+    const agentcoinService = ensureRuntimeService<AgentcoinService>(
+      this.runtime,
       AgentcoinService.serviceType,
       'Agentcoin service not found'
     )
@@ -235,7 +242,8 @@ export class AyaService extends Service {
   }
 
   private async processMessage(channel: ChatChannel, data: unknown): Promise<void> {
-    const agentcoinService = this.runtime.ensureService<AgentcoinService>(
+    const agentcoinService = ensureRuntimeService<AgentcoinService>(
+      this.runtime,
       AgentcoinService.serviceType,
       'Agentcoin service not found'
     )
@@ -322,7 +330,8 @@ export class AyaService extends Service {
     content: Content
     channel: ChatChannel
   }): Promise<Memory | undefined> {
-    const agentcoinService = this.runtime.ensureService<AgentcoinService>(
+    const agentcoinService = ensureRuntimeService<AgentcoinService>(
+      this.runtime,
       AgentcoinService.serviceType,
       'Agentcoin service not found'
     )

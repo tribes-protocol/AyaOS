@@ -1,11 +1,10 @@
 import { isNull, isRequiredString } from '@/common/functions'
-import { IAyaRuntime } from '@/common/iruntime'
 import { OperationQueue } from '@/common/lang/operation_queue'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { ServiceKind } from '@/common/types'
 import { EventService } from '@/services/event'
-import { Service } from '@elizaos/core'
+import { IAgentRuntime, Service } from '@elizaos/core'
 import crypto from 'crypto'
 import express from 'express'
 import fs from 'fs'
@@ -182,7 +181,7 @@ export class ConfigService extends Service {
     ayaLogger.info('Stopping config service...')
   }
 
-  static async start(_runtime: IAyaRuntime): Promise<Service> {
+  static async start(_runtime: IAgentRuntime): Promise<Service> {
     if (isNull(instance)) {
       throw new Error('ConfigService not initialized')
     }
@@ -191,7 +190,7 @@ export class ConfigService extends Service {
     return instance
   }
 
-  static async stop(_runtime: IAyaRuntime): Promise<unknown> {
+  static async stop(_runtime: IAgentRuntime): Promise<unknown> {
     if (isNull(instance)) {
       throw new Error('ConfigService not initialized')
     }
