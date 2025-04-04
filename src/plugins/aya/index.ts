@@ -1,6 +1,6 @@
 import { isNull } from '@/common/functions'
 import { messageReceivedHandler } from '@/plugins/aya/events'
-import { AyaService } from '@/plugins/aya/service'
+import { AyaClientService } from '@/plugins/aya/services/client'
 import { WebSearchService } from '@/plugins/aya/services/websearch'
 import { EventType, IAgentRuntime, MessagePayload, Plugin } from '@elizaos/core'
 import bootstrapPlugin from '@elizaos/plugin-bootstrap'
@@ -37,7 +37,7 @@ export const ayaPlugin: Plugin = {
   evaluators,
   providers,
   events,
-  services: [...services, AyaService, WebSearchService],
+  services: [...services, AyaClientService, WebSearchService],
   init: async (_config: Record<string, string>, _runtime: IAgentRuntime) => {
     console.log(' init aya plugin')
   }

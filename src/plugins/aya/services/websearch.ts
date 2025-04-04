@@ -5,10 +5,12 @@ import {
   type SearchOptions,
   type SearchResponse
 } from '@/plugins/aya/types'
-import { Service, ServiceTypeName, UUID, type IAgentRuntime } from '@elizaos/core'
+import { Service, UUID, type IAgentRuntime } from '@elizaos/core'
 
 export class WebSearchService extends Service implements IWebSearchService {
   private static services = new Map<UUID, WebSearchService>()
+  static readonly serviceType = 'aya-os-websearch-service'
+
   readonly capabilityDescription = 'The agent is able to search the web for information'
   private apiKey: string
   private apiUrl: string = 'https://api.tavily.com/search'
@@ -45,10 +47,6 @@ export class WebSearchService extends Service implements IWebSearchService {
       WebSearchService.services.delete(_runtime.agentId)
     }
     return undefined
-  }
-
-  static get serviceType(): ServiceTypeName {
-    return 'web_search'
   }
 
   async stop(): Promise<void> {}

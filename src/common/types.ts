@@ -375,15 +375,6 @@ export interface Context {
 
 export type ContextHandler = (context: Context) => Promise<boolean>
 
-export enum ServiceKind {
-  wallet = 'wallet-service',
-  config = 'config-service',
-  agent = 'agent-service',
-  knowledge = 'knowledge-service',
-  knowledgeBase = 'knowledge-base-service',
-  memories = 'memories-service'
-}
-
 const PdfFileSchema = z.object({
   kind: z.literal('pdf'),
   url: z.string()

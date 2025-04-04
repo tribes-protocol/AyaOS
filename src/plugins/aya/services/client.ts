@@ -39,18 +39,19 @@ import {
 } from '@elizaos/core'
 import * as fs from 'fs'
 import { io, Socket } from 'socket.io-client'
+
 function messageIdToUuid(messageId: number): UUID {
   return stringToUuid('agentcoin:' + messageId.toString())
 }
 
-export class AyaService extends Service {
-  static instances = new Map<UUID, AyaService>()
+export class AyaClientService extends Service {
+  static instances = new Map<UUID, AyaClientService>()
 
   private socket?: Socket
-  readonly serviceType = 'aya_boot_service'
+  static readonly serviceType = 'aya-os-client-service'
   readonly capabilityDescription = 'The agent is able to send and receive messages on AyaOS.ai'
 
-  constructor(readonly runtime: IAgentRuntime) {
+  constructor(runtime: IAgentRuntime) {
     console.log('AyaService constructor', runtime.agentId)
     super(runtime)
   }
@@ -70,6 +71,8 @@ export class AyaService extends Service {
       console.warn('AyaService already started', this.runtime.agentId)
       return
     }
+    console.log('starting AyaClientService', this.runtime.agentId)
+    logger.info(`[aya] starting AyaClientService for ${this.runtime.agentId}`)
 
     const agentcoinService = ensureRuntimeService<AgentcoinService>(
       this.runtime,
@@ -105,8 +108,8 @@ export class AyaService extends Service {
 
     const identity = await agentcoinService.getIdentity()
     const eventName = `user:${serializeIdentity(identity)}`
-    ayaLogger.info(
-      `AyaOS (${process.env.npm_package_version}) client listening for event`,
+    logger.info(
+      `[aya] AyaOS (${process.env.npm_package_version}) client listening for event`,
       eventName
     )
 
@@ -171,23 +174,23 @@ export class AyaService extends Service {
 
   static async start(_runtime: IAgentRuntime): Promise<Service> {
     console.log('start Aya Service for', _runtime.agentId)
-    const cachedInstance = AyaService.instances.get(_runtime.agentId)
+    const cachedInstance = AyaClientService.instances.get(_runtime.agentId)
     if (cachedInstance) {
       return cachedInstance
     }
 
-    const instance = new AyaService(_runtime)
-    AyaService.instances.set(_runtime.agentId, instance)
+    const instance = new AyaClientService(_runtime)
+    AyaClientService.instances.set(_runtime.agentId, instance)
     await instance.start()
     return instance
   }
 
   static async stop(runtime: IAgentRuntime): Promise<unknown> {
-    const instance = AyaService.instances.get(runtime.agentId)
+    const instance = AyaClientService.instances.get(runtime.agentId)
     if (instance) {
       await instance.stop()
     }
-    AyaService.instances.delete(runtime.agentId)
+    AyaClientService.instances.delete(runtime.agentId)
     return Promise.resolve()
   }
 

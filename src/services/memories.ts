@@ -1,5 +1,4 @@
 import { isNull } from '@/common/functions'
-import { ServiceKind } from '@/common/types'
 import { IMemoriesService } from '@/services/interfaces'
 import { IAgentRuntime, Memory, Service } from '@elizaos/core'
 
@@ -12,9 +11,7 @@ export class MemoriesService extends Service implements IMemoriesService {
     this.runtime = runtime
   }
 
-  static get serviceType(): string {
-    return ServiceKind.memories
-  }
+  static readonly serviceType = 'aya-os-memories-service'
 
   async search(_options: {
     q: string

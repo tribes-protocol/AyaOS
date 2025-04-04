@@ -1,7 +1,7 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
-import { Identity, RAGKnowledgeItem, RagKnowledgeItemContent, ServiceKind } from '@/common/types'
+import { Identity, RAGKnowledgeItem, RagKnowledgeItemContent } from '@/common/types'
 import { IKnowledgeService } from '@/services/interfaces'
 import { IAgentRuntime, Service, UUID } from '@elizaos/core'
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
@@ -14,7 +14,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     separators: ['\n## ', '\n### ', '\n#### ', '\n', ' ', '']
   })
 
-  readonly serviceType = ServiceKind.knowledge
+  static readonly serviceType = 'aya-os-knowledge-service'
   readonly capabilityDescription = ''
 
   private constructor(

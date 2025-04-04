@@ -28,15 +28,15 @@ import {
   AgentRuntime,
   Evaluator,
   IAgentRuntime,
-  logger,
   ModelTypeName,
   Plugin,
   Provider,
   Service,
+  ServiceTypeName,
   UUID,
   type Character
 } from '@elizaos/core'
-import farcasterPlugin from '@elizaos/plugin-farcaster'
+// import farcasterPlugin from '@elizaos/plugin-farcaster'
 import openaiPlugin from '@elizaos/plugin-openai'
 import sqlPlugin from '@elizaos/plugin-sql'
 import fs from 'fs'
@@ -251,9 +251,12 @@ export class Agent implements IAyaAgent {
         ...this.services
       ]
       for (const service of ayaServices) {
+        console.log('------->', service.serviceType)
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        await runtime.registerService(service as typeof Service)
+        await hackRegisterService(service as typeof Service, this.runtime)
       }
+
+      console.log('ayaPlugin services', ayaPlugin.services)
 
       await hackRegisterPlugin(ayaPlugin, this.runtime)
       // await hackRegisterPlugin(farcasterPlugin, this.runtime)
@@ -432,9 +435,34 @@ async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promi
   }
 
   if (plugin.services) {
-    plugin.services.forEach((service) => {
-      logger.info(`[aya] registering service ${service.name} for plugin ${plugin.name}`)
-      runtime.registerService(service)
-    })
+    for (const service of plugin.services) {
+      await hackRegisterService(service, runtime)
+    }
   }
+}
+
+async function hackRegisterService(service: typeof Service, runtime: IAgentRuntime): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  const serviceType = service.serviceType as ServiceTypeName
+  if (!serviceType) {
+    return
+  }
+  console.info(`${runtime.character.name}(${runtime.agentId}) - Registering service:`, serviceType)
+
+  if (runtime.services.has(serviceType)) {
+    console.warn(
+      `${runtime.character.name}(${runtime.agentId}) - Service ${serviceType}` +
+        ` is already registered. Skipping registration.`
+    )
+    return
+  }
+
+  console.log('about to start service', serviceType)
+  const serviceInstance = await service.start(runtime)
+  console.log('service started', serviceType)
+  // Add the service to the services map
+  runtime.services.set(serviceType, serviceInstance)
+  console.info(
+    `${runtime.character.name}(${runtime.agentId}) - Service ${serviceType} registered successfully`
+  )
 }

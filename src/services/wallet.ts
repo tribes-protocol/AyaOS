@@ -1,13 +1,6 @@
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { isNull } from '@/common/functions'
-import {
-  AgentWallet,
-  AgentWalletKind,
-  HexString,
-  Identity,
-  ServiceKind,
-  Transaction
-} from '@/common/types'
+import { AgentWallet, AgentWalletKind, HexString, Identity, Transaction } from '@/common/types'
 import { IWalletService } from '@/services/interfaces'
 import { IAgentRuntime, Service } from '@elizaos/core'
 import { TurnkeyClient } from '@turnkey/http'
@@ -19,7 +12,7 @@ import { base } from 'viem/chains'
 export class WalletService extends Service implements IWalletService {
   private readonly turnkey: TurnkeyClient
 
-  readonly serviceType = ServiceKind.wallet
+  static readonly serviceType = 'aya-os-wallet-service'
   readonly capabilityDescription = ''
 
   private constructor(

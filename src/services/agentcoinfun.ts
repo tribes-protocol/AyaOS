@@ -25,7 +25,7 @@ import * as fs from 'fs'
 export class AgentcoinService extends Service {
   private cachedCookie: string | undefined
   private cachedIdentity: Identity | undefined
-  readonly serviceType = AgentcoinService.serviceType
+  static readonly serviceType = 'aya-os-agentcoin-service'
   readonly capabilityDescription = ''
 
   constructor(

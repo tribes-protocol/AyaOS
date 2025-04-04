@@ -2,7 +2,6 @@ import { isNull, isRequiredString } from '@/common/functions'
 import { OperationQueue } from '@/common/lang/operation_queue'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
-import { ServiceKind } from '@/common/types'
 import { EventService } from '@/services/event'
 import { IAgentRuntime, Service } from '@elizaos/core'
 import crypto from 'crypto'
@@ -19,7 +18,7 @@ export class ConfigService extends Service {
   private server: net.Server | undefined
   private shutdownFunc?: (signal?: string) => Promise<void>
 
-  readonly serviceType = ServiceKind.config
+  static readonly serviceType = 'aya-os-config-service'
   readonly capabilityDescription = ''
 
   private constructor(
