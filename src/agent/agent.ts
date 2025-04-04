@@ -10,7 +10,7 @@ import { AyaRuntime } from '@/common/runtime'
 import { AyaOSOptions } from '@/common/types'
 import ayaPlugin from '@/plugins/aya'
 import openaiPlugin from '@/plugins/openai'
-import webSearchPlugin from '@/plugins/webSearch'
+import webSearchPlugin from '@/plugins/websearch'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
 import { EventService } from '@/services/event'
@@ -156,7 +156,13 @@ export class Agent implements IAyaAgent {
 
       this.runtime_ = runtime
 
-      KnowledgeService.getInstance(runtime, agentcoinAPI, agentcoinCookie, agentcoinIdentity)
+      KnowledgeService.getInstance(
+        runtime,
+        agentcoinAPI,
+        agentcoinCookie,
+        agentcoinIdentity,
+        this.pathResolver
+      )
       WalletService.getInstance(
         agentcoinCookie,
         agentcoinIdentity,

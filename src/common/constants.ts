@@ -11,3 +11,7 @@ export const AYA_SOURCE = 'aya'
 export const LLM_PROXY = 'https://aya-proxies.hish.workers.dev/v1/tools/llm'
 
 export const WEBSEARCH_PROXY = 'https://aya-proxies.hish.workers.dev/v1/tools/search'
+
+export const KNOWLEDGE_TABLE_NAME = 'knowledge'
+
+export const DOCUMENT_TABLE_NAME = 'documents'

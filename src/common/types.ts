@@ -498,14 +498,11 @@ export const RagKnowledgeItemContentSchema = z.object({
   text: z.string(),
   metadata: z
     .object({
-      isMain: z.boolean().optional().nullable(),
-      isChunk: z.boolean().optional().nullable(),
-      originalId: z.string().optional().nullable(),
-      chunkIndex: z.number().optional().nullable(),
-      source: z.string().optional().nullable(),
-      type: z.string().optional().nullable(),
-      isShared: z.boolean().optional().nullable(),
-      kind: z.string().optional().nullable()
+      type: z.string(),
+      documentId: z.string(),
+      position: z.number().optional(),
+      timestamp: z.number().optional(),
+      source: z.string()
     })
     .passthrough()
     .optional()
@@ -518,7 +515,7 @@ export const RAGKnowledgeItemSchema = z.object({
   id: UUIDSchema,
   agentId: UUIDSchema,
   content: RagKnowledgeItemContentSchema,
-  embedding: z.instanceof(Float32Array).optional(),
+  embedding: z.array(z.number()),
   createdAt: z.number().optional(),
   similarity: z.number().optional(),
   score: z.number().optional()
