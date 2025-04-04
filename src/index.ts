@@ -14,7 +14,7 @@ import {
 
 export { Agent } from '@/agent/agent'
 export type { IAyaAgent } from '@/agent/iagent'
-export { RateLimiter } from '@/agent/ratelimitter'
+export { RateLimiter } from '@/agent/ratelimiter'
 export { ensureUUID } from '@/common/functions'
 export { ContextHandler } from '@/common/types'
 export type { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'

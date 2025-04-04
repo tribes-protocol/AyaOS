@@ -14,7 +14,6 @@ import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { ensureRuntimeService, isNull, isRequiredString, loadEnvFile } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { AyaOSOptions } from '@/common/types'
-import { PathManager } from '@/managers/path'
 import { ayaPlugin } from '@/plugins/aya'
 import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
@@ -48,13 +47,9 @@ export class Agent implements IAyaAgent {
   private plugins: Plugin[] = []
   private evaluators: Evaluator[] = []
   private runtime_: AgentRuntime | undefined
-  private dataDir: string
   private context_?: AgentContext
 
-  constructor(options?: AyaOSOptions) {
-    const pathResolver = new PathManager(options?.dataDir)
-    this.dataDir = pathResolver.dataDir
-  }
+  constructor(readonly options?: AyaOSOptions) {}
 
   get runtime(): AgentRuntime {
     if (!this.runtime_) {
@@ -105,7 +100,7 @@ export class Agent implements IAyaAgent {
       logger.info('Starting agent...', AGENTCOIN_FUN_API_URL)
 
       // step 1: provision the hardware if needed.
-      const context = await AgentRegistry.setup(this.dataDir)
+      const context = await AgentRegistry.setup(this.options)
       this.context_ = context
       const { auth, managers } = context
 
@@ -142,7 +137,7 @@ export class Agent implements IAyaAgent {
               const agentId = runtime.agentId
               ayaLogger.warn('Stopping agent runtime...', agentId)
               await runtime.stop()
-              await AgentRegistry.destroy(this.dataDir)
+              await AgentRegistry.destroy(this.context.dataDir)
               ayaLogger.success('Agent runtime stopped successfully!', agentId)
             } catch (error) {
               ayaLogger.error('Error stopping agent:', error)

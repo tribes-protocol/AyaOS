@@ -1,4 +1,6 @@
-import { isNull } from '@/common/functions'
+import { AgentRegistry } from '@/agent/registry'
+import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
+import { ensureStringSetting, isNull } from '@/common/functions'
 import { validateResponse } from '@/common/llms/response-validator'
 import {
   asUUID,
@@ -37,6 +39,9 @@ export const messageReceivedHandler = async ({
   if (isNull(messageId)) {
     throw Error(`Message ID is required: ${message}`)
   }
+
+  const dataDir = ensureStringSetting(runtime, AYA_AGENT_DATA_DIR_KEY)
+  const { rateLimiter } = AgentRegistry.get(dataDir)
 
   // Generate a new response ID
   const responseId = v4()
@@ -98,10 +103,16 @@ export const messageReceivedHandler = async ({
       }
 
       // First, save the incoming message
-      await Promise.all([
-        runtime.addEmbeddingToMemory(message),
-        runtime.createMemory(message, 'messages')
-      ])
+      await runtime.addEmbeddingToMemory(message)
+      await runtime.createMemory(message, 'messages')
+
+      if (rateLimiter) {
+        const canProcess = await rateLimiter.canProcess(message)
+        if (!canProcess) {
+          logger.warn('Rate limit exceeded, skipping message from user:', message.entityId)
+          return
+        }
+      }
 
       const agentUserState = await runtime.getParticipantUserState(message.roomId, runtime.agentId)
 

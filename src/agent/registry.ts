@@ -1,14 +1,17 @@
+import RateLimiter from '@/agent/ratelimiter'
 import { isNull } from '@/common/functions'
-import { AuthInfo } from '@/common/types'
+import { AuthInfo, AyaOSOptions } from '@/common/types'
 import { LoginManager } from '@/managers/admin'
 import { ConfigManager } from '@/managers/config'
 import { EventManager } from '@/managers/event'
 import { KeychainManager } from '@/managers/keychain'
 import { PathManager } from '@/managers/path'
 import { logger } from '@elizaos/core'
+
 export interface AgentContext {
   auth: AuthInfo
   dataDir: string
+  rateLimiter?: RateLimiter
   managers: {
     event: EventManager
     config: ConfigManager
@@ -21,12 +24,14 @@ export interface AgentContext {
 export const AgentRegistry = {
   instances: new Map<string, AgentContext>(),
 
-  async setup(dataDir: string): Promise<AgentContext> {
+  async setup(options?: AyaOSOptions): Promise<AgentContext> {
+    const pathResolver = new PathManager(options?.dataDir)
+    const dataDir = pathResolver.dataDir
+
     if (this.instances.has(dataDir)) {
       throw new Error('Agent already registered: ' + dataDir)
     }
 
-    const pathResolver = new PathManager(dataDir)
     const keychain = new KeychainManager(pathResolver.keypairFile)
     const loginManager = new LoginManager(keychain, pathResolver)
     const authInfo = await loginManager.provisionIfNeeded()
@@ -39,6 +44,7 @@ export const AgentRegistry = {
     const context: AgentContext = {
       auth: authInfo,
       dataDir,
+      rateLimiter: options?.rateLimiter,
       managers: {
         event: eventManager,
         config: configManager,

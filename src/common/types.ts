@@ -1,3 +1,4 @@
+import RateLimiter from '@/agent/ratelimiter'
 import { UUID_PATTERN } from '@/common/constants'
 import { isRequiredString, sortIdentities } from '@/common/functions'
 import { Content, Memory, State, UUID } from '@elizaos/core'
@@ -483,6 +484,7 @@ export type EmbeddingsConfig = z.infer<typeof EmbeddingsConfigSchema>
 
 export interface AyaOSOptions {
   dataDir?: string
+  rateLimiter?: RateLimiter
 }
 
 export const RagKnowledgeItemContentSchema = z.object({
