@@ -1,6 +1,5 @@
-import { AYA_OS_AGENT_PATH_RESOLVER, UUID_PATTERN } from '@/common/constants'
+import { UUID_PATTERN } from '@/common/constants'
 import { ayaLogger } from '@/common/logger'
-import { PathResolver } from '@/common/path-resolver'
 import {
   ChatChannel,
   ChatChannelKind,
@@ -301,13 +300,6 @@ export function ensureRuntimeService<T extends Service>(
 ): T {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return ensure(runtime.getService(service as ServiceTypeName), message) as T
-}
-
-export function getPathResolver(runtime: IAgentRuntime): PathResolver {
-  return ensure(
-    runtime.getSetting(AYA_OS_AGENT_PATH_RESOLVER),
-    `Path resolver not found for ${runtime.agentId}`
-  )
 }
 
 export function ensureStringSetting(runtime: IAgentRuntime, key: string): string {

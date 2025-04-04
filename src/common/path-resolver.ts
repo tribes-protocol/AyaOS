@@ -3,7 +3,6 @@ import * as os from 'os'
 import * as path from 'path'
 
 export class PathResolver {
-  private rootDir: string
   public readonly dataDir: string
   public readonly envFile: string
   public readonly characterFile: string
@@ -19,24 +18,22 @@ export class PathResolver {
       rootDir = path.resolve(process.cwd(), rootDir)
     }
 
-    this.rootDir = rootDir ?? path.join(os.homedir(), '.ayaos')
-
-    this.dataDir = this.rootDir
-    this.envFile = path.join(this.rootDir, '.env')
-    this.characterFile = path.join(this.rootDir, 'character.json')
-    this.registrationFile = path.join(this.rootDir, 'registration.json')
-    this.keypairFile = path.join(this.rootDir, 'agent-keypair.json')
-    this.gitStateFile = path.join(this.rootDir, 'agent-git.json')
-    this.codeDir = path.join(this.rootDir, 'code')
-    this.runtimeServerSocketFile = path.join(this.rootDir, 'runtime-server.sock')
-    this.knowledgeRoot = path.join(this.rootDir, 'knowledgeFiles')
+    this.dataDir = rootDir ?? path.join(os.homedir(), '.ayaos')
+    this.envFile = path.join(this.dataDir, '.env')
+    this.characterFile = path.join(this.dataDir, 'character.json')
+    this.registrationFile = path.join(this.dataDir, 'registration.json')
+    this.keypairFile = path.join(this.dataDir, 'agent-keypair.json')
+    this.gitStateFile = path.join(this.dataDir, 'agent-git.json')
+    this.codeDir = path.join(this.dataDir, 'code')
+    this.runtimeServerSocketFile = path.join(this.dataDir, 'runtime-server.sock')
+    this.knowledgeRoot = path.join(this.dataDir, 'knowledgeFiles')
 
     this.ensureRootDirExists()
   }
 
   private ensureRootDirExists(): void {
-    if (!fs.existsSync(this.rootDir)) {
-      fs.mkdirSync(this.rootDir, { recursive: true })
+    if (!fs.existsSync(this.dataDir)) {
+      fs.mkdirSync(this.dataDir, { recursive: true })
     }
 
     if (!fs.existsSync(this.knowledgeRoot)) {

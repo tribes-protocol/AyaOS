@@ -1,8 +1,8 @@
 import { IAyaAgent } from '@/agent/iagent'
 import {
+  AYA_AGENT_DATA_DIR_KEY,
   AYA_AGENT_IDENTITY_KEY,
   AYA_JWT_SETTINGS_KEY,
-  AYA_OS_AGENT_PATH_RESOLVER,
   DEFAULT_EMBEDDING_DIMENSIONS,
   DEFAULT_EMBEDDING_MODEL,
   DEFAULT_LARGE_MODEL,
@@ -133,9 +133,6 @@ export class Agent implements IAyaAgent {
 
       this.runtime_ = runtime
 
-      // FIXME: hish - should we just pass the base dir and have others just create it?
-      runtime.setSetting(AYA_OS_AGENT_PATH_RESOLVER, this.pathResolver)
-
       // shutdown handler
       let isShuttingDown = false
       const shutdown = async (signal?: string): Promise<void> => {
@@ -197,12 +194,8 @@ export class Agent implements IAyaAgent {
         ...this.services
       ]
       for (const service of ayaServices) {
-        console.log('------->', service.serviceType)
-
         await hackRegisterService(service, this.runtime)
       }
-
-      console.log('ayaPlugin services', ayaPlugin.services)
 
       await hackRegisterPlugin(ayaPlugin, this.runtime)
       // await hackRegisterPlugin(farcasterPlugin, this.runtime)
@@ -290,30 +283,31 @@ export class Agent implements IAyaAgent {
     //   messageHandlerTemplate: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
     // }
 
-    character.settings = character.settings || {}
     character.secrets = character.secrets || {}
 
     // setup ayaos token
     character.secrets[AYA_JWT_SETTINGS_KEY] = authInfo.token
     character.secrets[AYA_AGENT_IDENTITY_KEY] = authInfo.identity
+    character.secrets[AYA_AGENT_DATA_DIR_KEY] = this.pathResolver.dataDir
+
     // setup websearch
-    if (isNull(character.settings.TAVILY_API_URL)) {
-      character.settings.TAVILY_API_URL = WEBSEARCH_PROXY
+    if (isNull(character.secrets.TAVILY_API_URL)) {
+      character.secrets.TAVILY_API_URL = WEBSEARCH_PROXY
     }
-    if (character.settings.TAVILY_API_URL === WEBSEARCH_PROXY) {
-      character.settings.TAVILY_API_KEY = authInfo.token
+    if (character.secrets.TAVILY_API_URL === WEBSEARCH_PROXY) {
+      character.secrets.TAVILY_API_KEY = authInfo.token
     }
 
     // setup llm
-    if (isNull(character.settings.OPENAI_BASE_URL)) {
-      character.settings.OPENAI_BASE_URL = LLM_PROXY
-      character.settings.OPENAI_SMALL_MODEL = DEFAULT_SMALL_MODEL
-      character.settings.OPENAI_LARGE_MODEL = DEFAULT_LARGE_MODEL
-      character.settings.OPENAI_EMBEDDING_MODEL = DEFAULT_EMBEDDING_MODEL
-      character.settings.OPENAI_EMBEDDING_DIMENSIONS = DEFAULT_EMBEDDING_DIMENSIONS
+    if (isNull(character.secrets.OPENAI_BASE_URL)) {
+      character.secrets.OPENAI_BASE_URL = LLM_PROXY
+      character.secrets.OPENAI_SMALL_MODEL = DEFAULT_SMALL_MODEL
+      character.secrets.OPENAI_LARGE_MODEL = DEFAULT_LARGE_MODEL
+      character.secrets.OPENAI_EMBEDDING_MODEL = DEFAULT_EMBEDDING_MODEL
+      character.secrets.OPENAI_EMBEDDING_DIMENSIONS = DEFAULT_EMBEDDING_DIMENSIONS
     }
-    if (character.settings.OPENAI_BASE_URL === LLM_PROXY) {
-      character.settings.OPENAI_API_KEY = authInfo.token
+    if (character.secrets.OPENAI_BASE_URL === LLM_PROXY) {
+      character.secrets.OPENAI_API_KEY = authInfo.token
     }
 
     logger.info('character', JSON.stringify(character, null, 2))

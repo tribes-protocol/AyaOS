@@ -20,10 +20,10 @@ export const DEFAULT_EMBEDDING_MODEL = 'baai/bge-large-en-v1.5'
 
 export const DEFAULT_EMBEDDING_DIMENSIONS = '1024'
 
-export const AYA_OS_AGENT_PATH_RESOLVER = '__AYA_OS_AGENT_PATH_RESOLVER'
-
 export const AYA_JWT_COOKIE_NAME = 'jwt_auth_token'
 
 export const AYA_JWT_SETTINGS_KEY = 'AYA_JWT_SETTINGS_KEY'
 
 export const AYA_AGENT_IDENTITY_KEY = 'AYA_AGENT_IDENTITY_KEY'
+
+export const AYA_AGENT_DATA_DIR_KEY = 'AYA_AGENT_DATA_DIR_KEY'
