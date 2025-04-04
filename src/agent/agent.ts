@@ -105,7 +105,9 @@ export class Agent implements IAyaAgent {
       logger.info('Starting agent...', AGENTCOIN_FUN_API_URL)
 
       // step 1: provision the hardware if needed.
-      const { auth, managers } = await AgentRegistry.setup(this.dataDir)
+      const context = await AgentRegistry.setup(this.dataDir)
+      this.context_ = context
+      const { auth, managers } = context
 
       // step 2: load character and initialize database
       const character: Character = await this.setupCharacter(auth)
