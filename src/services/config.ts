@@ -3,18 +3,16 @@ import { isNull, isRequiredString } from '@/common/functions'
 import { OperationQueue } from '@/common/lang/operation_queue'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
-import { CharacterSchema, ServiceKind } from '@/common/types'
+import { ServiceKind } from '@/common/types'
 import { EventService } from '@/services/event'
-import { IConfigService } from '@/services/interfaces'
 import { ProcessService } from '@/services/process'
 import { IAgentRuntime, Service, ServiceType } from '@elizaos/core'
-import crypto from 'crypto'
 import express from 'express'
 import fs from 'fs'
 import net from 'net'
 import simpleGit from 'simple-git'
 
-export class ConfigService extends Service implements IConfigService {
+export class ConfigService extends Service {
   private readonly operationQueue = new OperationQueue(1)
   private isRunning = false
   private gitCommitHash: string | undefined
@@ -90,32 +88,9 @@ export class ConfigService extends Service implements IConfigService {
     this.server = app.listen(this.pathResolver.runtimeServerSocketFile)
 
     while (this.isRunning) {
-      await Promise.all([this.checkCodeUpdate(), this.checkCharacterUpdate()])
+      await Promise.all([this.checkCodeUpdate()])
       await new Promise((resolve) => setTimeout(resolve, 30000))
     }
-  }
-
-  async checkCharacterUpdate(): Promise<void> {
-    await this.operationQueue.submit(async () => {
-      // read character file
-      const character = fs.readFileSync(this.pathResolver.characterFile, 'utf8')
-      const checksum = crypto.createHash('md5').update(character).digest('hex')
-      if (isNull(this.characterChecksum) || this.characterChecksum === checksum) {
-        this.characterChecksum = checksum
-        return
-      }
-
-      // kill the process and docker container should restart it
-      ayaLogger.info(`New character file detected. Restarting agent...`)
-      const characterObject = CharacterSchema.parse(
-        JSON.parse(fs.readFileSync(this.pathResolver.characterFile, 'utf8'))
-      )
-      this.characterChecksum = checksum
-      await this.eventService.publishCharacterChangeEvent(characterObject)
-      if (process.env.NODE_ENV === 'production') {
-        await this.processService.kill()
-      }
-    })
   }
 
   private async checkCodeUpdate(): Promise<void> {

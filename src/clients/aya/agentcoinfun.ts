@@ -13,7 +13,6 @@ import {
 } from '@/common/functions'
 import {
   AgentIdentitySchema,
-  Character,
   ChatChannel,
   ChatChannelKind,
   EthAddressSchema,
@@ -25,7 +24,6 @@ import {
   SentinelCommand,
   SentinelCommandSchema
 } from '@/common/types'
-import * as fs from 'fs'
 
 import { Client, IAyaRuntime } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
@@ -169,9 +167,6 @@ export class AgentcoinClient implements Client {
       case 'set_git':
         ayaLogger.info('ignoring set_git. sentinel service is handling this', command)
         break
-      case 'set_character':
-        await this.handleSetCharacter(command.character)
-        break
       case 'set_knowledge':
         ayaLogger.info('ignoring set_knowledge', command)
         break
@@ -181,17 +176,6 @@ export class AgentcoinClient implements Client {
       default:
         throw new Error('Invalid command')
     }
-  }
-
-  private async handleSetCharacter(character: Character): Promise<void> {
-    // write the character to the character file
-    await fs.promises.writeFile(
-      this.runtime.pathResolver.characterFile,
-      JSON.stringify(character, null, 2)
-    )
-
-    // notify config service
-    await this.configService.checkCharacterUpdate()
   }
 
   public async stop(runtime: IAyaRuntime): Promise<void> {

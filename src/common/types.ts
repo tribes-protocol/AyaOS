@@ -258,6 +258,12 @@ export const CharacterSchema = BaseCharacterSchema.extend({
 
 export type Character = z.infer<typeof CharacterSchema>
 
+export const ProvisionSchema = z.object({
+  id: AgentIdentitySchema
+})
+
+export type Provision = z.infer<typeof ProvisionSchema>
+
 // agent events
 
 const BaseAgentEventSchema = z.object({
@@ -303,11 +309,6 @@ export const SentinelSetGitCommandSchema = z.object({
   state: GitStateSchema
 })
 
-export const SentinelSetCharacterCommandSchema = z.object({
-  kind: z.literal('set_character'),
-  character: CharacterSchema
-})
-
 export const SentinelSetKnowledgeCommandSchema = z.object({
   kind: z.literal('set_knowledge'),
   url: z.string(),
@@ -323,8 +324,7 @@ export const SentinelDeleteKnowledgeCommandSchema = z.object({
 export const SentinelCommandSchema = z.discriminatedUnion('kind', [
   SentinelSetGitCommandSchema,
   SentinelSetKnowledgeCommandSchema,
-  SentinelDeleteKnowledgeCommandSchema,
-  SentinelSetCharacterCommandSchema
+  SentinelDeleteKnowledgeCommandSchema
 ])
 
 export type SentinelCommand = z.infer<typeof SentinelCommandSchema>
@@ -527,12 +527,6 @@ export const AgentSchema = z
   .passthrough() // Partial schema
 
 export type Agent = z.infer<typeof AgentSchema>
-
-export const CreatePureResponseSchema = z.object({
-  agent: AgentSchema,
-  character: CharacterSchema
-})
-export type CreatePureResponse = z.infer<typeof CreatePureResponseSchema>
 
 export const ButtonSchema = z.object({
   text: z.string(),

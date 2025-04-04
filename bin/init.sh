@@ -83,7 +83,13 @@ cd "$ORIGINAL_DIR" # Return to original directory
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Run create-agent script with bun
-bun run "$PROJECT_ROOT/scripts/create-agent.ts" "$dataDir" "$agentName" "$agentPurpose"
+ORIGINAL_DIR=$(pwd)
+(cd "$projectName" && bun run "$PROJECT_ROOT/scripts/create-agent.ts" "$dataDir" "$agentName" "$agentPurpose") || {
+  echo "Failed to create agent"
+  cd "$ORIGINAL_DIR"
+  exit 1
+}
+cd "$ORIGINAL_DIR"
 
 # Display success message with a nice box
 echo
@@ -93,10 +99,12 @@ echo "│  ✓ Repository cloned successfully!                                  
 echo "│                                                                      │"
 echo "│  Next steps:                                                         │"
 echo "│                                                                      │"
-echo "│  1. Add your OpenAI API key to .env:                                 │"
+echo "│  1. cd $projectName                                                  │"
+echo "│                                                                      │"
+echo "│  2. Add your OpenAI API key to .env:                                 │"
 echo "│     OPENAI_API_KEY=your_api_key_here                                 │"
 echo "│                                                                      │"
-echo "│  2. Install dependencies with: bun install                           │"
+echo "│  3. Run the development server with: bun dev                         │"
 echo "│                                                                      │"
 echo "└──────────────────────────────────────────────────────────────────────┘"
 echo

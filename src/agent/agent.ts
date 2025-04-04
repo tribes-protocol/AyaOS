@@ -2,7 +2,8 @@ import { IAyaAgent } from '@/agent/iagent'
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { initializeClients } from '@/clients'
 import { getTokenForProvider } from '@/common/config'
-import { ensure, isNull } from '@/common/functions'
+import { CHARACTERS_DIR } from '@/common/constants'
+import { ensure, ensureUUID, isNull } from '@/common/functions'
 import { Action, Provider } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
@@ -31,6 +32,7 @@ import {
 } from '@elizaos/core'
 import { bootstrapPlugin } from '@elizaos/plugin-bootstrap'
 import fs from 'fs'
+import path from 'path'
 
 const reservedAgentDirs = new Set<string | undefined>()
 
@@ -113,11 +115,14 @@ export class Agent implements IAyaAgent {
       const processService = new ProcessService()
       const configService = new ConfigService(eventService, processService, this.pathResolver)
 
+      const characterId = ensureUUID(agentcoinIdentity.substring(6))
+      const characterFile = path.join(CHARACTERS_DIR, `${characterId}.character.json`)
+
       // step 2: load character and initialize database
       ayaLogger.info('Loading character...')
       const [db, charString] = await Promise.all([
         initializeDatabase(this.pathResolver.dbFile),
-        fs.promises.readFile(this.pathResolver.characterFile, 'utf8')
+        fs.promises.readFile(characterFile, 'utf8')
       ])
 
       const character: Character = this.processCharacterSecrets(JSON.parse(charString))

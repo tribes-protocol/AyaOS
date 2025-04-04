@@ -1,18 +1,17 @@
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { serializeIdentity, toJsonTree } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import {
+  Agent,
   AgentEventData,
+  AgentSchema,
   AgentWallet,
   AgentWalletKind,
   AgentWalletSchema,
-  Character,
-  CharacterSchema,
   ChatStatusBody,
   CliAuthRequestSchema,
   CliAuthResponseSchema,
   CreateMessage,
-  CreatePureResponse,
-  CreatePureResponseSchema,
   ErrorResponseSchema,
   HydratedMessage,
   HydratedMessageSchema,
@@ -22,7 +21,6 @@ import {
   User,
   UserSchema
 } from '@/common/types'
-import { ayaLogger } from '@/common/logger'
 import { z } from 'zod'
 
 const MessageResponseSchema = z.object({
@@ -114,11 +112,7 @@ export class AgentcoinAPI {
     return parsed
   }
 
-  async provisionAgent(
-    signupToken: string,
-    signature: string,
-    publicKey: string
-  ): Promise<Character> {
+  async provisionAgent(signupToken: string, signature: string, publicKey: string): Promise<Agent> {
     const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/provision`, {
       method: 'POST',
       headers: {
@@ -127,13 +121,13 @@ export class AgentcoinAPI {
       body: JSON.stringify({ signupToken, signature, publicKey })
     })
 
-    const data = await response.json()
-
     if (!response.ok) {
       throw new Error('Failed to provision agent coin')
     }
 
-    return CharacterSchema.parse(data)
+    const data = await response.json()
+    const parsed = AgentSchema.parse(data)
+    return parsed
   }
 
   async generateAuthMessage(publicKey: string): Promise<string> {
@@ -231,7 +225,7 @@ export class AgentcoinAPI {
     cookie: string,
     name?: string | undefined,
     purpose?: string | undefined
-  ): Promise<CreatePureResponse> {
+  ): Promise<Agent> {
     const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/create-pure`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
@@ -247,7 +241,7 @@ export class AgentcoinAPI {
     }
 
     const responseData = await response.json()
-    return CreatePureResponseSchema.parse(responseData)
+    return AgentSchema.parse(responseData)
   }
 
   async createCliAuthRequest(): Promise<string> {
