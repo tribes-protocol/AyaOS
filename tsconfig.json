@@ -20,10 +20,10 @@
     "noEmitOnError": false,
     "moduleDetection": "force",
     "allowArbitraryExtensions": true,
+    "types": ["node", "@hapi/shot"],
     "paths": {
       "@/*": ["./src/*"]
-    },
-    "typeRoots": ["./src/types"]
+    }
   },
   "include": ["src/**/*.ts", "scripts/**/*.ts"],
   "exclude": ["node_modules", "dist", "public"]

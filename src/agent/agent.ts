@@ -35,6 +35,7 @@ import {
 } from '@elizaos/core'
 import farcasterPlugin from '@elizaos/plugin-farcaster'
 import openaiPlugin from '@elizaos/plugin-openai'
+import sqlPlugin from '@elizaos/plugin-sql'
 import fs from 'fs'
 import path from 'path'
 
@@ -153,6 +154,7 @@ export class Agent implements IAyaAgent {
         character.settings.OPENAI_API_KEY = jwtToken
       }
 
+      this.plugins.push(sqlPlugin)
       this.plugins.push(openaiPlugin)
 
       ayaLogger.info('Creating runtime for character', character.name)
