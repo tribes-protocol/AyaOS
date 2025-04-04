@@ -1,9 +1,5 @@
 import { AYA_SOURCE } from '@/common/constants'
-import {
-  AGENT_ADMIN_PUBLIC_KEY,
-  AGENTCOIN_FUN_API_URL,
-  AGENTCOIN_MONITORING_ENABLED
-} from '@/common/env'
+import { AGENT_ADMIN_PUBLIC_KEY, AGENTCOIN_FUN_API_URL } from '@/common/env'
 import {
   isNull,
   isRequiredString,
@@ -29,7 +25,6 @@ import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
 import {
   ChannelType,
-  Character,
   Content,
   EventType,
   HandlerCallback,
@@ -145,6 +140,8 @@ export class AyaService extends Service {
       }
     })
 
+    const AGENTCOIN_MONITORING_ENABLED = this.runtime.getSetting('AGENTCOIN_MONITORING_ENABLED')
+
     // listen on admin commands
     if (AGENTCOIN_MONITORING_ENABLED) {
       this.socket.on(`admin:${identity}`, async (payload: string) => {
@@ -196,11 +193,12 @@ export class AyaService extends Service {
       case 'set_git':
         ayaLogger.info('ignoring set_git. sentinel service is handling this', command)
         break
-      case 'set_character':
-        await this.handleSetCharacter(command.character)
+      case 'add_knowledge':
+        ayaLogger.info('ignoring add_knowledge', command)
         break
-      case 'set_knowledge':
-        ayaLogger.info('ignoring set_knowledge', command)
+      case 'set_env_vars':
+        ayaLogger.info('setting env vars', command)
+        await this.handleSetEnvvars(command.envVars)
         break
       case 'delete_knowledge':
         ayaLogger.info('ignoring delete_knowledge', command)
@@ -210,19 +208,18 @@ export class AyaService extends Service {
     }
   }
 
-  private async handleSetCharacter(character: Character): Promise<void> {
+  private async handleSetEnvvars(envVars: Record<string, string>): Promise<void> {
+    const envContent = Object.entries(envVars)
+      .map(([key, value]) => `${key}=${value}`)
+      .join('\n')
+
+    await fs.promises.writeFile(this.runtime.pathResolver.envFile, envContent)
+
     const configService = this.runtime.ensureService<ConfigService>(
       ConfigService.serviceType,
       'Config service not found'
     )
-    // write the character to the character file
-    await fs.promises.writeFile(
-      this.runtime.pathResolver.characterFile,
-      JSON.stringify(character, null, 2)
-    )
-
-    // notify config service
-    await configService.checkCharacterUpdate()
+    await configService.checkEnvUpdate()
   }
 
   private async sendStatus(channel: ChatChannel, status: MessageStatusEnum): Promise<() => void> {

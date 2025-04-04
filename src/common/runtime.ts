@@ -1,6 +1,6 @@
 import { ensure, isNull } from '@/common/functions'
 // import { KnowledgeService } from '@/services/knowledge'
-import { IAyaRuntime, ServiceLike } from '@/common/iruntime'
+import { IAyaRuntime, Plugin, ServiceLike } from '@/common/iruntime'
 import { validateResponse } from '@/common/llms/response-validator'
 import { PathResolver } from '@/common/path-resolver'
 import {
@@ -10,6 +10,8 @@ import {
   composePromptFromState,
   Content,
   createUniqueUuid,
+  // eslint-disable-next-line no-restricted-imports
+  Plugin as ElizaPlugin,
   EventType,
   IDatabaseAdapter,
   logger,
@@ -19,7 +21,6 @@ import {
   MessageReceivedHandlerParams,
   ModelType,
   parseJSONObjectFromText,
-  Plugin,
   RuntimeSettings,
   Service,
   ServiceTypeName,
@@ -31,6 +32,7 @@ import { v4 } from 'uuid'
 
 export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
   public readonly pathResolver: PathResolver
+
   public constructor(opts: {
     eliza: {
       conversationLength?: number
@@ -56,7 +58,7 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     }
 
     // require plugins
-    const requiredPlugins = ['@elizaos/plugin-openai', '@elizaos/plugin-sql']
+    const requiredPlugins = ['@elizaos/plugin-sql']
     for (const plugin of requiredPlugins) {
       if (!opts.eliza.character.plugins.includes(plugin)) {
         opts.eliza.character.plugins.push(plugin)
@@ -67,7 +69,6 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     const ayaBootstrapPlugin: Plugin = {
       ...bootstrapPlugin,
       name: 'Aya plugin-bootstrap overrides',
-      version: '0.0.1',
       description: 'Aya bootstrap plugin'
     }
 
@@ -91,7 +92,8 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
     // TODO: hish - plugin-bootstrap is overriding this with the wrong type
     // ayaBootstrapPlugin.events[EventType.VOICE_MESSAGE_RECEIVED] =[]
 
-    const plugins = [...(opts.eliza.plugins || []), ayaBootstrapPlugin]
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const plugins = [...(opts.eliza.plugins || []), ayaBootstrapPlugin] as ElizaPlugin[]
 
     super({ ...opts.eliza, plugins })
     this.pathResolver = opts.pathResolver
@@ -110,6 +112,11 @@ export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
 
   ensureSetting(key: string, message?: string): string {
     return ensure(super.getSetting(key), message)
+  }
+
+  registerPlugin(plugin: Plugin): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    return super.registerPlugin(plugin as ElizaPlugin)
   }
 }
 

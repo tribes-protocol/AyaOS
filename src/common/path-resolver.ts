@@ -5,6 +5,7 @@ import * as path from 'path'
 export class PathResolver {
   private rootDir: string
   public readonly dataDir: string
+  public readonly envFile: string
   public readonly characterFile: string
   public readonly registrationFile: string
   public readonly keypairFile: string
@@ -21,6 +22,7 @@ export class PathResolver {
     this.rootDir = rootDir ?? path.join(os.homedir(), '.ayaos')
 
     this.dataDir = this.rootDir
+    this.envFile = path.join(this.rootDir, '.env')
     this.characterFile = path.join(this.rootDir, 'character.json')
     this.registrationFile = path.join(this.rootDir, 'registration.json')
     this.keypairFile = path.join(this.rootDir, 'agent-keypair.json')

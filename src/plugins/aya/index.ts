@@ -1,5 +1,5 @@
+import { Plugin } from '@/common/iruntime'
 import { AyaService } from '@/plugins/aya/service'
-import { Plugin } from '@elizaos/core'
 
 export const ayaPlugin: Plugin = {
   name: 'aya',

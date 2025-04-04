@@ -340,28 +340,28 @@ export const SentinelSetGitCommandSchema = z.object({
   state: GitStateSchema
 })
 
-export const SentinelSetCharacterCommandSchema = z.object({
-  kind: z.literal('set_character'),
-  character: CharacterSchema
-})
-
-export const SentinelSetKnowledgeCommandSchema = z.object({
-  kind: z.literal('set_knowledge'),
-  url: z.string(),
+export const SentinelAddKnowledgeCommandSchema = z.object({
+  kind: z.literal('add_knowledge'),
+  source: z.string(),
   filename: z.string()
 })
 
 export const SentinelDeleteKnowledgeCommandSchema = z.object({
   kind: z.literal('delete_knowledge'),
-  url: z.string(),
+  source: z.string(),
   filename: z.string()
+})
+
+export const SentinelSetEnvVarsCommandSchema = z.object({
+  kind: z.literal('set_env_vars'),
+  envVars: z.record(z.string(), z.string())
 })
 
 export const SentinelCommandSchema = z.discriminatedUnion('kind', [
   SentinelSetGitCommandSchema,
-  SentinelSetKnowledgeCommandSchema,
+  SentinelAddKnowledgeCommandSchema,
   SentinelDeleteKnowledgeCommandSchema,
-  SentinelSetCharacterCommandSchema
+  SentinelSetEnvVarsCommandSchema
 ])
 
 export type SentinelCommand = z.infer<typeof SentinelCommandSchema>
@@ -492,7 +492,6 @@ export type EmbeddingsConfig = z.infer<typeof EmbeddingsConfigSchema>
 
 export interface AyaOSOptions {
   dataDir?: string
-  embeddings: EmbeddingsConfig
 }
 
 export const RagKnowledgeItemContentSchema = z.object({
