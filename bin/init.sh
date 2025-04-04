@@ -83,25 +83,13 @@ cd "$ORIGINAL_DIR" # Return to original directory
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Run create-agent script with bun
-bun run "$PROJECT_ROOT/scripts/create-agent.ts" "$dataDir" "$agentName" "$agentPurpose"
-
-# Move character.json file from project root to the new project directory
-# Find and move any character.json files from src/characters to the new project's src/characters directory
-mkdir -p "$projectName/src/characters"
-for character_file in "$PROJECT_ROOT/src/characters"/*.character.json; do
-  if [ -f "$character_file" ]; then
-    filename=$(basename "$character_file")
-    echo "Moving $filename to $projectName/src/characters directory..."
-    mv "$character_file" "$projectName/src/characters/$filename"
-    echo "$filename moved successfully."
-  fi
-done
-
-# Check if any character files were found
-if [ ! -f "$projectName/src/characters"/*.character.json ]; then
-  echo "Warning: No character.json files found in $PROJECT_ROOT/src/characters"
-fi
-
+ORIGINAL_DIR=$(pwd)
+(cd "$projectName" && bun run "$PROJECT_ROOT/scripts/create-agent.ts" "$dataDir" "$agentName" "$agentPurpose") || {
+  echo "Failed to create agent"
+  cd "$ORIGINAL_DIR"
+  exit 1
+}
+cd "$ORIGINAL_DIR"
 
 # Display success message with a nice box
 echo
