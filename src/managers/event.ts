@@ -1,11 +1,11 @@
-import { AgentcoinAPI } from '@/apis/agentcoinfun'
+import { AyaAuthAPI } from '@/apis/aya-auth'
 import { ayaLogger } from '@/common/logger'
 
-export class EventService {
-  constructor(
-    private readonly agentcoinCookie: string,
-    private readonly agentcoinAPI: AgentcoinAPI
-  ) {}
+export class EventManager {
+  private readonly agentcoinAPI: AyaAuthAPI
+  constructor(private readonly token: string) {
+    this.agentcoinAPI = new AyaAuthAPI(token)
+  }
 
   private heartbeatInterval?: NodeJS.Timeout
 
@@ -16,14 +16,11 @@ export class EventService {
       return
     }
 
-    await this.agentcoinAPI.publishEvent(
-      {
-        kind: 'health',
-        status: 'booting',
-        sentAt: new Date()
-      },
-      { cookie: this.agentcoinCookie }
-    )
+    await this.agentcoinAPI.publishEvent({
+      kind: 'health',
+      status: 'booting',
+      sentAt: new Date()
+    })
 
     // Start heartbeat interval
     this.heartbeatInterval = setInterval(() => {
@@ -39,14 +36,11 @@ export class EventService {
       this.heartbeatInterval = undefined
     }
 
-    await this.agentcoinAPI.publishEvent(
-      {
-        kind: 'health',
-        status: 'stopped',
-        sentAt: new Date()
-      },
-      { cookie: this.agentcoinCookie }
-    )
+    await this.agentcoinAPI.publishEvent({
+      kind: 'health',
+      status: 'stopped',
+      sentAt: new Date()
+    })
 
     ayaLogger.info('Event service stopped')
   }
@@ -64,37 +58,26 @@ export class EventService {
         return acc
       }, {})
 
-    await this.agentcoinAPI.publishEvent(
-      {
-        kind: 'env_var_change',
-        envVars: envvarsRecord,
-        sentAt: new Date()
-      },
-      {
-        cookie: this.agentcoinCookie
-      }
-    )
+    await this.agentcoinAPI.publishEvent({
+      kind: 'env_var_change',
+      envVars: envvarsRecord,
+      sentAt: new Date()
+    })
   }
 
   async publishHeartbeatEvent(): Promise<void> {
-    await this.agentcoinAPI.publishEvent(
-      {
-        kind: 'health',
-        status: 'running',
-        sentAt: new Date()
-      },
-      { cookie: this.agentcoinCookie }
-    )
+    await this.agentcoinAPI.publishEvent({
+      kind: 'health',
+      status: 'running',
+      sentAt: new Date()
+    })
   }
 
   async publishCodeChangeEvent(commitHash: string, remoteUrl: string): Promise<void> {
-    await this.agentcoinAPI.publishEvent(
-      {
-        kind: 'code_change',
-        git: { commit: commitHash, remoteUrl },
-        sentAt: new Date()
-      },
-      { cookie: this.agentcoinCookie }
-    )
+    await this.agentcoinAPI.publishEvent({
+      kind: 'code_change',
+      git: { commit: commitHash, remoteUrl },
+      sentAt: new Date()
+    })
   }
 }

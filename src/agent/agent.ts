@@ -1,6 +1,7 @@
 import { IAyaAgent } from '@/agent/iagent'
-import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import {
+  AYA_AGENT_IDENTITY_KEY,
+  AYA_JWT_SETTINGS_KEY,
   AYA_OS_AGENT_PATH_RESOLVER,
   DEFAULT_EMBEDDING_DIMENSIONS,
   DEFAULT_EMBEDDING_MODEL,
@@ -14,12 +15,12 @@ import { ensureRuntimeService, isNull, isRequiredString, loadEnvFile } from '@/c
 import { ayaLogger } from '@/common/logger'
 import { PathResolver } from '@/common/path-resolver'
 import { AyaOSOptions } from '@/common/types'
+import { LoginManager } from '@/managers/admin'
+import { ConfigManager } from '@/managers/config'
+import { EventManager } from '@/managers/event'
+import { KeychainFactory, KeychainManager } from '@/managers/keychain'
 import { ayaPlugin } from '@/plugins/aya'
-import { AgentcoinService } from '@/services/agentcoinfun'
-import { ConfigService } from '@/services/config'
-import { EventService } from '@/services/event'
 import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
-import { KeychainService } from '@/services/keychain'
 import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import { WalletService } from '@/services/wallet'
@@ -28,6 +29,7 @@ import {
   AgentRuntime,
   Evaluator,
   IAgentRuntime,
+  logger,
   ModelTypeName,
   Plugin,
   Provider,
@@ -52,7 +54,7 @@ export class Agent implements IAyaAgent {
   private evaluators: Evaluator[] = []
   private runtime_: AgentRuntime | undefined
   private pathResolver: PathResolver
-  private keychainService: KeychainService
+  private keychain: KeychainManager
 
   constructor(options?: AyaOSOptions) {
     if (reservedAgentDirs.has(options?.dataDir)) {
@@ -60,7 +62,7 @@ export class Agent implements IAyaAgent {
     }
     reservedAgentDirs.add(options?.dataDir)
     this.pathResolver = new PathResolver(options?.dataDir)
-    this.keychainService = new KeychainService(this.pathResolver.keypairFile)
+    this.keychain = new KeychainManager(this.pathResolver.keypairFile)
   }
 
   get runtime(): AgentRuntime {
@@ -102,91 +104,37 @@ export class Agent implements IAyaAgent {
     let runtime: AgentRuntime | undefined
 
     try {
-      console.info('Starting agent...', AGENTCOIN_FUN_API_URL)
+      logger.info('Starting agent...', AGENTCOIN_FUN_API_URL)
 
       // step 1: provision the hardware if needed.
-      const agentcoinAPI = new AgentcoinAPI()
-      const agentcoinService = AgentcoinService.getInstance(
-        this.keychainService,
-        agentcoinAPI,
-        this.pathResolver
-      )
-      await agentcoinService.provisionIfNeeded()
+      const adminManager = new LoginManager(this.keychain, this.pathResolver)
+      const authInfo = await adminManager.provisionIfNeeded()
+      KeychainFactory.associate(authInfo.identity, this.keychain)
 
-      // eagerly start event service
-      const agentcoinCookie = await agentcoinService.getCookie()
-      const agentcoinIdentity = await agentcoinService.getIdentity()
-      const eventService = new EventService(agentcoinCookie, agentcoinAPI)
-      void eventService.start()
-
-      const configService = ConfigService.getInstance(eventService, this.pathResolver)
+      // eagerly setup managers and start event manager
+      const eventManager = new EventManager(authInfo.token)
+      const configManager = new ConfigManager(eventManager, this.pathResolver)
+      void eventManager.start()
 
       // step 2: load character and initialize database
-      ayaLogger.info('Loading character...')
-      const charString = await fs.promises.readFile(this.pathResolver.characterFile, 'utf8')
-      const character: Character = JSON.parse(charString)
-      if (isNull(character.id)) {
-        throw new Error('Character id not found')
-      }
+      const character: Character = await this.setupCharacter(authInfo)
 
-      // character.templates = {
-      //   ...character.templates,
-      //   messageHandlerTemplate: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
-      // }
-
-      const jwtToken = await agentcoinService.getJwtAuthToken()
-      character.settings = character.settings || {}
-
-      // setup websearch
-      if (isNull(character.settings.TAVILY_API_URL)) {
-        character.settings.TAVILY_API_URL = WEBSEARCH_PROXY
-      }
-      if (character.settings.TAVILY_API_URL === WEBSEARCH_PROXY) {
-        character.settings.TAVILY_API_KEY = jwtToken
-      }
-
-      // setup llm
-      if (isNull(character.settings.OPENAI_BASE_URL)) {
-        character.settings.OPENAI_BASE_URL = LLM_PROXY
-        character.settings.OPENAI_SMALL_MODEL = DEFAULT_SMALL_MODEL
-        character.settings.OPENAI_LARGE_MODEL = DEFAULT_LARGE_MODEL
-        character.settings.OPENAI_EMBEDDING_MODEL = DEFAULT_EMBEDDING_MODEL
-        character.settings.OPENAI_EMBEDDING_DIMENSIONS = DEFAULT_EMBEDDING_DIMENSIONS
-      }
-      if (character.settings.OPENAI_BASE_URL === LLM_PROXY) {
-        character.settings.OPENAI_API_KEY = jwtToken
-      }
-
+      // step 3: initialize required plugins
       this.plugins.push(sqlPlugin)
       this.plugins.push(openaiPlugin)
 
-      ayaLogger.info('Creating runtime for character', character.name)
-
-      const settings = fs.existsSync(this.pathResolver.envFile)
-        ? loadEnvFile(this.pathResolver.envFile)
-        : loadEnvFile(path.join(process.cwd(), '.env'))
-
-      this.processSecrets(settings)
-
+      // step 4: initialize environment variables and runtime
       runtime = new AgentRuntime({
         character,
         plugins: this.plugins,
         agentId: character.id,
-        settings
+        settings: this.processSettings()
       })
 
       this.runtime_ = runtime
 
+      // FIXME: hish - should we just pass the base dir and have others just create it?
       runtime.setSetting(AYA_OS_AGENT_PATH_RESOLVER, this.pathResolver)
-
-      KnowledgeService.getInstance(runtime, agentcoinAPI, agentcoinCookie, agentcoinIdentity)
-      WalletService.getInstance(
-        agentcoinCookie,
-        agentcoinIdentity,
-        agentcoinAPI,
-        runtime,
-        this.keychainService.turnkeyApiKeyStamper
-      )
 
       // shutdown handler
       let isShuttingDown = false
@@ -204,6 +152,8 @@ export class Agent implements IAyaAgent {
               const agentId = runtime.agentId
               ayaLogger.warn('Stopping agent runtime...', agentId)
               await runtime.stop()
+              await configManager.stop()
+              await eventManager.stop()
               ayaLogger.success('Agent runtime stopped successfully!', agentId)
             } catch (error) {
               ayaLogger.error('Error stopping agent:', error)
@@ -218,7 +168,7 @@ export class Agent implements IAyaAgent {
         }
       }
 
-      configService.setShutdownFunc(shutdown)
+      configManager.setShutdownFunc(shutdown)
 
       process.once('SIGINT', () => {
         void shutdown('SIGINT')
@@ -240,11 +190,7 @@ export class Agent implements IAyaAgent {
       this.actions.forEach(runtime.registerAction)
 
       // register services
-
-      // register services
-      const ayaServices = [
-        AgentcoinService,
-        ConfigService,
+      const ayaServices: (typeof Service)[] = [
         KnowledgeService,
         MemoriesService,
         WalletService,
@@ -252,8 +198,8 @@ export class Agent implements IAyaAgent {
       ]
       for (const service of ayaServices) {
         console.log('------->', service.serviceType)
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        await hackRegisterService(service as typeof Service, this.runtime)
+
+        await hackRegisterService(service, this.runtime)
       }
 
       console.log('ayaPlugin services', ayaPlugin.services)
@@ -261,7 +207,15 @@ export class Agent implements IAyaAgent {
       await hackRegisterPlugin(ayaPlugin, this.runtime)
       // await hackRegisterPlugin(farcasterPlugin, this.runtime)
 
-      ayaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
+      // start the managers
+      const AGENTCOIN_MONITORING_ENABLED = this.runtime.getSetting('AGENTCOIN_MONITORING_ENABLED')
+
+      if (AGENTCOIN_MONITORING_ENABLED) {
+        ayaLogger.info('Agentcoin monitoring enabled')
+        await configManager.start()
+      }
+
+      logger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
       console.log('sdk error', error)
       ayaLogger.error(
@@ -323,16 +277,66 @@ export class Agent implements IAyaAgent {
     }
   }
 
-  private processSecrets(env: Record<string, string>): void {
+  private async setupCharacter(authInfo: { token: string; identity: string }): Promise<Character> {
+    logger.info('Loading character...')
+    const charString = await fs.promises.readFile(this.pathResolver.characterFile, 'utf8')
+    const character: Character = JSON.parse(charString)
+    if (isNull(character.id)) {
+      throw new Error('Character id not found')
+    }
+
+    // character.templates = {
+    //   ...character.templates,
+    //   messageHandlerTemplate: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
+    // }
+
+    character.settings = character.settings || {}
+    character.secrets = character.secrets || {}
+
+    // setup ayaos token
+    character.secrets[AYA_JWT_SETTINGS_KEY] = authInfo.token
+    character.secrets[AYA_AGENT_IDENTITY_KEY] = authInfo.identity
+    // setup websearch
+    if (isNull(character.settings.TAVILY_API_URL)) {
+      character.settings.TAVILY_API_URL = WEBSEARCH_PROXY
+    }
+    if (character.settings.TAVILY_API_URL === WEBSEARCH_PROXY) {
+      character.settings.TAVILY_API_KEY = authInfo.token
+    }
+
+    // setup llm
+    if (isNull(character.settings.OPENAI_BASE_URL)) {
+      character.settings.OPENAI_BASE_URL = LLM_PROXY
+      character.settings.OPENAI_SMALL_MODEL = DEFAULT_SMALL_MODEL
+      character.settings.OPENAI_LARGE_MODEL = DEFAULT_LARGE_MODEL
+      character.settings.OPENAI_EMBEDDING_MODEL = DEFAULT_EMBEDDING_MODEL
+      character.settings.OPENAI_EMBEDDING_DIMENSIONS = DEFAULT_EMBEDDING_DIMENSIONS
+    }
+    if (character.settings.OPENAI_BASE_URL === LLM_PROXY) {
+      character.settings.OPENAI_API_KEY = authInfo.token
+    }
+
+    logger.info('character', JSON.stringify(character, null, 2))
+
+    return character
+  }
+
+  private processSettings(): Record<string, string> {
+    const env = fs.existsSync(this.pathResolver.envFile)
+      ? loadEnvFile(this.pathResolver.envFile)
+      : loadEnvFile(path.join(process.cwd(), '.env'))
+
     Object.entries(env).forEach(([key, value]) => {
       if (key.startsWith('AGENTCOIN_ENC_') && isRequiredString(value)) {
-        const decryptedValue = this.keychainService.decrypt(value)
+        const decryptedValue = this.keychain.decrypt(value)
         const newKey = key.substring(14)
         ayaLogger.info('Decrypted secret:', newKey)
         env[newKey] = decryptedValue
         delete env[key]
       }
     })
+
+    return env
   }
 }
 
@@ -457,9 +461,7 @@ async function hackRegisterService(service: typeof Service, runtime: IAgentRunti
     return
   }
 
-  console.log('about to start service', serviceType)
   const serviceInstance = await service.start(runtime)
-  console.log('service started', serviceType)
   // Add the service to the services map
   runtime.services.set(serviceType, serviceInstance)
   console.info(

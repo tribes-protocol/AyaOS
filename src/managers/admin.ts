@@ -1,6 +1,6 @@
-import { AgentcoinAPI } from '@/apis/agentcoinfun'
+import { AgentcoinAPI } from '@/apis/aya'
 import { createGenericCharacter } from '@/common/character'
-import { USER_CREDENTIALS_FILE } from '@/common/constants'
+import { AYA_JWT_COOKIE_NAME, USER_CREDENTIALS_FILE } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { ensureUUID, isNull, toJsonTree } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
@@ -10,93 +10,22 @@ import {
   AgentIdentitySchema,
   AgentRegistrationSchema,
   CharacterSchema,
-  ChatChannel,
-  CreateMessage,
   CredentialsSchema,
-  HydratedMessage,
   Identity,
-  MessageStatusEnum,
   User
 } from '@/common/types'
-import { KeychainService } from '@/services/keychain'
-import { IAgentRuntime, Service } from '@elizaos/core'
+import { KeychainManager } from '@/managers/keychain'
 import * as fs from 'fs'
 
-export class AgentcoinService extends Service {
-  private cachedCookie: string | undefined
-  private cachedIdentity: Identity | undefined
-  static readonly serviceType = 'aya-os-agentcoin-service'
-  readonly capabilityDescription = ''
-
+export class LoginManager {
+  private readonly api = new AgentcoinAPI()
   constructor(
-    private readonly keychain: KeychainService,
-    private readonly api: AgentcoinAPI,
+    private readonly keychain: KeychainManager,
     private readonly pathResolver: PathResolver
-  ) {
-    super(undefined)
-  }
-
-  static getInstance(
-    keychain: KeychainService,
-    api: AgentcoinAPI,
-    pathResolver: PathResolver
-  ): AgentcoinService {
-    if (isNull(instance)) {
-      instance = new AgentcoinService(keychain, api, pathResolver)
-    }
-    return instance
-  }
-
-  static async start(_runtime: IAgentRuntime): Promise<Service> {
-    console.log(`[aya] starting ${AgentcoinService.serviceType} service`)
-    if (isNull(instance)) {
-      throw new Error('AgentcoinService not initialized')
-    }
-    return instance
-  }
-
-  static async stop(_runtime: IAgentRuntime): Promise<unknown> {
-    if (isNull(instance)) {
-      throw new Error('AgentcoinService not initialized')
-    }
-    await instance.stop()
-    return instance
-  }
-
-  async stop(): Promise<void> {
-    // nothing to do
-  }
+  ) {}
 
   async getUser(identity: Identity): Promise<User | undefined> {
     return this.api.getUser(identity)
-  }
-
-  async getIdentity(): Promise<Identity> {
-    if (isNull(this.cachedIdentity)) {
-      const { id } = CharacterSchema.parse(
-        JSON.parse(fs.readFileSync(this.pathResolver.characterFile, 'utf-8'))
-      )
-      this.cachedIdentity = AgentIdentitySchema.parse(`AGENT-${id}`)
-    }
-    return this.cachedIdentity
-  }
-
-  async sendStatus(channel: ChatChannel, status: MessageStatusEnum): Promise<void> {
-    const cookie = await this.getCookie()
-
-    await this.api.sendStatus(
-      {
-        channel,
-        status
-      },
-      { cookie }
-    )
-  }
-
-  async sendMessage(message: CreateMessage): Promise<HydratedMessage> {
-    const cookie = await this.getCookie()
-
-    return this.api.sendMessage(message, { cookie })
   }
 
   public async login(identity: Identity): Promise<string> {
@@ -113,10 +42,13 @@ export class AgentcoinService extends Service {
     return token
   }
 
-  async provisionIfNeeded(name?: string | undefined, purpose?: string | undefined): Promise<void> {
+  async provisionIfNeeded(
+    name?: string | undefined,
+    purpose?: string | undefined
+  ): Promise<{ identity: Identity; token: string; cookie: string }> {
     ayaLogger.info('Checking if agent coin is provisioned...')
     if (await this.isProvisioned()) {
-      return
+      return this.getAuthInfo()
     }
 
     ayaLogger.info('Provisioning hardware...')
@@ -126,7 +58,7 @@ export class AgentcoinService extends Service {
     if (!fs.existsSync(regPath)) {
       const agentId = await this.provisionPureAgent(name, purpose)
       ayaLogger.success('Agent coin provisioned successfully', agentId)
-      return
+      return this.getAuthInfo()
     }
 
     const { registrationToken: token } = AgentRegistrationSchema.parse(
@@ -145,26 +77,23 @@ export class AgentcoinService extends Service {
     ayaLogger.success('Agent coin provisioned successfully', character.id)
 
     fs.unlinkSync(regPath)
+
+    return this.getAuthInfo()
   }
 
-  async getCookie(): Promise<string> {
-    if (isNull(this.cachedCookie)) {
-      const identity = await this.getIdentity()
-      this.cachedCookie = await this.login(identity)
-    }
-    return this.cachedCookie
-  }
-
-  async getJwtAuthToken(): Promise<string> {
-    const cookie = await this.getCookie()
-    const match = cookie.match(/jwt_auth_token=([^;]+)/)
+  private async getAuthInfo(): Promise<{ identity: Identity; token: string; cookie: string }> {
+    const identity = await this.getIdentity()
+    const cookie = await this.login(identity)
+    const match = cookie.match(`${AYA_JWT_COOKIE_NAME}=([^;]+)`)
     if (isNull(match)) {
       throw new Error('Could not extract JWT token from cookie')
     }
-    return match[1]
+    const token = match[1]
+
+    return { identity, token, cookie }
   }
 
-  async provisionPureAgent(
+  private async provisionPureAgent(
     name?: string | undefined,
     purpose?: string | undefined
   ): Promise<AgentIdentity> {
@@ -209,7 +138,7 @@ export class AgentcoinService extends Service {
     return agent.id
   }
 
-  async getCliAuthToken(): Promise<string | undefined> {
+  private async getCliAuthToken(): Promise<string | undefined> {
     if (!fs.existsSync(USER_CREDENTIALS_FILE)) {
       return undefined
     }
@@ -219,7 +148,7 @@ export class AgentcoinService extends Service {
     return credentials.token
   }
 
-  async createCliAuthAndWaitForToken(): Promise<string> {
+  private async createCliAuthAndWaitForToken(): Promise<string> {
     // Create the CLI auth request and get the ID
     const id = await this.api.createCliAuthRequest()
 
@@ -287,25 +216,20 @@ export class AgentcoinService extends Service {
     return token
   }
 
+  private async getIdentity(): Promise<Identity> {
+    const { id } = CharacterSchema.parse(
+      JSON.parse(fs.readFileSync(this.pathResolver.characterFile, 'utf-8'))
+    )
+    return AgentIdentitySchema.parse(`AGENT-${id}`)
+  }
+
   private async isProvisioned(): Promise<boolean> {
     try {
-      if (!fs.existsSync(this.pathResolver.characterFile)) {
-        return false
-      }
-
-      const character = CharacterSchema.parse(
-        JSON.parse(fs.readFileSync(this.pathResolver.characterFile, 'utf-8'))
-      )
-
-      if (character.id) {
-        return true
-      }
-      return false
+      await this.getIdentity()
+      return true
     } catch (error) {
       console.log('Error parsing character file:', error)
       return false
     }
   }
 }
-
-let instance: AgentcoinService | undefined

@@ -1,8 +1,7 @@
-import { AYA_SOURCE } from '@/common/constants'
+import { AYA_AGENT_IDENTITY_KEY, AYA_JWT_SETTINGS_KEY, AYA_SOURCE } from '@/common/constants'
 import { AGENT_ADMIN_PUBLIC_KEY, AGENTCOIN_FUN_API_URL } from '@/common/env'
 import {
-  ensureRuntimeService,
-  getPathResolver,
+  ensureStringSetting,
   isNull,
   isRequiredString,
   isValidSignature,
@@ -10,6 +9,7 @@ import {
   serializeIdentity
 } from '@/common/functions'
 
+import { AyaAuthAPI } from '@/apis/aya-auth'
 import { ayaLogger } from '@/common/logger'
 import {
   AgentIdentitySchema,
@@ -23,8 +23,6 @@ import {
   SentinelCommand,
   SentinelCommandSchema
 } from '@/common/types'
-import { AgentcoinService } from '@/services/agentcoinfun'
-import { ConfigService } from '@/services/config'
 import {
   ChannelType,
   Content,
@@ -37,9 +35,7 @@ import {
   stringToUuid,
   UUID
 } from '@elizaos/core'
-import * as fs from 'fs'
 import { io, Socket } from 'socket.io-client'
-
 function messageIdToUuid(messageId: number): UUID {
   return stringToUuid('agentcoin:' + messageId.toString())
 }
@@ -47,6 +43,8 @@ function messageIdToUuid(messageId: number): UUID {
 export class AyaClientService extends Service {
   static instances = new Map<UUID, AyaClientService>()
 
+  private readonly authAPI: AyaAuthAPI
+  private readonly identity: Identity // agent's identity
   private socket?: Socket
   static readonly serviceType = 'aya-os-client-service'
   readonly capabilityDescription = 'The agent is able to send and receive messages on AyaOS.ai'
@@ -54,6 +52,11 @@ export class AyaClientService extends Service {
   constructor(runtime: IAgentRuntime) {
     console.log('AyaService constructor', runtime.agentId)
     super(runtime)
+    const token = ensureStringSetting(runtime, AYA_JWT_SETTINGS_KEY)
+    const identity = ensureStringSetting(runtime, AYA_AGENT_IDENTITY_KEY)
+
+    this.authAPI = new AyaAuthAPI(token)
+    this.identity = AgentIdentitySchema.parse(identity)
   }
 
   async stop(): Promise<void> {
@@ -74,12 +77,6 @@ export class AyaClientService extends Service {
     console.log('starting AyaClientService', this.runtime.agentId)
     logger.info(`[aya] starting AyaClientService for ${this.runtime.agentId}`)
 
-    const agentcoinService = ensureRuntimeService<AgentcoinService>(
-      this.runtime,
-      AgentcoinService.serviceType,
-      'Agentcoin service not found'
-    )
-
     const socket = io(AGENTCOIN_FUN_API_URL, {
       reconnection: true,
       rejectUnauthorized: false,
@@ -91,12 +88,11 @@ export class AyaClientService extends Service {
       autoConnect: true,
       transports: ['websocket', 'polling'],
       extraHeaders: {
-        Cookie: await agentcoinService.getCookie()
+        Cookie: this.authAPI.cookie
       },
       auth: async (cb: (data: unknown) => void) => {
         try {
-          const jwtToken = await agentcoinService.getJwtAuthToken()
-          cb({ jwtToken })
+          cb({ jwtToken: this.authAPI.token })
         } catch (error) {
           logger.error('Error getting JWT token', error)
           cb({})
@@ -106,8 +102,7 @@ export class AyaClientService extends Service {
 
     this.socket = socket
 
-    const identity = await agentcoinService.getIdentity()
-    const eventName = `user:${serializeIdentity(identity)}`
+    const eventName = `user:${serializeIdentity(this.identity)}`
     logger.info(
       `[aya] AyaOS (${process.env.npm_package_version}) client listening for event`,
       eventName
@@ -126,7 +121,7 @@ export class AyaClientService extends Service {
         }
 
         // validate channel
-        if (channel.firstIdentity !== identity && channel.secondIdentity !== identity) {
+        if (channel.firstIdentity !== this.identity && channel.secondIdentity !== this.identity) {
           ayaLogger.info('Agentcoin client received msg for unknown channel', channel)
           return
         }
@@ -151,7 +146,7 @@ export class AyaClientService extends Service {
 
     // listen on admin commands
     if (AGENTCOIN_MONITORING_ENABLED) {
-      this.socket.on(`admin:${identity}`, async (payload: string) => {
+      this.socket.on(`admin:${this.identity}`, async (payload: string) => {
         try {
           const jsonObj = JSON.parse(payload)
           const { content, signature } = jsonObj
@@ -215,42 +210,30 @@ export class AyaClientService extends Service {
     }
   }
 
-  private async handleSetEnvvars(envVars: Record<string, string>): Promise<void> {
-    const envContent = Object.entries(envVars)
-      .map(([key, value]) => `${key}=${value}`)
-      .join('\n')
-
-    const pathResolver = getPathResolver(this.runtime)
-    await fs.promises.writeFile(pathResolver.envFile, envContent)
-
-    const configService = ensureRuntimeService<ConfigService>(
-      this.runtime,
-      ConfigService.serviceType,
-      'Config service not found'
-    )
-    await configService.checkEnvUpdate()
+  private async handleSetEnvvars(_envVars: Record<string, string>): Promise<void> {
+    // FIXME: hish - handle this
+    // const envContent = Object.entries(envVars)
+    //   .map(([key, value]) => `${key}=${value}`)
+    //   .join('\n')
+    // const pathResolver = getPathResolver(this.runtime)
+    // await fs.promises.writeFile(pathResolver.envFile, envContent)
+    // const configService = ensureRuntimeService<ConfigManager>(
+    //   this.runtime,
+    //   ConfigManager.serviceType,
+    //   'Config service not found'
+    // )
+    // await configService.checkEnvUpdate()
   }
 
   private async sendStatus(channel: ChatChannel, status: MessageStatusEnum): Promise<() => void> {
-    const agentcoinService = ensureRuntimeService<AgentcoinService>(
-      this.runtime,
-      AgentcoinService.serviceType,
-      'Agentcoin service not found'
-    )
-    await agentcoinService.sendStatus(channel, status)
+    await this.authAPI.sendStatus({ channel, status })
     const statusInterval = setInterval(async () => {
-      await agentcoinService.sendStatus(channel, status)
+      await this.authAPI.sendStatus({ channel, status })
     }, 5000)
     return () => clearInterval(statusInterval)
   }
 
   private async processMessage(channel: ChatChannel, data: unknown): Promise<void> {
-    const agentcoinService = ensureRuntimeService<AgentcoinService>(
-      this.runtime,
-      AgentcoinService.serviceType,
-      'Agentcoin service not found'
-    )
-    const identity = await agentcoinService.getIdentity()
     const messages = HydratedMessageSchema.array().parse(data)
 
     const { message, user } = messages[0]
@@ -260,7 +243,7 @@ export class AyaClientService extends Service {
       return
     }
 
-    if (message.sender === identity) {
+    if (message.sender === this.identity) {
       return
     }
 
@@ -333,12 +316,6 @@ export class AyaClientService extends Service {
     content: Content
     channel: ChatChannel
   }): Promise<Memory | undefined> {
-    const agentcoinService = ensureRuntimeService<AgentcoinService>(
-      this.runtime,
-      AgentcoinService.serviceType,
-      'Agentcoin service not found'
-    )
-
     const { text, actions, inReplyTo, attachments } = content
 
     // TODO: hish - need to update code to handle multiple attachments
@@ -351,7 +328,7 @@ export class AyaClientService extends Service {
       return undefined
     }
 
-    const agentcoinResponse = await agentcoinService.sendMessage({
+    const agentcoinResponse = await this.authAPI.sendMessage({
       text: messageText,
       sender: identity,
       channel,

@@ -309,3 +309,11 @@ export function getPathResolver(runtime: IAgentRuntime): PathResolver {
     `Path resolver not found for ${runtime.agentId}`
   )
 }
+
+export function ensureStringSetting(runtime: IAgentRuntime, key: string): string {
+  const value = ensure(runtime.getSetting(key), `${key} not found in settings`)
+  if (!isRequiredString(value)) {
+    throw new Error(`Setting ${key} is not a string`)
+  }
+  return value
+}

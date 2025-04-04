@@ -1,4 +1,4 @@
-import { KeyPair, KeyPairSchema } from '@/common/types'
+import { Identity, KeyPair, KeyPairSchema } from '@/common/types'
 import { ApiKeyStamper } from '@turnkey/sdk-server'
 import { createDecipheriv, createHash } from 'crypto'
 import EC from 'elliptic'
@@ -7,7 +7,7 @@ import * as fs from 'fs'
 // eslint-disable-next-line new-cap
 export const ec = new EC.ec('p256')
 
-export class KeychainService {
+export class KeychainManager {
   private readonly keyPairData: KeyPair
 
   public get publicKey(): string {
@@ -62,5 +62,20 @@ export class KeychainService {
     decrypted += decipher.final('utf8')
 
     return decrypted
+  }
+}
+
+export const KeychainFactory = {
+  instances: new Map<string, KeychainManager>(),
+
+  associate(agent: Identity, keychain: KeychainManager): void {
+    if (this.instances.has(agent)) {
+      throw new Error('Keychain already associated with agent')
+    }
+    this.instances.set(agent, keychain)
+  },
+
+  get(agent: Identity): KeychainManager | undefined {
+    return this.instances.get(agent)
   }
 }

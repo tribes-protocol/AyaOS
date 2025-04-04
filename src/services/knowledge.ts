@@ -1,12 +1,19 @@
-import { AgentcoinAPI } from '@/apis/agentcoinfun'
-import { isNull } from '@/common/functions'
+import { AyaAuthAPI } from '@/apis/aya-auth'
+import { AYA_AGENT_IDENTITY_KEY, AYA_JWT_SETTINGS_KEY } from '@/common/constants'
+import { ensureStringSetting, isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
-import { Identity, RAGKnowledgeItem, RagKnowledgeItemContent } from '@/common/types'
+import {
+  AgentIdentitySchema,
+  Identity,
+  RAGKnowledgeItem,
+  RagKnowledgeItemContent
+} from '@/common/types'
 import { IKnowledgeService } from '@/services/interfaces'
 import { IAgentRuntime, Service, UUID } from '@elizaos/core'
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 
 export class KnowledgeService extends Service implements IKnowledgeService {
+  static readonly instances = new Map<UUID, KnowledgeService>()
   private isRunning = false
   private readonly textSplitter = new RecursiveCharacterTextSplitter({
     chunkSize: 7000, // text-embedding-ada-002 has a max token limit of ~8000
@@ -16,26 +23,15 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   static readonly serviceType = 'aya-os-knowledge-service'
   readonly capabilityDescription = ''
+  private readonly authAPI: AyaAuthAPI
+  private readonly identity: Identity
 
-  private constructor(
-    readonly runtime: IAgentRuntime,
-    private readonly agentCoinApi: AgentcoinAPI,
-    private readonly agentCoinCookie: string,
-    private readonly agentCoinIdentity: Identity
-  ) {
-    super(undefined)
-  }
-
-  static getInstance(
-    runtime: IAgentRuntime,
-    agentCoinApi: AgentcoinAPI,
-    agentCoinCookie: string,
-    agentCoinIdentity: Identity
-  ): IKnowledgeService {
-    if (isNull(instance)) {
-      instance = new KnowledgeService(runtime, agentCoinApi, agentCoinCookie, agentCoinIdentity)
-    }
-    return instance
+  constructor(readonly runtime: IAgentRuntime) {
+    super(runtime)
+    const token = ensureStringSetting(runtime, AYA_JWT_SETTINGS_KEY)
+    const identity = ensureStringSetting(runtime, AYA_AGENT_IDENTITY_KEY)
+    this.authAPI = new AyaAuthAPI(token)
+    this.identity = AgentIdentitySchema.parse(identity)
   }
 
   private async start(): Promise<void> {
@@ -67,17 +63,21 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   static async start(_runtime: IAgentRuntime): Promise<Service> {
     console.log(`[aya] starting ${KnowledgeService.serviceType} service`)
-    if (isNull(instance)) {
-      throw new Error('KnowledgeService not initialized')
+    let instance = KnowledgeService.instances.get(_runtime.agentId)
+    if (instance) {
+      return instance
     }
+    instance = new KnowledgeService(_runtime)
+    KnowledgeService.instances.set(_runtime.agentId, instance)
     // don't await this. it'll lock up the main process
     void instance.start()
     return instance
   }
 
   static async stop(_runtime: IAgentRuntime): Promise<unknown> {
+    const instance = KnowledgeService.instances.get(_runtime.agentId)
     if (isNull(instance)) {
-      throw new Error('ConfigService not initialized')
+      return undefined
     }
     await instance.stop()
     return instance
@@ -371,5 +371,3 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     // await this.runtime.databaseAdapter.removeKnowledge(id)
   }
 }
-
-let instance: KnowledgeService | undefined

@@ -1,66 +1,64 @@
-import { AgentcoinAPI } from '@/apis/agentcoinfun'
-import { isNull } from '@/common/functions'
-import { AgentWallet, AgentWalletKind, HexString, Identity, Transaction } from '@/common/types'
+import { AyaAuthAPI } from '@/apis/aya-auth'
+import { AYA_AGENT_IDENTITY_KEY, AYA_JWT_SETTINGS_KEY } from '@/common/constants'
+import { ensureStringSetting, isNull } from '@/common/functions'
+import {
+  AgentIdentitySchema,
+  AgentWallet,
+  AgentWalletKind,
+  HexString,
+  Identity,
+  Transaction
+} from '@/common/types'
+import { KeychainFactory } from '@/managers/keychain'
 import { IWalletService } from '@/services/interfaces'
-import { IAgentRuntime, Service } from '@elizaos/core'
+import { IAgentRuntime, Service, UUID } from '@elizaos/core'
 import { TurnkeyClient } from '@turnkey/http'
-import { ApiKeyStamper } from '@turnkey/sdk-server'
 import { createAccountWithAddress } from '@turnkey/viem'
 import { Account, getAddress, WalletClient } from 'viem'
 import { base } from 'viem/chains'
 
 export class WalletService extends Service implements IWalletService {
+  static readonly instances = new Map<UUID, WalletService>()
   private readonly turnkey: TurnkeyClient
 
   static readonly serviceType = 'aya-os-wallet-service'
   readonly capabilityDescription = ''
+  private readonly authAPI: AyaAuthAPI
+  private readonly identity: Identity
 
-  private constructor(
-    private readonly agentcoinCookie: string,
-    private readonly agentcoinIdentity: Identity,
-    private readonly agentcoinAPI: AgentcoinAPI,
-    readonly runtime: IAgentRuntime,
-    apiKeyStamper: ApiKeyStamper
-  ) {
+  constructor(readonly runtime: IAgentRuntime) {
     super(runtime)
+    const token = ensureStringSetting(runtime, AYA_JWT_SETTINGS_KEY)
+    const identity = ensureStringSetting(runtime, AYA_AGENT_IDENTITY_KEY)
+    this.authAPI = new AyaAuthAPI(token)
+    this.identity = AgentIdentitySchema.parse(identity)
+    const keychain = KeychainFactory.get(this.identity)
+    if (isNull(keychain)) {
+      throw new Error(`Keychain not found for agent ${this.identity}`)
+    }
     this.turnkey = new TurnkeyClient(
       {
         baseUrl: 'https://api.turnkey.com'
       },
-      apiKeyStamper
+      keychain.turnkeyApiKeyStamper
     )
-  }
-
-  static getInstance(
-    agentcoinCookie: string,
-    agentcoinIdentity: Identity,
-    agentcoinAPI: AgentcoinAPI,
-    runtime: IAgentRuntime,
-    apiKeyStamper: ApiKeyStamper
-  ): IWalletService {
-    if (isNull(instance)) {
-      instance = new WalletService(
-        agentcoinCookie,
-        agentcoinIdentity,
-        agentcoinAPI,
-        runtime,
-        apiKeyStamper
-      )
-    }
-    return instance
   }
 
   static async start(_runtime: IAgentRuntime): Promise<Service> {
     console.log(`[aya] starting ${WalletService.serviceType} service`)
-    if (isNull(instance)) {
-      throw new Error('WalletService not initialized')
+    let instance = WalletService.instances.get(_runtime.agentId)
+    if (instance) {
+      return instance
     }
+    instance = new WalletService(_runtime)
+    WalletService.instances.set(_runtime.agentId, instance)
     return instance
   }
 
   static async stop(_runtime: IAgentRuntime): Promise<unknown> {
+    const instance = WalletService.instances.get(_runtime.agentId)
     if (isNull(instance)) {
-      throw new Error('WalletService not initialized')
+      return undefined
     }
     await instance.stop()
     return instance
@@ -71,9 +69,7 @@ export class WalletService extends Service implements IWalletService {
   }
 
   async getDefaultWallet(kind: AgentWalletKind): Promise<AgentWallet> {
-    const wallet = await this.agentcoinAPI.getDefaultWallet(this.agentcoinIdentity, kind, {
-      cookie: this.agentcoinCookie
-    })
+    const wallet = await this.authAPI.getDefaultWallet(this.identity, kind)
     if (isNull(wallet)) {
       throw new Error('Failed to get default wallet')
     }
@@ -125,5 +121,3 @@ export class WalletService extends Service implements IWalletService {
     return account
   }
 }
-
-let instance: WalletService | undefined
