@@ -3,6 +3,8 @@ import { MessageManager } from '@/clients/telegram/messageManager'
 import { isNull } from '@/common/functions'
 import { Client, IAyaRuntime } from '@/common/iruntime'
 import { ayaLogger } from '@/common/logger'
+import { ITelegramManager } from '@/services/interfaces'
+import { Content } from '@elizaos/core'
 import { type Context, Telegraf } from 'telegraf'
 
 interface TelegramError {
@@ -15,7 +17,7 @@ function isTelegramError(error: unknown): error is TelegramError {
   return typeof error === 'object' && error !== null && 'response' in error
 }
 
-export class TelegramClient implements Client {
+export class TelegramClient implements Client, ITelegramManager {
   private bot: Telegraf<Context>
   private runtime: IAyaRuntime
   private messageManager: MessageManager
@@ -41,6 +43,15 @@ export class TelegramClient implements Client {
     this.backendToken = runtime.getSetting('BACKEND_TOKEN')
     this.tgTrader = runtime.getSetting('TG_TRADER') // boolean To Be added to the settings
     ayaLogger.info('✅ TelegramClient constructor completed')
+  }
+
+  async sendMessage(params: {
+    chatId: number | string
+    content: Content
+    replyToMessage?: number | string
+  }): Promise<number> {
+    const message = await this.messageManager.sendMessage(params)
+    return message.message_id
   }
 
   public async start(runtime: IAyaRuntime): Promise<void> {

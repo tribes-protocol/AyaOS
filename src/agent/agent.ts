@@ -14,7 +14,12 @@ import agentcoinPlugin from '@/plugins/agentcoin'
 import { AgentcoinService } from '@/services/agentcoinfun'
 import { ConfigService } from '@/services/config'
 import { EventService } from '@/services/event'
-import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
+import {
+  IKnowledgeService,
+  IMemoriesService,
+  IWalletService,
+  ITelegramManager
+} from '@/services/interfaces'
 import { KeychainService } from '@/services/keychain'
 import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
@@ -33,6 +38,7 @@ import {
 import { bootstrapPlugin } from '@elizaos/plugin-bootstrap'
 import fs from 'fs'
 import path from 'path'
+import { TelegramClient } from '@/clients/telegram/telegramClient'
 
 const reservedAgentDirs = new Set<string | undefined>()
 
@@ -89,6 +95,14 @@ export class Agent implements IAyaAgent {
   get wallet(): IWalletService {
     const service = this.runtime.getService(WalletService)
     return ensure(service, 'Wallet service not found')
+  }
+
+  get telegram(): ITelegramManager {
+    const client = this.runtime.clients.find((c) => c instanceof TelegramClient)
+    if (isNull(client) || !(client instanceof TelegramClient)) {
+      throw new Error('Telegram client not found')
+    }
+    return client
   }
 
   async start(): Promise<void> {
