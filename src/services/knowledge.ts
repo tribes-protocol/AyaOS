@@ -29,15 +29,42 @@ import {
   Service,
   splitChunks,
   stringToUuid,
-  UUID
+  UUID,
+  VECTOR_DIMS
 } from '@elizaos/core'
 import { CSVLoader } from '@langchain/community/document_loaders/fs/csv'
 import { DocxLoader } from '@langchain/community/document_loaders/fs/docx'
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf'
 import axios from 'axios'
+import { drizzle as drizzlePg, NodePgDatabase } from 'drizzle-orm/node-postgres'
+import { boolean, pgTable, text, timestamp, uuid, vector } from 'drizzle-orm/pg-core'
+import { drizzle, PgliteDatabase } from 'drizzle-orm/pglite'
 import fs from 'fs/promises'
 import { TextLoader } from 'langchain/document_loaders/fs/text'
 import path from 'path'
+
+export const Knowledges = pgTable('knowledge', {
+  id: uuid('id').$type<UUID>().primaryKey(),
+  agentId: uuid('agent_id').$type<UUID>().notNull(),
+  text: text('text').notNull(),
+  kind: text('kind').notNull(),
+  source: text('source').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  isMain: boolean('is_main').default(false),
+  documentId: uuid('document_id').notNull()
+})
+
+export const KnowledgeEmbeddings = pgTable('knowledge_embeddings', {
+  id: uuid('id').primaryKey().defaultRandom().notNull(),
+  knowledgeId: uuid('knowledge_id').references(() => Knowledges.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  dim384: vector('dim_384', { dimensions: VECTOR_DIMS.SMALL }),
+  dim512: vector('dim_512', { dimensions: VECTOR_DIMS.MEDIUM }),
+  dim768: vector('dim_768', { dimensions: VECTOR_DIMS.LARGE }),
+  dim1024: vector('dim_1024', { dimensions: VECTOR_DIMS.XL }),
+  dim1536: vector('dim_1536', { dimensions: VECTOR_DIMS.XXL }),
+  dim3072: vector('dim_3072', { dimensions: VECTOR_DIMS.XXXL })
+})
 
 export class KnowledgeService extends Service implements IKnowledgeService {
   static readonly instances = new Map<UUID, KnowledgeService>()
@@ -46,6 +73,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   private readonly identity: Identity
   private readonly authAPI: AyaAuthAPI
   private readonly pathResolver: PathManager
+  private db!: NodePgDatabase | PgliteDatabase
 
   static readonly serviceType = 'aya-os-knowledge-service'
   readonly capabilityDescription = ''
@@ -62,10 +90,70 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     this.pathResolver = managers.path
   }
 
+  private async initializeTables(): Promise<void> {
+    try {
+      const postgresUrl = this.runtime.getSetting('POSTGRES_URL')
+      const pgliteDataDir = this.runtime.getSetting('PGLITE_DATA_DIR') ?? './pglite'
+
+      if (postgresUrl) {
+        const pgModule = await import('pg')
+        const { Pool } = pgModule.default || pgModule
+        const pool = new Pool({ connectionString: postgresUrl })
+        this.db = drizzlePg(pool)
+        ayaLogger.success('Connected to PostgreSQL database')
+      } else {
+        const { PGlite } = await import('@electric-sql/pglite')
+        const pglite = new PGlite({ dataDir: pgliteDataDir })
+        this.db = drizzle(pglite)
+        ayaLogger.success('Connected to PGlite database')
+      }
+
+      // Create knowledge table if it doesn't exist
+      await this.db.execute(`
+        CREATE TABLE IF NOT EXISTS knowledge (
+          id UUID PRIMARY KEY,
+          agent_id UUID NOT NULL,
+          text TEXT NOT NULL,
+          kind TEXT NOT NULL,
+          source TEXT NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          is_main BOOLEAN DEFAULT FALSE,
+          "document_id" UUID NOT NULL
+        );
+      `)
+
+      // Create knowledge_embeddings table if it doesn't exist
+      await this.db.execute(`
+        CREATE TABLE IF NOT EXISTS knowledge_embeddings (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          knowledge_id UUID REFERENCES knowledge(id),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          dim_384 VECTOR(${VECTOR_DIMS.SMALL}),
+          dim_512 VECTOR(${VECTOR_DIMS.MEDIUM}),
+          dim_768 VECTOR(${VECTOR_DIMS.LARGE}),
+          dim_1024 VECTOR(${VECTOR_DIMS.XL}),
+          dim_1536 VECTOR(${VECTOR_DIMS.XXL}),
+          dim_3072 VECTOR(${VECTOR_DIMS.XXXL})
+        );
+      `)
+
+      ayaLogger.success('Database tables initialized successfully')
+    } catch (error) {
+      console.error('Failed to initialize database tables:', error)
+      throw new Error(
+        `Failed to initialize database tables: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      )
+    }
+  }
+
   private async start(): Promise<void> {
     if (this.isRunning) {
       return
     }
+
+    await this.initializeTables()
 
     this.isRunning = true
     while (this.isRunning) {
@@ -94,6 +182,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     if (instance) {
       return instance
     }
+
     instance = new KnowledgeService(runtime)
     KnowledgeService.instances.set(runtime.agentId, instance)
     // don't await this. it'll lock up the main process

@@ -6,7 +6,6 @@ import {
   LLM_PROXY,
   WEBSEARCH_PROXY
 } from '@/common/constants'
-import { messageHandlerTemplate } from '@/common/templates'
 import { Character, UUID } from '@elizaos/core'
 
 export function createGenericCharacter(name: string, id: UUID): Character {
@@ -38,10 +37,7 @@ export function createGenericCharacter(name: string, id: UUID): Character {
       chat: ['conversational', 'empathetic', 'thoughtful'],
       post: ['reflective', 'engaging', 'personal']
     },
-    plugins: [],
-    templates: {
-      messageHandlerTemplate
-    }
+    plugins: []
   }
 
   return character
