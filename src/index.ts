@@ -14,15 +14,14 @@ import {
 
 export { Agent } from '@/agent/agent'
 export type { IAyaAgent } from '@/agent/iagent'
-export { RateLimiter } from '@/agent/ratelimitter'
+export { RateLimiter } from '@/agent/ratelimiter'
 export { ensureUUID } from '@/common/functions'
-export type { Action, Client, IAyaRuntime, Plugin, Provider } from '@/common/iruntime'
-export { AyaRuntime as AgentcoinRuntime } from '@/common/runtime'
 export { ContextHandler } from '@/common/types'
 export type { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
 export { KnowledgeService } from '@/services/knowledge'
 export { MemoriesService } from '@/services/memories'
 export { WalletService } from '@/services/wallet'
+export type { Action, IAgentRuntime, Plugin, Provider } from '@elizaos/core'
 
 // Export values (classes, enums, functions)
 export { Service, ServiceType, stringToUuid }

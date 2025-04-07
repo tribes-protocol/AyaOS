@@ -4,16 +4,18 @@ import {
   type IWebSearchService,
   type SearchOptions,
   type SearchResponse
-} from '@/plugins/websearch/types'
-import { Service, ServiceTypeName, UUID, type IAgentRuntime } from '@elizaos/core'
+} from '@/plugins/aya/types'
+import { Service, UUID, type IAgentRuntime } from '@elizaos/core'
 
 export class WebSearchService extends Service implements IWebSearchService {
   private static services = new Map<UUID, WebSearchService>()
+  static readonly serviceType = 'aya-os-websearch-service'
+
   readonly capabilityDescription = 'The agent is able to search the web for information'
   private apiKey: string
   private apiUrl: string = 'https://api.tavily.com/search'
 
-  private constructor(runtime: IAgentRuntime) {
+  constructor(runtime: IAgentRuntime) {
     super(runtime)
     this.apiKey = runtime.getSetting('TAVILY_API_KEY')
     const customApiUrl = runtime.getSetting('TAVILY_API_URL')
@@ -45,10 +47,6 @@ export class WebSearchService extends Service implements IWebSearchService {
       WebSearchService.services.delete(_runtime.agentId)
     }
     return undefined
-  }
-
-  static get serviceType(): ServiceTypeName {
-    return 'web_search'
   }
 
   async stop(): Promise<void> {}

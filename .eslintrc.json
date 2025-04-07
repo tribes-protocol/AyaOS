@@ -105,11 +105,6 @@
             "name": "@reown/appkit/networks",
             "importNames": ["base", "mainnet"],
             "message": "Do not use base directly. Use supported_chains instead."
-          },
-          {
-            "name": "@elizaos/core",
-            "importNames": ["Client", "Action", "Provider", "elizaLogger", "Plugin"],
-            "message": "Do not import Client, Action or Provider from @elizaos/core."
           }
         ]
       }

@@ -1,124 +1,22 @@
-import { ensure, isNull } from '@/common/functions'
-// import { KnowledgeService } from '@/services/knowledge'
-import { IAyaRuntime, Plugin, ServiceLike } from '@/common/iruntime'
+import { AgentRegistry } from '@/agent/registry'
+import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
+import { ensureStringSetting, isNull } from '@/common/functions'
 import { validateResponse } from '@/common/llms/response-validator'
-import { PathResolver } from '@/common/path-resolver'
 import {
-  AgentRuntime,
   asUUID,
-  Character,
   composePromptFromState,
   Content,
   createUniqueUuid,
-  // eslint-disable-next-line no-restricted-imports
-  Plugin as ElizaPlugin,
   EventType,
-  IDatabaseAdapter,
   logger,
   Memory,
   messageHandlerTemplate,
-  MessagePayload,
   MessageReceivedHandlerParams,
   ModelType,
   parseJSONObjectFromText,
-  RuntimeSettings,
-  Service,
-  ServiceTypeName,
-  shouldRespondTemplate,
-  UUID
+  shouldRespondTemplate
 } from '@elizaos/core'
-import bootstrapPlugin from '@elizaos/plugin-bootstrap'
 import { v4 } from 'uuid'
-
-export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
-  public readonly pathResolver: PathResolver
-
-  public constructor(opts: {
-    eliza: {
-      conversationLength?: number
-      agentId?: UUID
-      character: Character
-      plugins?: Plugin[]
-      fetch?: typeof fetch
-      adapter?: IDatabaseAdapter
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      events?: { [key: string]: ((params: any) => void)[] }
-      settings?: RuntimeSettings
-    }
-    pathResolver: PathResolver
-  }) {
-    if (isNull(opts.eliza.character.plugins)) {
-      opts.eliza.character.plugins = []
-    }
-
-    // FIXME: hish - remove hack once my PR in elizaos is merged
-    opts.eliza.character.secrets = opts.eliza.character.secrets || {}
-    if (process.env.FARCASTER_FID) {
-      opts.eliza.character.secrets.FARCASTER_FID = process.env.FARCASTER_FID
-    }
-
-    // require plugins
-    const requiredPlugins = ['@elizaos/plugin-sql']
-    for (const plugin of requiredPlugins) {
-      if (!opts.eliza.character.plugins.includes(plugin)) {
-        opts.eliza.character.plugins.push(plugin)
-      }
-    }
-
-    // Inject our own bootstrap plugin
-    const ayaBootstrapPlugin: Plugin = {
-      ...bootstrapPlugin,
-      name: 'Aya plugin-bootstrap overrides',
-      description: 'Aya bootstrap plugin'
-    }
-
-    ayaBootstrapPlugin.events = ayaBootstrapPlugin.events || {}
-    ayaBootstrapPlugin.events[EventType.MESSAGE_RECEIVED] = [
-      async (payload: MessagePayload) => {
-        if (isNull(payload.callback)) {
-          throw Error('Callback is required')
-        }
-
-        await messageReceivedHandler({
-          runtime: payload.runtime,
-          message: payload.message,
-          callback: payload.callback,
-          onComplete: payload.onComplete
-        })
-      }
-    ]
-    ayaBootstrapPlugin.events[EventType.VOICE_MESSAGE_RECEIVED] = []
-
-    // TODO: hish - plugin-bootstrap is overriding this with the wrong type
-    // ayaBootstrapPlugin.events[EventType.VOICE_MESSAGE_RECEIVED] =[]
-
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const plugins = [...(opts.eliza.plugins || []), ayaBootstrapPlugin] as ElizaPlugin[]
-
-    super({ ...opts.eliza, plugins })
-    this.pathResolver = opts.pathResolver
-  }
-
-  getService<T extends Service>(service: ServiceLike): T | null {
-    // Handle existing case where ServiceType or string is passed
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    return super.getService(service as ServiceTypeName) as T
-  }
-
-  ensureService<T extends Service>(service: ServiceLike, message?: string): T {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    return ensure(this.getService(service), message) as T
-  }
-
-  ensureSetting(key: string, message?: string): string {
-    return ensure(super.getSetting(key), message)
-  }
-
-  registerPlugin(plugin: Plugin): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    return super.registerPlugin(plugin as ElizaPlugin)
-  }
-}
 
 const latestResponseIds = new Map<string, Map<string, string>>()
 
@@ -131,7 +29,7 @@ const latestResponseIds = new Map<string, Map<string, string>>()
  * @returns {Promise<void>} - A promise that resolves once the message handling and response
  * generation is complete.
  */
-const messageReceivedHandler = async ({
+export const messageReceivedHandler = async ({
   runtime,
   message,
   callback,
@@ -141,6 +39,9 @@ const messageReceivedHandler = async ({
   if (isNull(messageId)) {
     throw Error(`Message ID is required: ${message}`)
   }
+
+  const dataDir = ensureStringSetting(runtime, AYA_AGENT_DATA_DIR_KEY)
+  const { rateLimiter } = AgentRegistry.get(dataDir)
 
   // Generate a new response ID
   const responseId = v4()
@@ -202,10 +103,16 @@ const messageReceivedHandler = async ({
       }
 
       // First, save the incoming message
-      await Promise.all([
-        runtime.addEmbeddingToMemory(message),
-        runtime.createMemory(message, 'messages')
-      ])
+      await runtime.addEmbeddingToMemory(message)
+      await runtime.createMemory(message, 'messages')
+
+      if (rateLimiter) {
+        const canProcess = await rateLimiter.canProcess(message)
+        if (!canProcess) {
+          logger.warn('Rate limit exceeded, skipping message from user:', message.entityId)
+          return
+        }
+      }
 
       const agentUserState = await runtime.getParticipantUserState(message.roomId, runtime.agentId)
 

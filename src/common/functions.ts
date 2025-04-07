@@ -11,11 +11,12 @@ import {
   Identity,
   IdentitySchema
 } from '@/common/types'
-import { UUID } from '@elizaos/core'
+import { IAgentRuntime, Service, ServiceTypeName, UUID } from '@elizaos/core'
 import crypto, { createHash } from 'crypto'
 import EC from 'elliptic'
 import fs from 'fs'
 import path from 'path'
+
 // eslint-disable-next-line new-cap
 export const ec = new EC.ec('p256')
 
@@ -288,4 +289,23 @@ export function loadEnvFile(filePath: string): Record<string, string> {
       `Error reading env file: ${error instanceof Error ? error.message : String(error)}`
     )
   }
+}
+
+export type ServiceLike = ServiceTypeName | string
+
+export function ensureRuntimeService<T extends Service>(
+  runtime: IAgentRuntime,
+  service: ServiceLike,
+  message?: string
+): T {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  return ensure(runtime.getService(service as ServiceTypeName), message) as T
+}
+
+export function ensureStringSetting(runtime: IAgentRuntime, key: string): string {
+  const value = ensure(runtime.getSetting(key), `${key} not found in settings`)
+  if (!isRequiredString(value)) {
+    throw new Error(`Setting ${key} is not a string`)
+  }
+  return value
 }

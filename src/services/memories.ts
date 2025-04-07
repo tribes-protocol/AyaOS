@@ -1,21 +1,16 @@
 import { isNull } from '@/common/functions'
-import { IAyaRuntime } from '@/common/iruntime'
-import { ServiceKind } from '@/common/types'
 import { IMemoriesService } from '@/services/interfaces'
-import { Memory, Service } from '@elizaos/core'
+import { IAgentRuntime, Memory, Service, UUID } from '@elizaos/core'
 
 export class MemoriesService extends Service implements IMemoriesService {
+  static readonly instances = new Map<UUID, MemoriesService>()
   public readonly capabilityDescription: string = 'Allows the agent to search for memories'
-  protected readonly runtime: IAyaRuntime
 
-  private constructor(runtime: IAyaRuntime) {
+  constructor(readonly runtime: IAgentRuntime) {
     super(runtime)
-    this.runtime = runtime
   }
 
-  static get serviceType(): string {
-    return ServiceKind.memories
-  }
+  static readonly serviceType = 'aya-os-memories-service'
 
   async search(_options: {
     q: string
@@ -34,21 +29,24 @@ export class MemoriesService extends Service implements IMemoriesService {
     // })
   }
 
-  static async start(_runtime: IAyaRuntime): Promise<Service> {
-    if (isNull(instance)) {
-      instance = new MemoriesService(_runtime)
+  static async start(_runtime: IAgentRuntime): Promise<Service> {
+    let instance = MemoriesService.instances.get(_runtime.agentId)
+    if (instance) {
+      return instance
     }
+    instance = new MemoriesService(_runtime)
+    MemoriesService.instances.set(_runtime.agentId, instance)
     return instance
   }
 
-  static async stop(_runtime: IAyaRuntime): Promise<void> {
+  static async stop(_runtime: IAgentRuntime): Promise<unknown> {
+    const instance = MemoriesService.instances.get(_runtime.agentId)
     if (isNull(instance)) {
-      throw new Error('MemoriesService not initialized')
+      return undefined
     }
     await instance.stop()
+    return instance
   }
 
   async stop(): Promise<void> {}
 }
-
-let instance: MemoriesService | undefined

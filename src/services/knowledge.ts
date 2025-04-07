@@ -1,71 +1,31 @@
-import { AgentcoinAPI } from '@/apis/agentcoinfun'
-import { DOCUMENT_TABLE_NAME, KNOWLEDGE_TABLE_NAME } from '@/common/constants'
-import { calculateChecksum, isNull } from '@/common/functions'
-import { IAyaRuntime } from '@/common/iruntime'
+import { AyaAuthAPI } from '@/apis/aya-auth'
+import { AYA_AGENT_IDENTITY_KEY, AYA_JWT_SETTINGS_KEY } from '@/common/constants'
+import { ensureStringSetting, isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
-import { PathResolver } from '@/common/path-resolver'
 import {
+  AgentIdentitySchema,
   Identity,
-  Knowledge,
   RAGKnowledgeItem,
-  RagKnowledgeItemContent,
-  ServiceKind
+  RagKnowledgeItemContent
 } from '@/common/types'
 import { IKnowledgeService } from '@/services/interfaces'
-import {
-  createUniqueUuid,
-  Memory,
-  MemoryType,
-  ModelType,
-  Service,
-  splitChunks,
-  stringToUuid,
-  UUID
-} from '@elizaos/core'
-import { CSVLoader } from '@langchain/community/document_loaders/fs/csv'
-import { DocxLoader } from '@langchain/community/document_loaders/fs/docx'
-import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf'
-import axios from 'axios'
-import fs from 'fs/promises'
-import { TextLoader } from 'langchain/document_loaders/fs/text'
-import path from 'path'
+import { IAgentRuntime, Service, UUID } from '@elizaos/core'
 
 export class KnowledgeService extends Service implements IKnowledgeService {
+  static readonly instances = new Map<UUID, KnowledgeService>()
   private isRunning = false
 
-  readonly capabilityDescription = 'This service is responsible for knowledge management.'
+  static readonly serviceType = 'aya-os-knowledge-service'
+  readonly capabilityDescription = ''
+  private readonly authAPI: AyaAuthAPI
+  private readonly identity: Identity
 
-  private constructor(
-    readonly runtime: IAyaRuntime,
-    private readonly agentCoinApi: AgentcoinAPI,
-    private readonly agentCoinCookie: string,
-    private readonly agentCoinIdentity: Identity,
-    private readonly pathResolver: PathResolver
-  ) {
-    super(undefined)
-  }
-
-  static get serviceType(): string {
-    return ServiceKind.knowledge
-  }
-
-  static getInstance(
-    runtime: IAyaRuntime,
-    agentCoinApi: AgentcoinAPI,
-    agentCoinCookie: string,
-    agentCoinIdentity: Identity,
-    pathResolver: PathResolver
-  ): IKnowledgeService {
-    if (isNull(instance)) {
-      instance = new KnowledgeService(
-        runtime,
-        agentCoinApi,
-        agentCoinCookie,
-        agentCoinIdentity,
-        pathResolver
-      )
-    }
-    return instance
+  constructor(readonly runtime: IAgentRuntime) {
+    super(runtime)
+    const token = ensureStringSetting(runtime, AYA_JWT_SETTINGS_KEY)
+    const identity = ensureStringSetting(runtime, AYA_AGENT_IDENTITY_KEY)
+    this.authAPI = new AyaAuthAPI(token)
+    this.identity = AgentIdentitySchema.parse(identity)
   }
 
   private async start(): Promise<void> {
@@ -95,18 +55,22 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     ayaLogger.info('Knowledge sync service stopped')
   }
 
-  static async start(_runtime: IAyaRuntime): Promise<Service> {
-    if (isNull(instance)) {
-      throw new Error('KnowledgeService not initialized')
+  static async start(_runtime: IAgentRuntime): Promise<Service> {
+    let instance = KnowledgeService.instances.get(_runtime.agentId)
+    if (instance) {
+      return instance
     }
+    instance = new KnowledgeService(_runtime)
+    KnowledgeService.instances.set(_runtime.agentId, instance)
     // don't await this. it'll lock up the main process
     void instance.start()
     return instance
   }
 
-  static async stop(_runtime: IAyaRuntime): Promise<unknown> {
+  static async stop(_runtime: IAgentRuntime): Promise<unknown> {
+    const instance = KnowledgeService.instances.get(_runtime.agentId)
     if (isNull(instance)) {
-      throw new Error('ConfigService not initialized')
+      return undefined
     }
     await instance.stop()
     return instance
@@ -408,5 +372,3 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     }
   }
 }
-
-let instance: KnowledgeService | undefined

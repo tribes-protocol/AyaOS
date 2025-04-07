@@ -1,3 +1,4 @@
+import RateLimiter from '@/agent/ratelimiter'
 import { UUID_PATTERN } from '@/common/constants'
 import { isRequiredString, sortIdentities } from '@/common/functions'
 import { Content, Memory, State, UUID } from '@elizaos/core'
@@ -375,15 +376,6 @@ export interface Context {
 
 export type ContextHandler = (context: Context) => Promise<boolean>
 
-export enum ServiceKind {
-  wallet = 'wallet-service',
-  config = 'config-service',
-  agent = 'agent-service',
-  knowledge = 'knowledge-service',
-  knowledgeBase = 'knowledge-base-service',
-  memories = 'memories-service'
-}
-
 const PdfFileSchema = z.object({
   kind: z.literal('pdf'),
   url: z.string()
@@ -492,6 +484,7 @@ export type EmbeddingsConfig = z.infer<typeof EmbeddingsConfigSchema>
 
 export interface AyaOSOptions {
   dataDir?: string
+  rateLimiter?: RateLimiter
 }
 
 export const RagKnowledgeItemContentSchema = z.object({
@@ -554,3 +547,8 @@ export const CreatePureResponseSchema = z.object({
   character: CharacterSchema
 })
 export type CreatePureResponse = z.infer<typeof CreatePureResponseSchema>
+
+export interface AuthInfo {
+  identity: Identity
+  token: string
+}

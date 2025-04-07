@@ -7,7 +7,7 @@ import * as fs from 'fs'
 // eslint-disable-next-line new-cap
 export const ec = new EC.ec('p256')
 
-export class KeychainService {
+export class KeychainManager {
   private readonly keyPairData: KeyPair
 
   public get publicKey(): string {

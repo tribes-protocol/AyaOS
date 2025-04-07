@@ -1,8 +1,7 @@
-import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { isNull } from '@/common/functions'
-import { PathResolver } from '@/common/path-resolver'
-import { AgentcoinService } from '@/services/agentcoinfun'
-import { KeychainService } from '@/services/keychain'
+import { LoginManager } from '@/managers/admin'
+import { KeychainManager } from '@/managers/keychain'
+import { PathManager } from '@/managers/path'
 
 async function main(): Promise<void> {
   try {
@@ -17,20 +16,13 @@ async function main(): Promise<void> {
     }
 
     // initialize path resolver with data directory
-    const pathResolver = new PathResolver(dataDir)
+    const pathResolver = new PathManager(dataDir)
 
     // initialize keychain service
-    const keychainService = new KeychainService(pathResolver.keypairFile)
-
-    // initialize agentcoin api
-    const agentcoinAPI = new AgentcoinAPI()
+    const keychainManager = new KeychainManager(pathResolver.keypairFile)
 
     // initialize agentcoin service
-    const agentcoinService = AgentcoinService.getInstance(
-      keychainService,
-      agentcoinAPI,
-      pathResolver
-    )
+    const agentcoinService = new LoginManager(keychainManager, pathResolver)
 
     // provision if needed
     await agentcoinService.provisionIfNeeded(agentName, agentPurpose)
