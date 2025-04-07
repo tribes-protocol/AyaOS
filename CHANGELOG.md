@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.51
+
+### Patch Changes
+
+- 8fa70c5: add ability to send telegram messages through the agent on command
+
 ## 0.0.50
 
 ### Patch Changes
