@@ -1,31 +1,64 @@
+import { AgentRegistry } from '@/agent/registry'
+import { AgentcoinAPI } from '@/apis/aya'
 import { AyaAuthAPI } from '@/apis/aya-auth'
-import { AYA_AGENT_IDENTITY_KEY, AYA_JWT_SETTINGS_KEY } from '@/common/constants'
-import { ensureStringSetting, isNull } from '@/common/functions'
+import {
+  AYA_AGENT_DATA_DIR_KEY,
+  AYA_AGENT_IDENTITY_KEY,
+  AYA_JWT_SETTINGS_KEY,
+  DOCUMENT_TABLE_NAME,
+  KNOWLEDGE_TABLE_NAME
+} from '@/common/constants'
+import { calculateChecksum, ensureStringSetting, isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import {
   AgentIdentitySchema,
   Identity,
+  Knowledge,
   RAGKnowledgeItem,
   RagKnowledgeItemContent
 } from '@/common/types'
+import { PathManager } from '@/managers/path'
 import { IKnowledgeService } from '@/services/interfaces'
-import { IAgentRuntime, Service, UUID } from '@elizaos/core'
+import {
+  createUniqueUuid,
+  IAgentRuntime,
+  Memory,
+  MemoryType,
+  ModelType,
+  Service,
+  splitChunks,
+  stringToUuid,
+  UUID
+} from '@elizaos/core'
+import { CSVLoader } from '@langchain/community/document_loaders/fs/csv'
+import { DocxLoader } from '@langchain/community/document_loaders/fs/docx'
+import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf'
+import axios from 'axios'
+import fs from 'fs/promises'
+import { TextLoader } from 'langchain/document_loaders/fs/text'
+import path from 'path'
 
 export class KnowledgeService extends Service implements IKnowledgeService {
   static readonly instances = new Map<UUID, KnowledgeService>()
   private isRunning = false
+  private readonly api = new AgentcoinAPI()
+  private readonly identity: Identity
+  private readonly authAPI: AyaAuthAPI
+  private readonly pathResolver: PathManager
 
   static readonly serviceType = 'aya-os-knowledge-service'
   readonly capabilityDescription = ''
-  private readonly authAPI: AyaAuthAPI
-  private readonly identity: Identity
 
   constructor(readonly runtime: IAgentRuntime) {
     super(runtime)
     const token = ensureStringSetting(runtime, AYA_JWT_SETTINGS_KEY)
     const identity = ensureStringSetting(runtime, AYA_AGENT_IDENTITY_KEY)
+    const dataDir = ensureStringSetting(runtime, AYA_AGENT_DATA_DIR_KEY)
     this.authAPI = new AyaAuthAPI(token)
     this.identity = AgentIdentitySchema.parse(identity)
+
+    const { managers } = AgentRegistry.get(dataDir)
+    this.pathResolver = managers.path
   }
 
   private async start(): Promise<void> {
@@ -82,8 +115,8 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     const limit = 100
 
     while (true) {
-      const knowledges = await this.agentCoinApi.getKnowledges(this.agentCoinIdentity, {
-        cookie: this.agentCoinCookie,
+      const knowledges = await this.api.getKnowledges(this.identity, {
+        cookie: this.authAPI.cookie,
         limit,
         cursor
       })

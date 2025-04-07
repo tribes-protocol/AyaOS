@@ -20,6 +20,7 @@ import * as fs from 'fs'
 
 export class LoginManager {
   private readonly api = new AgentcoinAPI()
+
   constructor(
     private readonly keychain: KeychainManager,
     private readonly pathResolver: PathManager
@@ -37,10 +38,10 @@ export class LoginManager {
       throw new Error('Failed to sign message')
     }
 
-    const token = await this.api.login({ identity, message, signature })
+    const cookie = await this.api.login({ identity, message, signature })
 
     ayaLogger.success('Agent coin logged in successfully', identity)
-    return token
+    return cookie
   }
 
   async provisionIfNeeded(
