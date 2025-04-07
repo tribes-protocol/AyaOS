@@ -10,6 +10,11 @@ const evaluators = bootstrapPlugin.evaluators || []
 const providers = bootstrapPlugin.providers || []
 const events = bootstrapPlugin.events || {}
 const services = bootstrapPlugin.services || []
+const models = bootstrapPlugin.models || {}
+const componentTypes = bootstrapPlugin.componentTypes || []
+const adapter = bootstrapPlugin.adapter
+const routes = bootstrapPlugin.routes || []
+const tests = bootstrapPlugin.tests || []
 
 events[EventType.MESSAGE_RECEIVED] = [
   async (payload: MessagePayload) => {
@@ -36,9 +41,11 @@ export const ayaPlugin: Plugin = {
   actions,
   evaluators,
   providers,
+  models,
+  componentTypes,
+  adapter,
+  routes,
+  tests,
   events,
   services: [...services, AyaClientService, WebSearchService]
-  // init: async (_config: Record<string, string>, _runtime: IAgentRuntime) => {
-  //   console.log(' init aya plugin')
-  // }
 }
