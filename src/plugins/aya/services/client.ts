@@ -312,6 +312,7 @@ export class AyaClientService extends Service {
         source: AYA_SOURCE
       })
     } catch (error) {
+      // FIXME: handle this better
       console.error('Error processing message', error)
       unsubscribeThinking()
       await this.sendMessageAsAgent({
