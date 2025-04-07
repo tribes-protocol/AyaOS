@@ -267,20 +267,17 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   async list(options?: {
     limit?: number
-    sort?: 'asc' | 'desc'
     filters?: {
-      isChunk?: boolean
-      source?: string
       kind?: string
     }
   }): Promise<RAGKnowledgeItem[]> {
-    // FIXME: avp how to add filters and sort
-    const { limit } = options ?? {}
+    const { limit, filters } = options ?? {}
 
     const results = await this.runtime.getMemories({
       agentId: this.runtime.agentId,
       count: limit,
-      tableName: KNOWLEDGE_TABLE_NAME
+      tableName: DOCUMENT_TABLE_NAME,
+      roomId: filters?.kind ? this.getRoomId(filters.kind) : undefined
     })
 
     return results.map(this.convertToRAGKnowledgeItem)
@@ -289,15 +286,18 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   async search(options: {
     q: string
     limit: number
+    kind?: string
     matchThreshold?: number
   }): Promise<RAGKnowledgeItem[]> {
-    const { q, limit, matchThreshold = 0.5 } = options
+    const { q, limit, kind, matchThreshold = 0.5 } = options
 
     const results = await this.runtime.searchMemories({
       embedding: await this.runtime.useModel(ModelType.TEXT_EMBEDDING, q),
       match_threshold: matchThreshold,
       count: limit,
-      tableName: KNOWLEDGE_TABLE_NAME
+      tableName: KNOWLEDGE_TABLE_NAME,
+      // Q: should this be undefined or <unknown> i.e do we get all the results or only <unknown>
+      roomId: kind ? this.getRoomId(kind) : undefined
     })
 
     return results.map(this.convertToRAGKnowledgeItem)
@@ -312,7 +312,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   async add(id: UUID, knowledge: RagKnowledgeItemContent): Promise<void> {
     const agentId = this.runtime.agentId
     const checksum = calculateChecksum(knowledge.text)
-    const kind = knowledge.metadata?.kind ?? '<unknown>'
+    const kind = knowledge.kind
 
     const item = await this.runtime.getMemoryById(id)
     const storedKB = item ? this.convertToRAGKnowledgeItem(item) : undefined
@@ -324,12 +324,10 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       return
     }
 
-    const roomId = stringToUuid(`${agentId}-${id}`)
-
     const documentMemory: Memory = {
       id,
       agentId,
-      roomId,
+      roomId: this.getRoomId(kind ?? '<unknown>'),
       entityId: agentId,
       content: {
         text: ''
@@ -352,7 +350,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       const fragmentMemory: Memory = {
         id: createUniqueUuid(this, `${id}-fragment-${i}`),
         agentId,
-        roomId,
+        roomId: this.getRoomId(kind ?? '<unknown>'),
         entityId: agentId,
         embedding,
         content: { text: fragments[i] },
@@ -369,18 +367,15 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }
 
   async remove(id: UUID): Promise<void> {
-    const roomId = stringToUuid(`${this.runtime.agentId}-${id}`)
-
     const knowledge = await this.runtime.getMemoryById(id)
     if (isNull(knowledge)) {
       ayaLogger.debug(`Knowledge item [${id}] not found. skipping...`)
       return
     }
 
-    await Promise.all([
-      this.runtime.deleteAllMemories(roomId, KNOWLEDGE_TABLE_NAME),
-      this.runtime.deleteAllMemories(roomId, DOCUMENT_TABLE_NAME)
-    ])
+    await this.runtime.deleteMemory(id)
+
+    // FIXME: delete all fragments
 
     if (knowledge.metadata?.source) {
       await fs.unlink(path.join(this.pathResolver.knowledgeRoot, knowledge.metadata.source))
@@ -403,5 +398,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       createdAt: result.createdAt,
       similarity: result.similarity
     }
+  }
+
+  private getRoomId(kind: string): UUID {
+    return stringToUuid(`${this.runtime.agentId}:${kind}`)
   }
 }

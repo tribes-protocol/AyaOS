@@ -22,10 +22,7 @@ export interface IWalletService {
 export interface IKnowledgeService {
   list(options: {
     limit?: number
-    sort?: 'asc' | 'desc'
     filters?: {
-      isChunk?: boolean
-      source?: string
       kind?: string
     }
   }): Promise<RAGKnowledgeItem[]>

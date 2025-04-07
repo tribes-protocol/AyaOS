@@ -489,6 +489,7 @@ export interface AyaOSOptions {
 
 export const RagKnowledgeItemContentSchema = z.object({
   text: z.string(),
+  kind: z.string().optional(),
   metadata: z
     .object({
       type: z.string(),
