@@ -5,8 +5,7 @@ import {
   AYA_AGENT_DATA_DIR_KEY,
   AYA_AGENT_IDENTITY_KEY,
   AYA_JWT_SETTINGS_KEY,
-  DOCUMENT_TABLE_NAME,
-  KNOWLEDGE_TABLE_NAME
+  DOCUMENT_TABLE_NAME
 } from '@/common/constants'
 import { calculateChecksum, ensureStringSetting, isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
@@ -20,11 +19,8 @@ import {
 import { PathManager } from '@/managers/path'
 import { IKnowledgeService } from '@/services/interfaces'
 import {
-  ChannelType,
   createUniqueUuid,
   IAgentRuntime,
-  Memory,
-  MemoryType,
   ModelType,
   Service,
   splitChunks,
@@ -36,6 +32,7 @@ import { CSVLoader } from '@langchain/community/document_loaders/fs/csv'
 import { DocxLoader } from '@langchain/community/document_loaders/fs/docx'
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf'
 import axios from 'axios'
+import { and, asc, cosineDistance, desc, eq, gte, sql } from 'drizzle-orm'
 import { drizzle as drizzlePg, NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { boolean, pgTable, text, timestamp, uuid, vector } from 'drizzle-orm/pg-core'
 import { drizzle, PgliteDatabase } from 'drizzle-orm/pglite'
@@ -47,10 +44,11 @@ export const Knowledges = pgTable('knowledge', {
   id: uuid('id').$type<UUID>().primaryKey(),
   agentId: uuid('agent_id').$type<UUID>().notNull(),
   text: text('text').notNull(),
-  kind: text('kind').notNull(),
+  kind: text('kind'),
   source: text('source').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   isMain: boolean('is_main').default(false),
+  checksum: text('checksum'),
   documentId: uuid('document_id').notNull()
 })
 
@@ -74,6 +72,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   private readonly authAPI: AyaAuthAPI
   private readonly pathResolver: PathManager
   private db!: NodePgDatabase | PgliteDatabase
+  private embeddingDimension!: number
 
   static readonly serviceType = 'aya-os-knowledge-service'
   readonly capabilityDescription = ''
@@ -92,6 +91,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   private async initializeTables(): Promise<void> {
     try {
+      const embedding = await this.runtime.useModel(ModelType.TEXT_EMBEDDING, null)
+      this.embeddingDimension = embedding.length
+
       const postgresUrl = this.runtime.getSetting('POSTGRES_URL')
       const pgliteDataDir = this.runtime.getSetting('PGLITE_DATA_DIR') ?? './pglite'
 
@@ -114,11 +116,12 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           id UUID PRIMARY KEY,
           agent_id UUID NOT NULL,
           text TEXT NOT NULL,
-          kind TEXT NOT NULL,
+          kind TEXT,
           source TEXT NOT NULL,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           is_main BOOLEAN DEFAULT FALSE,
-          "document_id" UUID NOT NULL
+          checksum TEXT,
+          document_id UUID NOT NULL
         );
       `)
 
@@ -288,12 +291,8 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
       await this.add(itemId, {
         text: content,
-        metadata: {
-          type: MemoryType.DOCUMENT,
-          documentId: itemId,
-          source: data.name,
-          timestamp: Date.now()
-        }
+        documentId: itemId,
+        source: data.name
       })
     } catch (error) {
       ayaLogger.error(`Error processing file metadata for ${data.name}: ${error}`)
@@ -348,22 +347,94 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     }
   }
 
+  async add(id: UUID, knowledge: RagKnowledgeItemContent): Promise<void> {
+    const agentId = this.runtime.agentId
+    const checksum = calculateChecksum(knowledge.text)
+    const kind = knowledge.kind
+
+    const [item] = await this.db.select().from(Knowledges).where(eq(Knowledges.id, id))
+
+    if (isNull(item)) {
+      ayaLogger.debug(`[${kind}] knowledge=[${id}] does not exist. creating...`)
+    } else if (item?.checksum === checksum) {
+      ayaLogger.debug(`[${kind}] knowledge=[${id}] already exists. skipping...`)
+      return
+    }
+
+    await this.db.insert(Knowledges).values({
+      id,
+      agentId,
+      text: knowledge.text,
+      kind,
+      source: knowledge.source,
+      checksum,
+      documentId: id,
+      isMain: true
+    })
+
+    // Create fragments using splitChunks
+    const fragments = await splitChunks(knowledge.text, 7000, 500)
+
+    // Store each fragment with link to source document
+    for (let i = 0; i < fragments.length; i++) {
+      const embedding = await this.runtime.useModel(ModelType.TEXT_EMBEDDING, fragments[i])
+
+      const fragmentId = createUniqueUuid(this, `${id}-fragment-${i}`)
+
+      await this.db.transaction(async (tx: NodePgDatabase | PgliteDatabase) => {
+        await tx.insert(Knowledges).values({
+          id: fragmentId,
+          agentId,
+          text: fragments[i],
+          kind,
+          source: knowledge.source,
+          documentId: id,
+          isMain: false
+        })
+
+        await tx.insert(KnowledgeEmbeddings).values({
+          knowledgeId: fragmentId,
+          [this.embeddingDimension]: embedding
+        })
+      })
+    }
+  }
+
   async list(options?: {
     limit?: number
+    sort?: 'asc' | 'desc'
     filters?: {
       kind?: string
     }
   }): Promise<RAGKnowledgeItem[]> {
-    const { limit, filters } = options ?? {}
+    const { limit = 100, filters, sort = 'desc' } = options ?? {}
 
-    const results = await this.runtime.getMemories({
-      agentId: this.runtime.agentId,
-      count: limit,
-      tableName: DOCUMENT_TABLE_NAME,
-      roomId: filters?.kind ? this.getRoomId(filters.kind) : undefined
-    })
+    const conditions = [eq(Knowledges.agentId, this.runtime.agentId)]
 
-    return results.map(this.convertToRAGKnowledgeItem)
+    if (filters?.kind) {
+      conditions.push(eq(Knowledges.kind, filters.kind))
+    }
+
+    const results = await this.db
+      .select()
+      .from(Knowledges)
+      .where(and(...conditions))
+      .orderBy(sort === 'asc' ? asc(Knowledges.createdAt) : desc(Knowledges.createdAt))
+      .limit(limit)
+
+    return results.map((item) => ({
+      id: item.id,
+      agentId: item.agentId,
+      content: {
+        text: item.text,
+        documentId: item.documentId,
+        kind: item.kind ?? undefined,
+        source: item.source
+      },
+      embedding: [],
+      createdAt: item.createdAt ? Math.floor(item.createdAt.getTime()) : undefined,
+      similarity: 0
+    }))
   }
 
   async search(options: {
@@ -373,92 +444,65 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     matchThreshold?: number
   }): Promise<RAGKnowledgeItem[]> {
     const { q, limit, kind, matchThreshold = 0.5 } = options
+    const embedding = await this.runtime.useModel(ModelType.TEXT_EMBEDDING, q)
 
-    const results = await this.runtime.searchMemories({
-      embedding: await this.runtime.useModel(ModelType.TEXT_EMBEDDING, q),
-      match_threshold: matchThreshold,
-      count: limit,
-      tableName: KNOWLEDGE_TABLE_NAME,
-      // Q: should this be undefined or <unknown> i.e do we get all the results or only <unknown>
-      roomId: kind ? this.getRoomId(kind) : undefined
-    })
+    const similarity = sql<number>`1 - (${cosineDistance(
+      KnowledgeEmbeddings[this.embeddingDimension],
+      embedding
+    )})`
 
-    return results.map(this.convertToRAGKnowledgeItem)
+    const conditions = [gte(similarity, matchThreshold)]
+
+    if (kind) {
+      conditions.push(eq(Knowledges.kind, kind))
+    }
+
+    const results = await this.db
+      .select({
+        knowledge: Knowledges,
+        similarity,
+        knowledgeEmbeddings: KnowledgeEmbeddings
+      })
+      .from(KnowledgeEmbeddings)
+      .innerJoin(Knowledges, eq(KnowledgeEmbeddings.knowledgeId, Knowledges.id))
+      .where(and(...conditions))
+      .orderBy(desc(similarity))
+      .limit(limit)
+
+    return results.map(({ knowledge, similarity, knowledgeEmbeddings }) => ({
+      id: knowledge.id,
+      agentId: knowledge.agentId,
+      content: {
+        text: knowledge.text,
+        documentId: knowledge.documentId,
+        kind: knowledge.kind ?? undefined,
+        source: knowledge.source
+      },
+      embedding: knowledgeEmbeddings[this.embeddingDimension] ?? [],
+      createdAt: knowledge.createdAt ? Math.floor(knowledge.createdAt.getTime()) : undefined,
+      similarity
+    }))
   }
 
   async get(id: UUID): Promise<RAGKnowledgeItem | undefined> {
-    const result = await this.runtime.getMemoryById(id)
+    const [knowledge] = await this.db.select().from(Knowledges).where(eq(Knowledges.id, id))
 
-    return result ? this.convertToRAGKnowledgeItem(result) : undefined
-  }
+    const [embedding] = await this.db
+      .select()
+      .from(KnowledgeEmbeddings)
+      .where(eq(KnowledgeEmbeddings.knowledgeId, knowledge.id))
 
-  async add(id: UUID, knowledge: RagKnowledgeItemContent): Promise<void> {
-    const agentId = this.runtime.agentId
-    const checksum = calculateChecksum(knowledge.text)
-    const kind = knowledge.kind
-
-    const item = await this.runtime.getMemoryById(id)
-    const storedKB = item ? this.convertToRAGKnowledgeItem(item) : undefined
-
-    if (isNull(storedKB)) {
-      ayaLogger.debug(`[${kind}] knowledge=[${id}] does not exist. creating...`)
-    } else if (storedKB?.content.metadata?.checksum === checksum) {
-      ayaLogger.debug(`[${kind}] knowledge=[${id}] already exists. skipping...`)
-      return
-    }
-
-    const roomId = this.getRoomId(kind ?? '<unknown>')
-
-    const existingRoom = await this.runtime.getRoom(roomId)
-    if (isNull(existingRoom)) {
-      await this.runtime.createRoom({
-        id: roomId,
-        name: `${agentId}:knowledge`,
-        source: 'knowledge',
-        type: ChannelType.SELF
-      })
-    }
-
-    const documentMemory: Memory = {
-      id,
-      agentId,
-      roomId,
-      entityId: agentId,
+    return {
+      id: knowledge.id,
+      agentId: knowledge.agentId,
       content: {
-        text: ''
+        text: knowledge.text,
+        documentId: knowledge.documentId,
+        kind: knowledge.kind ?? undefined,
+        source: knowledge.source
       },
-      metadata: {
-        ...knowledge.metadata,
-        type: MemoryType.DOCUMENT,
-        checksum
-      }
-    }
-
-    await this.runtime.createMemory(documentMemory, DOCUMENT_TABLE_NAME)
-
-    // Create fragments using splitChunks
-    const fragments = await splitChunks(knowledge.text, 7000, 500)
-
-    // Store each fragment with link to source document
-    for (let i = 0; i < fragments.length; i++) {
-      const embedding = await this.runtime.useModel(ModelType.TEXT_EMBEDDING, fragments[i])
-      const fragmentMemory: Memory = {
-        id: createUniqueUuid(this, `${id}-fragment-${i}`),
-        agentId,
-        roomId,
-        entityId: agentId,
-        embedding,
-        content: { text: fragments[i] },
-        metadata: {
-          type: MemoryType.FRAGMENT,
-          documentId: id, // Link to source document
-          position: i, // Keep track of order
-          timestamp: Date.now(),
-          source: knowledge.metadata?.source
-        }
-      }
-
-      await this.runtime.createMemory(fragmentMemory, KNOWLEDGE_TABLE_NAME)
+      embedding: embedding?.[this.embeddingDimension] ?? [],
+      createdAt: knowledge.createdAt ? Math.floor(knowledge.createdAt.getTime()) : undefined
     }
   }
 
@@ -476,27 +520,5 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     if (knowledge.metadata?.source) {
       await fs.unlink(path.join(this.pathResolver.knowledgeRoot, knowledge.metadata.source))
     }
-  }
-
-  private convertToRAGKnowledgeItem(result: Memory): RAGKnowledgeItem {
-    if (isNull(result.id) || isNull(result.agentId)) {
-      throw new Error('Invalid result')
-    }
-
-    return {
-      id: result.id,
-      agentId: result.agentId,
-      content: {
-        ...result.content,
-        text: result.content.text ?? ''
-      },
-      embedding: result.embedding ?? [],
-      createdAt: result.createdAt,
-      similarity: result.similarity
-    }
-  }
-
-  private getRoomId(kind: string): UUID {
-    return stringToUuid(`${this.runtime.agentId}:${kind}`)
   }
 }

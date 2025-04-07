@@ -22,6 +22,7 @@ export interface IWalletService {
 export interface IKnowledgeService {
   list(options: {
     limit?: number
+    sort?: 'asc' | 'desc'
     filters?: {
       kind?: string
     }
@@ -32,6 +33,7 @@ export interface IKnowledgeService {
   search(options: {
     q: string
     limit: number
+    kind?: string
     matchThreshold?: number
   }): Promise<RAGKnowledgeItem[]>
 }

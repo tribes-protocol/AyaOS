@@ -496,17 +496,8 @@ export interface AyaOSOptions {
 export const RagKnowledgeItemContentSchema = z.object({
   text: z.string(),
   kind: z.string().optional(),
-  metadata: z
-    .object({
-      type: z.string(),
-      documentId: z.string(),
-      position: z.number().optional(),
-      timestamp: z.number().optional(),
-      source: z.string()
-    })
-    .passthrough()
-    .optional()
-    .nullable()
+  documentId: z.string(),
+  source: z.string()
 })
 
 export type RagKnowledgeItemContent = z.infer<typeof RagKnowledgeItemContentSchema>
@@ -517,8 +508,7 @@ export const RAGKnowledgeItemSchema = z.object({
   content: RagKnowledgeItemContentSchema,
   embedding: z.array(z.number()),
   createdAt: z.number().optional(),
-  similarity: z.number().optional(),
-  score: z.number().optional()
+  similarity: z.number().optional()
 })
 
 export type RAGKnowledgeItem = z.infer<typeof RAGKnowledgeItemSchema>
