@@ -129,7 +129,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       await this.db.execute(`
         CREATE TABLE IF NOT EXISTS knowledge_embeddings (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          knowledge_id UUID REFERENCES knowledge(id),
+          knowledge_id UUID REFERENCES knowledge(id) ON DELETE CASCADE,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           dim_384 VECTOR(${VECTOR_DIMS.SMALL}),
           dim_512 VECTOR(${VECTOR_DIMS.MEDIUM}),
@@ -364,7 +364,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     await this.db.insert(Knowledges).values({
       id,
       agentId,
-      text: knowledge.text,
+      text: '',
       kind,
       source: knowledge.source,
       checksum,
@@ -507,18 +507,10 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }
 
   async remove(id: UUID): Promise<void> {
-    const knowledge = (await this.runtime.getMemoriesByIds([id]))[0]
-    if (isNull(knowledge)) {
-      ayaLogger.debug(`Knowledge item [${id}] not found. skipping...`)
-      return
-    }
-
-    await this.runtime.deleteMemory(id)
-
-    // FIXME: delete all fragments, can possibly use worldId to group all rooms and delete them
-
-    if (knowledge.metadata?.source) {
-      await fs.unlink(path.join(this.pathResolver.knowledgeRoot, knowledge.metadata.source))
+    try {
+      await this.db.delete(Knowledges).where(eq(Knowledges.documentId, id))
+    } catch (error) {
+      ayaLogger.error(`Error removing knowledge: ${error}`)
     }
   }
 }
