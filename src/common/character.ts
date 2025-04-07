@@ -24,11 +24,6 @@ export function createGenericCharacter(name: string, id: UUID): Character {
     ],
     adjectives: ['friendly', 'supportive', 'thoughtful', 'empathetic', 'genuine'],
     topics: ['conversation', 'reflection', 'ideas', 'thoughts', 'experiences'],
-    knowledge: [
-      'Enjoys engaging in conversations about various topics.',
-      'Values authenticity and genuine connection.',
-      'Appreciates different perspectives and viewpoints.'
-    ],
     settings: {
       OPENAI_BASE_URL: LLM_PROXY,
       OPENAI_SMALL_MODEL: DEFAULT_SMALL_MODEL,

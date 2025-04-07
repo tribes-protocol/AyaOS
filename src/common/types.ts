@@ -296,6 +296,12 @@ export const CharacterSchema = z.object({
 
 export type Character = z.infer<typeof CharacterSchema>
 
+export const ProvisionSchema = z.object({
+  id: AgentIdentitySchema
+})
+
+export type Provision = z.infer<typeof ProvisionSchema>
+
 // agent events
 
 const BaseAgentEventSchema = z.object({
@@ -544,12 +550,6 @@ export const AgentSchema = z
   .passthrough() // Partial schema
 
 export type Agent = z.infer<typeof AgentSchema>
-
-export const CreatePureResponseSchema = z.object({
-  agent: AgentSchema,
-  character: CharacterSchema
-})
-export type CreatePureResponse = z.infer<typeof CreatePureResponseSchema>
 
 export interface AuthInfo {
   identity: Identity

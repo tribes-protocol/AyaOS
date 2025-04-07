@@ -3,8 +3,6 @@ import { serializeIdentity } from '@/common/functions'
 import {
   Agent,
   AgentSchema,
-  Character,
-  CharacterSchema,
   CliAuthRequestSchema,
   CliAuthResponseSchema,
   ErrorResponseSchema,
@@ -87,11 +85,7 @@ export class AgentcoinAPI {
     return parsed
   }
 
-  async provisionAgent(
-    signupToken: string,
-    signature: string,
-    publicKey: string
-  ): Promise<Character> {
+  async provisionAgent(signupToken: string, signature: string, publicKey: string): Promise<Agent> {
     const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/provision`, {
       method: 'POST',
       headers: {
@@ -100,13 +94,13 @@ export class AgentcoinAPI {
       body: JSON.stringify({ signupToken, signature, publicKey })
     })
 
-    const data = await response.json()
-
     if (!response.ok) {
       throw new Error('Failed to provision agent coin')
     }
 
-    return CharacterSchema.parse(data)
+    const data = await response.json()
+    const parsed = AgentSchema.parse(data)
+    return parsed
   }
 
   async generateAuthMessage(publicKey: string): Promise<string> {
