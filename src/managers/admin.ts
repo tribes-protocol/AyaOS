@@ -1,22 +1,24 @@
 import { AgentcoinAPI } from '@/apis/aya'
 import { createGenericCharacter } from '@/common/character'
-import { AYA_JWT_COOKIE_NAME, USER_CREDENTIALS_FILE } from '@/common/constants'
+import { AYA_JWT_COOKIE_NAME, CHARACTERS_DIR, USER_CREDENTIALS_FILE } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { ensureUUID, isNull, toJsonTree } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import {
+  Agent,
   AgentIdentity,
   AgentIdentitySchema,
   AgentRegistrationSchema,
   AuthInfo,
-  CharacterSchema,
   CredentialsSchema,
   Identity,
+  ProvisionSchema,
   User
 } from '@/common/types'
 import { KeychainManager } from '@/managers/keychain'
 import { PathManager } from '@/managers/path'
 import * as fs from 'fs'
+import path from 'path'
 
 export class LoginManager {
   private readonly api = new AgentcoinAPI()
@@ -53,7 +55,7 @@ export class LoginManager {
       return this.getAuthInfo()
     }
 
-    ayaLogger.info('Provisioning hardware...')
+    ayaLogger.info('Provisioning agent...')
 
     const regPath = this.pathResolver.registrationFile
 
@@ -70,13 +72,9 @@ export class LoginManager {
     const signature = await this.keychain.sign(token)
     const publicKey = this.keychain.publicKey
 
-    const character = await this.api.provisionAgent(token, signature, publicKey)
-    fs.writeFileSync(
-      this.pathResolver.characterFile,
-      JSON.stringify(toJsonTree(character), null, 2)
-    )
+    const agent = await this.api.provisionAgent(token, signature, publicKey)
 
-    ayaLogger.success('Agent coin provisioned successfully', character.id)
+    await this.provisionCharacter(agent)
 
     fs.unlinkSync(regPath)
 
@@ -116,12 +114,7 @@ export class LoginManager {
       purpose
     )
 
-    const character = createGenericCharacter(agent.name, ensureUUID(agent.id.substring(6)))
-
-    fs.writeFileSync(
-      this.pathResolver.characterFile,
-      JSON.stringify(toJsonTree(character), null, 2)
-    )
+    await this.provisionCharacter(agent)
 
     // Display agent creation success message
     const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${agent.id}`
@@ -219,8 +212,8 @@ export class LoginManager {
   }
 
   private async getIdentity(): Promise<Identity> {
-    const { id } = CharacterSchema.parse(
-      JSON.parse(fs.readFileSync(this.pathResolver.characterFile, 'utf-8'))
+    const { id } = ProvisionSchema.parse(
+      JSON.parse(fs.readFileSync(this.pathResolver.provisionFile, 'utf-8'))
     )
     return AgentIdentitySchema.parse(`AGENT-${id}`)
   }
@@ -229,8 +222,27 @@ export class LoginManager {
     try {
       await this.getIdentity()
       return true
-    } catch {
+    } catch (error) {
+      ayaLogger.error('Error parsing provision file:', error)
       return false
     }
+  }
+
+  private async provisionCharacter(agent: Agent): Promise<void> {
+    const characterId = ensureUUID(agent.id.substring(6))
+
+    const character = createGenericCharacter(agent.name, characterId)
+
+    fs.writeFileSync(
+      path.join(CHARACTERS_DIR, `${characterId}.character.json`),
+      JSON.stringify(toJsonTree(character), null, 2)
+    )
+
+    fs.writeFileSync(
+      this.pathResolver.provisionFile,
+      JSON.stringify(toJsonTree({ id: agent.id }), null, 2)
+    )
+
+    ayaLogger.success('Agent coin provisioned successfully', characterId)
   }
 }

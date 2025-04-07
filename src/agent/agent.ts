@@ -3,6 +3,7 @@ import {
   AYA_AGENT_DATA_DIR_KEY,
   AYA_AGENT_IDENTITY_KEY,
   AYA_JWT_SETTINGS_KEY,
+  CHARACTERS_DIR,
   DEFAULT_EMBEDDING_DIMENSIONS,
   DEFAULT_EMBEDDING_MODEL,
   DEFAULT_LARGE_MODEL,
@@ -11,9 +12,15 @@ import {
   WEBSEARCH_PROXY
 } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
-import { ensureRuntimeService, isNull, isRequiredString, loadEnvFile } from '@/common/functions'
+import {
+  ensureRuntimeService,
+  ensureUUID,
+  isNull,
+  isRequiredString,
+  loadEnvFile
+} from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
-import { AyaOSOptions } from '@/common/types'
+import { AuthInfo, AyaOSOptions } from '@/common/types'
 import { ayaPlugin } from '@/plugins/aya'
 import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
@@ -257,9 +264,14 @@ export class Agent implements IAyaAgent {
     }
   }
 
-  private async setupCharacter(authInfo: { token: string; identity: string }): Promise<Character> {
-    ayaLogger.info('Loading character...')
-    const charString = await fs.promises.readFile(this.context.managers.path.characterFile, 'utf8')
+  private async setupCharacter(authInfo: AuthInfo): Promise<Character> {
+    logger.info('Loading character...')
+    const { identity, token } = authInfo
+
+    const characterId = ensureUUID(identity.substring(6))
+    const characterFile = path.join(CHARACTERS_DIR, `${characterId}.character.json`)
+
+    const charString = await fs.promises.readFile(characterFile, 'utf8')
     const character: Character = JSON.parse(charString)
     if (isNull(character.id)) {
       throw new Error('Character id not found')
@@ -273,8 +285,8 @@ export class Agent implements IAyaAgent {
     character.secrets = character.secrets || {}
 
     // setup ayaos token
-    character.secrets[AYA_JWT_SETTINGS_KEY] = authInfo.token
-    character.secrets[AYA_AGENT_IDENTITY_KEY] = authInfo.identity
+    character.secrets[AYA_JWT_SETTINGS_KEY] = token
+    character.secrets[AYA_AGENT_IDENTITY_KEY] = identity
     character.secrets[AYA_AGENT_DATA_DIR_KEY] = this.context.dataDir
 
     // setup websearch
@@ -282,7 +294,7 @@ export class Agent implements IAyaAgent {
       character.secrets.TAVILY_API_URL = WEBSEARCH_PROXY
     }
     if (character.secrets.TAVILY_API_URL === WEBSEARCH_PROXY) {
-      character.secrets.TAVILY_API_KEY = authInfo.token
+      character.secrets.TAVILY_API_KEY = token
     }
 
     // FIXME: this will override user openai api key
@@ -295,7 +307,7 @@ export class Agent implements IAyaAgent {
       character.secrets.OPENAI_EMBEDDING_DIMENSIONS = DEFAULT_EMBEDDING_DIMENSIONS
     }
     if (character.secrets.OPENAI_BASE_URL === LLM_PROXY) {
-      character.secrets.OPENAI_API_KEY = authInfo.token
+      character.secrets.OPENAI_API_KEY = token
     }
 
     // logger.info('character', JSON.stringify(character, null, 2))

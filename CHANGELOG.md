@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.50
+
+### Patch Changes
+
+- 4280780: add support for buttons
+
 ## 0.0.49
 
 ### Patch Changes

@@ -42,3 +42,8 @@ export const AYA_JWT_SETTINGS_KEY = 'AYA_JWT_SETTINGS_KEY'
 export const AYA_AGENT_IDENTITY_KEY = 'AYA_AGENT_IDENTITY_KEY'
 
 export const AYA_AGENT_DATA_DIR_KEY = 'AYA_AGENT_DATA_DIR_KEY'
+
+export const CHARACTERS_DIR = path.join(process.cwd(), 'src', 'characters')
+if (!fs.existsSync(CHARACTERS_DIR)) {
+  fs.mkdirSync(CHARACTERS_DIR, { recursive: true })
+}
