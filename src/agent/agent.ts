@@ -98,7 +98,7 @@ export class Agent implements IAyaAgent {
   }
 
   get telegram(): ITelegramManager {
-    const client = this.runtime.clients.find((c) => c instanceof TelegramClient)
+    const client = this.runtime.clients.telegram
     if (isNull(client) || !(client instanceof TelegramClient)) {
       throw new Error('Telegram client not found')
     }
