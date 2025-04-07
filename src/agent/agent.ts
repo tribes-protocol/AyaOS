@@ -22,13 +22,19 @@ import {
 import { ayaLogger } from '@/common/logger'
 import { AuthInfo, AyaOSOptions } from '@/common/types'
 import { ayaPlugin } from '@/plugins/aya'
-import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
+import {
+  IKnowledgeService,
+  IMemoriesService,
+  ITelegramManager,
+  IWalletService
+} from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import { WalletService } from '@/services/wallet'
 import {
   Action,
   AgentRuntime,
+  Content,
   Evaluator,
   IAgentRuntime,
   logger,
@@ -46,6 +52,25 @@ import openaiPlugin from '@elizaos/plugin-openai'
 import sqlPlugin from '@elizaos/plugin-sql'
 import fs from 'fs'
 import path from 'path'
+import { TelegramService } from '@elizaos/plugin-telegram'
+
+class TelegramManager implements ITelegramManager {
+  constructor(private readonly telegram: TelegramService) {}
+
+  async sendMessage(params: {
+    chatId: number | string
+    content: Content
+    replyToMessageId?: number | undefined
+  }): Promise<number> {
+    const { chatId, content, replyToMessageId } = params
+    const [message] = await this.telegram.messageManager.sendMessage(
+      chatId,
+      content,
+      replyToMessageId
+    )
+    return message.message_id
+  }
+}
 
 export class Agent implements IAyaAgent {
   private services: (typeof Service)[] = []
@@ -97,6 +122,16 @@ export class Agent implements IAyaAgent {
       this.runtime,
       WalletService.serviceType,
       'Wallet service not found'
+    )
+  }
+
+  get telegram(): ITelegramManager {
+    return new TelegramManager(
+      ensureRuntimeService<TelegramService>(
+        this.runtime,
+        TelegramService.serviceType,
+        'Telegram service not found'
+      )
     )
   }
 
