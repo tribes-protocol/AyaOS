@@ -174,15 +174,15 @@ export class Agent implements IAyaAgent {
       this.actions.forEach(runtime.registerAction)
 
       // register services
-      // const ayaServices: (typeof Service)[] = [
-      //   KnowledgeService,
-      //   MemoriesService,
-      //   WalletService,
-      //   ...this.services
-      // ]
-      // for (const service of ayaServices) {
-      //   await hackRegisterService(service, this.runtime)
-      // }
+      const ayaServices: (typeof Service)[] = [
+        KnowledgeService,
+        MemoriesService,
+        WalletService,
+        ...this.services
+      ]
+      for (const service of ayaServices) {
+        await hackRegisterService(service, this.runtime)
+      }
 
       await hackRegisterPlugin(ayaPlugin, this.runtime)
       // await hackRegisterPlugin(farcasterPlugin, this.runtime)

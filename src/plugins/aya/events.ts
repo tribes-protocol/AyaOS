@@ -2,6 +2,8 @@ import { AgentRegistry } from '@/agent/registry'
 import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
 import { ensureStringSetting, isNull } from '@/common/functions'
 import { validateResponse } from '@/common/llms/response-validator'
+import { ayaLogger } from '@/common/logger'
+import { KnowledgeService } from '@/services/knowledge'
 import {
   asUUID,
   composePromptFromState,
@@ -173,6 +175,27 @@ export const messageReceivedHandler = async ({
       let responseMessages: Memory[] = []
 
       if (shouldRespond) {
+        const knowledgeService: KnowledgeService | null = runtime.getService(
+          KnowledgeService.serviceType
+        )
+        if (knowledgeService) {
+          const results = await knowledgeService.search({
+            q: message.content.text || '',
+            limit: 10
+          })
+
+          state.values.knowledge = results
+            .map((r) => {
+              return `## Source:${r.content.metadata?.source || 'Unknown Source'}
+
+              ### Text: ${r.content.text}
+              `
+            })
+            .join('\n\n')
+        } else {
+          ayaLogger.warn('Knowledge service not found')
+        }
+
         const prompt = composePromptFromState({
           state,
           template: runtime.character.templates?.messageHandlerTemplate || messageHandlerTemplate

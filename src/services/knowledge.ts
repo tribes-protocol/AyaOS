@@ -20,6 +20,7 @@ import {
 import { PathManager } from '@/managers/path'
 import { IKnowledgeService } from '@/services/interfaces'
 import {
+  ChannelType,
   createUniqueUuid,
   IAgentRuntime,
   Memory,
@@ -88,20 +89,20 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     ayaLogger.info('Knowledge sync service stopped')
   }
 
-  static async start(_runtime: IAgentRuntime): Promise<Service> {
-    let instance = KnowledgeService.instances.get(_runtime.agentId)
+  static async start(runtime: IAgentRuntime): Promise<Service> {
+    let instance = KnowledgeService.instances.get(runtime.agentId)
     if (instance) {
       return instance
     }
-    instance = new KnowledgeService(_runtime)
-    KnowledgeService.instances.set(_runtime.agentId, instance)
+    instance = new KnowledgeService(runtime)
+    KnowledgeService.instances.set(runtime.agentId, instance)
     // don't await this. it'll lock up the main process
     void instance.start()
     return instance
   }
 
-  static async stop(_runtime: IAgentRuntime): Promise<unknown> {
-    const instance = KnowledgeService.instances.get(_runtime.agentId)
+  static async stop(runtime: IAgentRuntime): Promise<unknown> {
+    const instance = KnowledgeService.instances.get(runtime.agentId)
     if (isNull(instance)) {
       return undefined
     }
@@ -130,21 +131,16 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       cursor = knowledges[knowledges.length - 1].id
     }
 
-    ayaLogger.info(`Found ${allKnowledge.length} knowledges`)
-
     return allKnowledge
   }
 
   private async syncKnowledge(): Promise<void> {
-    ayaLogger.info('Syncing knowledge...')
     try {
       ayaLogger.info('Getting all knowledges...')
       const knowledges = await this.getAllKnowledge()
-      ayaLogger.info(`Found ${knowledges.length} knowledges`)
       const existingKnowledgeIds = new Set<UUID>()
 
       let cursor: number | undefined
-      let i = 0
       do {
         const results = await this.runtime.getMemories({
           agentId: this.runtime.agentId,
@@ -153,8 +149,6 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           tableName: DOCUMENT_TABLE_NAME
         })
 
-        ayaLogger.info(`Found ${results.length} knowledge items in page ${i++}`)
-
         for (const knowledge of results) {
           if (isNull(knowledge.id)) {
             continue
@@ -162,7 +156,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           existingKnowledgeIds.add(knowledge.id)
         }
 
-        cursor = results[results.length - 1].createdAt
+        cursor = results[0]?.createdAt ? results[0].createdAt + 1 : undefined
       } while (cursor)
 
       const remoteKnowledgeIds: UUID[] = []
@@ -191,9 +185,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       )
     } catch (error) {
       if (error instanceof Error) {
-        ayaLogger.error('Error processing knowledge files:', error.message)
+        ayaLogger.error(`Error processing knowledge files: ${error.message}`)
       } else {
-        ayaLogger.error('Error processing knowledge files:', error)
+        ayaLogger.error(`Error processing knowledge files: ${error}`)
       }
       throw error
     }
@@ -213,7 +207,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         }
       })
     } catch (error) {
-      ayaLogger.error(`Error processing file metadata for ${data.name}:`, error)
+      ayaLogger.error(`Error processing file metadata for ${data.name}: ${error}`)
     }
   }
 
@@ -324,10 +318,22 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       return
     }
 
+    const roomId = this.getRoomId(kind ?? '<unknown>')
+
+    const existingRoom = await this.runtime.getRoom(roomId)
+    if (isNull(existingRoom)) {
+      await this.runtime.createRoom({
+        id: roomId,
+        name: `${agentId}:knowledge`,
+        source: 'knowledge',
+        type: ChannelType.SELF
+      })
+    }
+
     const documentMemory: Memory = {
       id,
       agentId,
-      roomId: this.getRoomId(kind ?? '<unknown>'),
+      roomId,
       entityId: agentId,
       content: {
         text: ''
@@ -350,7 +356,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       const fragmentMemory: Memory = {
         id: createUniqueUuid(this, `${id}-fragment-${i}`),
         agentId,
-        roomId: this.getRoomId(kind ?? '<unknown>'),
+        roomId,
         entityId: agentId,
         embedding,
         content: { text: fragments[i] },
@@ -358,7 +364,8 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           type: MemoryType.FRAGMENT,
           documentId: id, // Link to source document
           position: i, // Keep track of order
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          source: knowledge.metadata?.source
         }
       }
 
@@ -367,7 +374,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }
 
   async remove(id: UUID): Promise<void> {
-    const knowledge = await this.runtime.getMemoryById(id)
+    const knowledge = (await this.runtime.getMemoriesByIds([id]))[0]
     if (isNull(knowledge)) {
       ayaLogger.debug(`Knowledge item [${id}] not found. skipping...`)
       return
@@ -375,7 +382,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
     await this.runtime.deleteMemory(id)
 
-    // FIXME: delete all fragments
+    // FIXME: delete all fragments, can possibly use worldId to group all rooms and delete them
 
     if (knowledge.metadata?.source) {
       await fs.unlink(path.join(this.pathResolver.knowledgeRoot, knowledge.metadata.source))

@@ -6,6 +6,7 @@ import {
   LLM_PROXY,
   WEBSEARCH_PROXY
 } from '@/common/constants'
+import { messageHandlerTemplate } from '@/common/templates'
 import { Character, UUID } from '@elizaos/core'
 
 export function createGenericCharacter(name: string, id: UUID): Character {
@@ -24,11 +25,6 @@ export function createGenericCharacter(name: string, id: UUID): Character {
     ],
     adjectives: ['friendly', 'supportive', 'thoughtful', 'empathetic', 'genuine'],
     topics: ['conversation', 'reflection', 'ideas', 'thoughts', 'experiences'],
-    knowledge: [
-      'Enjoys engaging in conversations about various topics.',
-      'Values authenticity and genuine connection.',
-      'Appreciates different perspectives and viewpoints.'
-    ],
     settings: {
       OPENAI_BASE_URL: LLM_PROXY,
       OPENAI_SMALL_MODEL: DEFAULT_SMALL_MODEL,
@@ -42,7 +38,10 @@ export function createGenericCharacter(name: string, id: UUID): Character {
       chat: ['conversational', 'empathetic', 'thoughtful'],
       post: ['reflective', 'engaging', 'personal']
     },
-    plugins: []
+    plugins: [],
+    templates: {
+      messageHandlerTemplate
+    }
   }
 
   return character
