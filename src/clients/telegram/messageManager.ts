@@ -762,11 +762,15 @@ export class MessageManager {
         throw new Error('Unsupported button type')
       })
 
-    const message = await this.bot.telegram.sendMessage(chatId, content.text, {
-      reply_parameters: replyToMessageId ? { message_id: replyToMessageId } : undefined,
-      parse_mode: 'MarkdownV2',
-      ...Markup.inlineKeyboard(buttons)
-    })
+    const message = await this.bot.telegram.sendMessage(
+      chatId,
+      convertMarkdownToTelegram(content.text),
+      {
+        reply_parameters: replyToMessageId ? { message_id: replyToMessageId } : undefined,
+        parse_mode: 'MarkdownV2',
+        ...Markup.inlineKeyboard(buttons)
+      }
+    )
     return message
   }
 
