@@ -107,8 +107,7 @@ export class AyaClientService extends Service {
 
     const eventName = `user:${serializeIdentity(this.identity)}`
     ayaLogger.info(
-      `[aya] AyaOS (${process.env.npm_package_version}) client listening for event`,
-      eventName
+      `[aya] AyaOS (${process.env.npm_package_version}) client listening for event: ${eventName}`
     )
 
     // listen on DMs
@@ -168,6 +167,13 @@ export class AyaClientService extends Service {
         }
       })
     }
+
+    this.socket.on('connect', () => {
+      ayaLogger.info('Connected to Agentcoin API')
+    })
+    this.socket.on('disconnect', () => {
+      ayaLogger.info('Disconnected from Agentcoin API')
+    })
   }
 
   static async start(runtime: IAgentRuntime): Promise<Service> {
@@ -234,77 +240,86 @@ export class AyaClientService extends Service {
   }
 
   private async processMessage(channel: ChatChannel, data: unknown): Promise<void> {
+    const unsubscribeThinking = await this.sendStatus(channel, 'thinking')
     const messages = HydratedMessageSchema.array().parse(data)
 
     const { message, user } = messages[0]
 
-    if (isNull(message)) {
-      ayaLogger.info('AgentcoinClient received empty message')
-      return
-    }
+    try {
+      if (isNull(message)) {
+        ayaLogger.info('AgentcoinClient received empty message')
+        return
+      }
 
-    if (message.sender === this.identity) {
-      return
-    }
+      if (message.sender === this.identity) {
+        return
+      }
 
-    const unsubscribeThinking = await this.sendStatus(channel, 'thinking')
+      const channelId = serializeChannel(channel)
+      const roomId = stringToUuid(channelId)
+      const entityId = stringToUuid(serializeIdentity(message.sender))
 
-    const channelId = serializeChannel(channel)
-    const roomId = stringToUuid(channelId)
-    const entityId = stringToUuid(serializeIdentity(message.sender))
-
-    await this.runtime.ensureConnection({
-      entityId,
-      roomId,
-      userName: user.username,
-      name: user.username,
-      source: AYA_SOURCE,
-      type: ChannelType.DM,
-      channelId,
-      worldId: roomId // matching telegram logic where DMs worldId is the roomId
-    })
-
-    await this.runtime.ensureRoomExists({
-      id: roomId,
-      name: user.username,
-      source: AYA_SOURCE,
-      type: ChannelType.DM,
-      channelId,
-      worldId: roomId // matching telegram logic where DMs worldId is the roomId
-    })
-
-    const memory: Memory = {
-      id: messageIdToUuid(message.id),
-      entityId,
-      agentId: this.runtime.agentId,
-      roomId,
-      content: {
-        text: message.text,
+      await this.runtime.ensureConnection({
+        entityId,
+        roomId,
+        userName: user.username,
+        name: user.username,
         source: AYA_SOURCE,
-        ayaMessageId: message.id
-      },
-      createdAt: message.createdAt.getTime(),
-      unique: true
-    }
+        type: ChannelType.DM,
+        channelId,
+        worldId: roomId // matching telegram logic where DMs worldId is the roomId
+      })
 
-    // Create callback for handling responses
-    const callback: HandlerCallback = async (content: Content, _files?: string[]) => {
+      await this.runtime.ensureRoomExists({
+        id: roomId,
+        name: user.username,
+        source: AYA_SOURCE,
+        type: ChannelType.DM,
+        channelId,
+        worldId: roomId // matching telegram logic where DMs worldId is the roomId
+      })
+
+      const memory: Memory = {
+        id: messageIdToUuid(message.id),
+        entityId,
+        agentId: this.runtime.agentId,
+        roomId,
+        content: {
+          text: message.text,
+          source: AYA_SOURCE,
+          ayaMessageId: message.id
+        },
+        createdAt: message.createdAt.getTime(),
+        unique: true
+      }
+
+      // Create callback for handling responses
+      const callback: HandlerCallback = async (content: Content, _files?: string[]) => {
+        unsubscribeThinking()
+        const response = await this.sendMessageAsAgent({
+          identity: message.sender,
+          content,
+          channel
+        })
+        return isNull(response) ? [] : [response]
+      }
+
+      // Let the bootstrap plugin handle the message
+      await this.runtime.emitEvent(EventType.MESSAGE_RECEIVED, {
+        runtime: this.runtime,
+        message: memory,
+        callback,
+        source: AYA_SOURCE
+      })
+    } catch (error) {
+      console.error('Error processing message', error)
       unsubscribeThinking()
-      const response = await this.sendMessageAsAgent({
+      await this.sendMessageAsAgent({
         identity: message.sender,
-        content,
+        content: { text: 'Error processing message due to unknown error' },
         channel
       })
-      return isNull(response) ? [] : [response]
     }
-
-    // Let the bootstrap plugin handle the message
-    await this.runtime.emitEvent(EventType.MESSAGE_RECEIVED, {
-      runtime: this.runtime,
-      message: memory,
-      callback,
-      source: AYA_SOURCE
-    })
   }
 
   private async sendMessageAsAgent({
