@@ -195,7 +195,7 @@ export class Agent implements IAyaAgent {
         await managers.config.start()
       }
 
-      logger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
+      ayaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
       console.log('sdk error', error)
       ayaLogger.error(
@@ -258,7 +258,7 @@ export class Agent implements IAyaAgent {
   }
 
   private async setupCharacter(authInfo: { token: string; identity: string }): Promise<Character> {
-    logger.info('Loading character...')
+    ayaLogger.info('Loading character...')
     const charString = await fs.promises.readFile(this.context.managers.path.characterFile, 'utf8')
     const character: Character = JSON.parse(charString)
     if (isNull(character.id)) {

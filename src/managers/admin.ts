@@ -229,8 +229,7 @@ export class LoginManager {
     try {
       await this.getIdentity()
       return true
-    } catch (error) {
-      console.log('Error parsing character file:', error)
+    } catch {
       return false
     }
   }

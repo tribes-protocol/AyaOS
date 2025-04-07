@@ -6,7 +6,6 @@ async function main(): Promise<void> {
     console.log('hello, agent!')
     const agent = new Agent({ dataDir: 'data' })
     await agent.start()
-    console.log('agent started', agent.agentId)
   } catch (error) {
     console.error(`error:`, error)
     process.exit(1)

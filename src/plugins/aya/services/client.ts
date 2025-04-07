@@ -34,7 +34,6 @@ import {
   EventType,
   HandlerCallback,
   IAgentRuntime,
-  logger,
   Memory,
   Service,
   stringToUuid,
@@ -56,7 +55,6 @@ export class AyaClientService extends Service {
   readonly capabilityDescription = 'The agent is able to send and receive messages on AyaOS.ai'
 
   constructor(runtime: IAgentRuntime) {
-    console.log('AyaService constructor', runtime.agentId)
     super(runtime)
     const token = ensureStringSetting(runtime, AYA_JWT_SETTINGS_KEY)
     const identity = ensureStringSetting(runtime, AYA_AGENT_IDENTITY_KEY)
@@ -77,10 +75,10 @@ export class AyaClientService extends Service {
 
   private async start(): Promise<void> {
     if (this.socket) {
-      logger.warn(`Aya client already started for ${this.runtime.agentId}`)
+      ayaLogger.warn(`Aya client already started for ${this.runtime.agentId}`)
       return
     }
-    logger.info(`Starting Aya client for ${this.runtime.agentId}`)
+    ayaLogger.info(`Starting Aya client for ${this.runtime.agentId}`)
 
     const socket = io(AGENTCOIN_FUN_API_URL, {
       reconnection: true,
@@ -99,7 +97,7 @@ export class AyaClientService extends Service {
         try {
           cb({ jwtToken: this.authAPI.token })
         } catch (error) {
-          logger.error('Error getting JWT token', error)
+          ayaLogger.error('Error getting JWT token', error)
           cb({})
         }
       }
@@ -108,14 +106,14 @@ export class AyaClientService extends Service {
     this.socket = socket
 
     const eventName = `user:${serializeIdentity(this.identity)}`
-    logger.info(
+    ayaLogger.info(
       `[aya] AyaOS (${process.env.npm_package_version}) client listening for event`,
       eventName
     )
 
     // listen on DMs
     this.socket.on(eventName, async (data: unknown) => {
-      logger.info('Agentcoin client received event', data)
+      ayaLogger.info('Agentcoin client received event', data)
       try {
         const event = MessageEventSchema.parse(data)
         const channel = event.channel
@@ -172,15 +170,15 @@ export class AyaClientService extends Service {
     }
   }
 
-  static async start(_runtime: IAgentRuntime): Promise<Service> {
-    console.log('start Aya Service for', _runtime.agentId)
-    const cachedInstance = AyaClientService.instances.get(_runtime.agentId)
+  static async start(runtime: IAgentRuntime): Promise<Service> {
+    ayaLogger.info(`Starting Aya Client Service for ${runtime.agentId}`)
+    const cachedInstance = AyaClientService.instances.get(runtime.agentId)
     if (cachedInstance) {
       return cachedInstance
     }
 
-    const instance = new AyaClientService(_runtime)
-    AyaClientService.instances.set(_runtime.agentId, instance)
+    const instance = new AyaClientService(runtime)
+    AyaClientService.instances.set(runtime.agentId, instance)
     await instance.start()
     return instance
   }
