@@ -9,8 +9,7 @@ import {
   Transaction,
   User
 } from '@/common/types'
-
-import { Memory, RAGKnowledgeItem, UUID } from '@elizaos/core'
+import { Content, Memory, RAGKnowledgeItem, UUID } from '@elizaos/core'
 
 export interface IWalletService {
   signPersonalMessage(wallet: AgentWallet, message: string): Promise<string>
@@ -53,4 +52,12 @@ export interface IMemoriesService {
     type: string
     matchThreshold?: number
   }): Promise<Memory[]>
+}
+
+export interface ITelegramManager {
+  sendMessage(params: {
+    chatId: number | string
+    content: Content
+    replyToMessageId?: number | undefined
+  }): Promise<number>
 }
