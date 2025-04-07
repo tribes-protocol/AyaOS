@@ -740,6 +740,36 @@ export class MessageManager {
     return false
   }
 
+  public async sendMessage({
+    chatId,
+    content,
+    replyToMessageId
+  }: {
+    chatId: number | string
+    content: Content
+    replyToMessageId?: number | undefined
+  }): Promise<Message.TextMessage> {
+    const rawButtons = Array.isArray(content.buttons) ? content.buttons : []
+    const buttons = rawButtons
+      .filter((rawButton: unknown) => ButtonSchema.safeParse(rawButton).success)
+      .map((button: Button) => {
+        switch (button.kind) {
+          case 'login':
+            return Markup.button.login(button.text, button.url)
+          case 'url':
+            return Markup.button.url(button.text, button.url)
+        }
+        throw new Error('Unsupported button type')
+      })
+
+    const message = await this.bot.telegram.sendMessage(chatId, content.text, {
+      reply_parameters: replyToMessageId ? { message_id: replyToMessageId } : undefined,
+      parse_mode: 'MarkdownV2',
+      ...Markup.inlineKeyboard(buttons)
+    })
+    return message
+  }
+
   // Send long messages in chunks
   private async sendMessageInChunks(
     ctx: Context,
