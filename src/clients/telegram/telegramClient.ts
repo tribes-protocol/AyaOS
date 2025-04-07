@@ -48,7 +48,7 @@ export class TelegramClient implements Client, ITelegramManager {
   async sendMessage(params: {
     chatId: number | string
     content: Content
-    replyToMessage?: number | string
+    replyToMessageId?: number | undefined
   }): Promise<number> {
     const message = await this.messageManager.sendMessage(params)
     return message.message_id

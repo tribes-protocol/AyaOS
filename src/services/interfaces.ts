@@ -58,6 +58,6 @@ export interface ITelegramManager {
   sendMessage(params: {
     chatId: number | string
     content: Content
-    replyToMessage?: number | string
+    replyToMessageId?: number | undefined
   }): Promise<number>
 }
