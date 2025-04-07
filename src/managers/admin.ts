@@ -212,10 +212,9 @@ export class LoginManager {
   }
 
   private async getIdentity(): Promise<Identity> {
-    const { id } = ProvisionSchema.parse(
-      JSON.parse(fs.readFileSync(this.pathResolver.provisionFile, 'utf-8'))
-    )
-    return AgentIdentitySchema.parse(`AGENT-${id}`)
+    const fileData = JSON.parse(fs.readFileSync(this.pathResolver.provisionFile, 'utf-8'))
+    const { id } = ProvisionSchema.parse(fileData)
+    return AgentIdentitySchema.parse(id)
   }
 
   private async isProvisioned(): Promise<boolean> {
