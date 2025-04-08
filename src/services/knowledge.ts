@@ -105,7 +105,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       this.embeddingDimension = DIMENSION_MAP[embedding.length as keyof typeof DIMENSION_MAP]
 
       const postgresUrl = this.runtime.getSetting('POSTGRES_URL')
-      const pgliteDataDir = this.runtime.getSetting('PGLITE_DATA_DIR') ?? './pglite'
+      const pgliteDataDir = path.join(this.pathResolver.dataDir, 'pglite')
 
       if (postgresUrl) {
         const pgModule = await import('pg')
@@ -121,6 +121,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
         this.db = drizzle(pglite)
         ayaLogger.success('Connected to PGlite database')
+
+        await this.db.execute('CREATE EXTENSION IF NOT EXISTS vector;')
+        await this.db.execute('CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;')
       }
 
       // Create knowledge table if it doesn't exist
@@ -139,12 +142,17 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       `)
 
       // Create indexes separately
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS knowledge_kind_idx ON knowledge(kind);`)
       await this.db.execute(
-        `CREATE INDEX IF NOT EXISTS knowledge_is_main_idx ON knowledge(is_main);`
+        'CREATE INDEX IF NOT EXISTS "idx_knowledge_id" ON "knowledge" USING btree ("id");'
       )
       await this.db.execute(
-        `CREATE INDEX IF NOT EXISTS knowledge_document_id_idx ON knowledge(document_id);`
+        'CREATE INDEX IF NOT EXISTS "idx_knowledge_agent_id" ON "knowledge" USING btree ("agent_id");'
+      )
+      await this.db.execute(
+        'CREATE INDEX IF NOT EXISTS "idx_knowledge_is_main" ON "knowledge" USING btree ("is_main");'
+      )
+      await this.db.execute(
+        'CREATE INDEX IF NOT EXISTS "idx_knowledge_document_id" ON "knowledge" USING btree ("document_id");'
       )
 
       // Create knowledge_embeddings table if it doesn't exist
