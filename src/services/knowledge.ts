@@ -115,7 +115,10 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         ayaLogger.success('Connected to PostgreSQL database')
       } else {
         const { PGlite } = await import('@electric-sql/pglite')
-        const pglite = new PGlite({ dataDir: pgliteDataDir })
+        const { vector } = await import('@electric-sql/pglite/vector')
+        const { fuzzystrmatch } = await import('@electric-sql/pglite/contrib/fuzzystrmatch')
+        const pglite = new PGlite({ dataDir: pgliteDataDir, extensions: { vector, fuzzystrmatch } })
+
         this.db = drizzle(pglite)
         ayaLogger.success('Connected to PGlite database')
       }
@@ -133,10 +136,16 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           checksum TEXT,
           document_id UUID NOT NULL
         );
-        CREATE INDEX IF NOT EXISTS knowledge_kind_idx ON knowledge(kind);
-        CREATE INDEX IF NOT EXISTS knowledge_is_main_idx ON knowledge(is_main);
-        CREATE INDEX IF NOT EXISTS knowledge_document_id_idx ON knowledge(document_id);
       `)
+
+      // Create indexes separately
+      await this.db.execute(`CREATE INDEX IF NOT EXISTS knowledge_kind_idx ON knowledge(kind);`)
+      await this.db.execute(
+        `CREATE INDEX IF NOT EXISTS knowledge_is_main_idx ON knowledge(is_main);`
+      )
+      await this.db.execute(
+        `CREATE INDEX IF NOT EXISTS knowledge_document_id_idx ON knowledge(document_id);`
+      )
 
       // Create knowledge_embeddings table if it doesn't exist
       await this.db.execute(`
@@ -251,6 +260,8 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           limit: 100,
           cursor
         })
+
+        console.log('items', items)
 
         for (const knowledge of items) {
           if (isNull(knowledge.id)) {
