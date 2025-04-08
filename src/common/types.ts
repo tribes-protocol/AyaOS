@@ -265,9 +265,8 @@ export const CharacterSchema = z.object({
   system: z.string().optional(),
   templates: z.record(z.string()).optional(),
   bio: z.union([z.string(), z.array(z.string())]),
-  // FIXME: hish - add these back in
-  // messageExamples: z.array(z.array(CharacterMessageSchema)).optional(),
-  // postExamples: z.array(z.string()).optional(),
+  messageExamples: z.array(z.array(CharacterMessageSchema)).optional(),
+  postExamples: z.array(z.string()).optional(),
   topics: z.array(z.string()).optional(),
   adjectives: z.array(z.string()).optional(),
   knowledge: z
@@ -290,8 +289,7 @@ export const CharacterSchema = z.object({
       chat: z.array(z.string()).optional(),
       post: z.array(z.string()).optional()
     })
-    .optional(),
-  lore: z.array(z.string()).optional()
+    .optional()
 })
 
 export type Character = z.infer<typeof CharacterSchema>

@@ -21,7 +21,7 @@ import {
   loadEnvFile
 } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
-import { AuthInfo, AyaOSOptions } from '@/common/types'
+import { AuthInfo, AyaOSOptions, CharacterSchema } from '@/common/types'
 import { ayaPlugin } from '@/plugins/aya'
 import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
@@ -115,7 +115,7 @@ export class Agent implements IAyaAgent {
       const envSettings = this.processSettings()
 
       // step 2: load character and initialize database
-      const character: Character = await this.setupCharacter(auth, envSettings)
+      const character = await this.setupCharacter(auth, envSettings)
 
       // step 3: initialize required plugins
       this.plugins.push(sqlPlugin)
@@ -278,7 +278,7 @@ export class Agent implements IAyaAgent {
     const characterFile = path.join(CHARACTERS_DIR, `${characterId}.character.json`)
 
     const charString = await fs.promises.readFile(characterFile, 'utf8')
-    const character: Character = JSON.parse(charString)
+    const character = CharacterSchema.parse(JSON.parse(charString))
     if (isNull(character.id)) {
       throw new Error('Character id not found')
     }
