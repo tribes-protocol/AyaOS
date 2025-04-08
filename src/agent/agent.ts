@@ -43,6 +43,7 @@ import {
 } from '@elizaos/core'
 // import farcasterPlugin from '@elizaos/plugin-farcaster'
 import { AgentContext, AgentRegistry } from '@/agent/registry'
+import { TelegramClient } from '@/clients/telegram/telegramClient'
 import openaiPlugin from '@elizaos/plugin-openai'
 import sqlPlugin from '@elizaos/plugin-sql'
 import fs from 'fs'
@@ -99,6 +100,14 @@ export class Agent implements IAyaAgent {
       WalletService.serviceType,
       'Wallet service not found'
     )
+  }
+
+  get telegram(): ITelegramManager {
+    const client = this.runtime.clients.telegram
+    if (isNull(client) || !(client instanceof TelegramClient)) {
+      throw new Error('Telegram client not found')
+    }
+    return client
   }
 
   async start(): Promise<void> {
