@@ -473,11 +473,11 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   async search(options: {
     q: string
-    limit: number
+    limit?: number
     kind?: string
     matchThreshold?: number
   }): Promise<RAGKnowledgeItem[]> {
-    const { q, limit, kind, matchThreshold = 0.5 } = options
+    const { q, limit = 10, kind, matchThreshold = 0.5 } = options
     const embedding = await this.runtime.useModel(ModelType.TEXT_EMBEDDING, q)
 
     const cleanVector = embedding.map((n) => (Number.isFinite(n) ? Number(n.toFixed(6)) : 0))

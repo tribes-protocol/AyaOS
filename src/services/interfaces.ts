@@ -32,7 +32,7 @@ export interface IKnowledgeService {
   remove(id: UUID): Promise<void>
   search(options: {
     q: string
-    limit: number
+    limit?: number
     kind?: string
     matchThreshold?: number
   }): Promise<RAGKnowledgeItem[]>
