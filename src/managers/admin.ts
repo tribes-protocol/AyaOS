@@ -22,6 +22,7 @@ import path from 'path'
 
 export class LoginManager {
   private readonly api = new AgentcoinAPI()
+
   constructor(
     private readonly keychain: KeychainManager,
     private readonly pathResolver: PathManager
@@ -39,10 +40,10 @@ export class LoginManager {
       throw new Error('Failed to sign message')
     }
 
-    const token = await this.api.login({ identity, message, signature })
+    const cookie = await this.api.login({ identity, message, signature })
 
     ayaLogger.success('Agent coin logged in successfully', identity)
-    return token
+    return cookie
   }
 
   async provisionIfNeeded(
@@ -211,18 +212,17 @@ export class LoginManager {
   }
 
   private async getIdentity(): Promise<Identity> {
-    const { id } = ProvisionSchema.parse(
-      JSON.parse(fs.readFileSync(this.pathResolver.provisionFile, 'utf-8'))
-    )
-    return AgentIdentitySchema.parse(`AGENT-${id}`)
+    const fileData = JSON.parse(fs.readFileSync(this.pathResolver.provisionFile, 'utf-8'))
+    const { id } = ProvisionSchema.parse(fileData)
+    return AgentIdentitySchema.parse(id)
   }
 
   private async isProvisioned(): Promise<boolean> {
     try {
       await this.getIdentity()
       return true
-    } catch (error) {
-      ayaLogger.error('Error parsing provision file:', error)
+    } catch {
+      ayaLogger.info('Provision file not found, assuming agent is not provisioned')
       return false
     }
   }

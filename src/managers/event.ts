@@ -3,7 +3,7 @@ import { ayaLogger } from '@/common/logger'
 
 export class EventManager {
   private readonly agentcoinAPI: AyaAuthAPI
-  constructor(private readonly token: string) {
+  constructor(token: string) {
     this.agentcoinAPI = new AyaAuthAPI(token)
   }
 

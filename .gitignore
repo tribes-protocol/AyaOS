@@ -7,3 +7,5 @@ data/
 db.sqlite
 .idea
 pglite
+src/characters/
+.DS_Store

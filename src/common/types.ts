@@ -265,9 +265,8 @@ export const CharacterSchema = z.object({
   system: z.string().optional(),
   templates: z.record(z.string()).optional(),
   bio: z.union([z.string(), z.array(z.string())]),
-  // FIXME: hish - add these back in
-  // messageExamples: z.array(z.array(CharacterMessageSchema)).optional(),
-  // postExamples: z.array(z.string()).optional(),
+  messageExamples: z.array(z.array(CharacterMessageSchema)).optional(),
+  postExamples: z.array(z.string()).optional(),
   topics: z.array(z.string()).optional(),
   adjectives: z.array(z.string()).optional(),
   knowledge: z
@@ -290,8 +289,7 @@ export const CharacterSchema = z.object({
       chat: z.array(z.string()).optional(),
       post: z.array(z.string()).optional()
     })
-    .optional(),
-  lore: z.array(z.string()).optional()
+    .optional()
 })
 
 export type Character = z.infer<typeof CharacterSchema>
@@ -347,18 +345,6 @@ export const SentinelSetGitCommandSchema = z.object({
   state: GitStateSchema
 })
 
-export const SentinelAddKnowledgeCommandSchema = z.object({
-  kind: z.literal('add_knowledge'),
-  source: z.string(),
-  filename: z.string()
-})
-
-export const SentinelDeleteKnowledgeCommandSchema = z.object({
-  kind: z.literal('delete_knowledge'),
-  source: z.string(),
-  filename: z.string()
-})
-
 export const SentinelSetEnvVarsCommandSchema = z.object({
   kind: z.literal('set_env_vars'),
   envVars: z.record(z.string(), z.string())
@@ -366,8 +352,6 @@ export const SentinelSetEnvVarsCommandSchema = z.object({
 
 export const SentinelCommandSchema = z.discriminatedUnion('kind', [
   SentinelSetGitCommandSchema,
-  SentinelAddKnowledgeCommandSchema,
-  SentinelDeleteKnowledgeCommandSchema,
   SentinelSetEnvVarsCommandSchema
 ])
 
@@ -495,20 +479,9 @@ export interface AyaOSOptions {
 
 export const RagKnowledgeItemContentSchema = z.object({
   text: z.string(),
-  metadata: z
-    .object({
-      isMain: z.boolean().optional().nullable(),
-      isChunk: z.boolean().optional().nullable(),
-      originalId: z.string().optional().nullable(),
-      chunkIndex: z.number().optional().nullable(),
-      source: z.string().optional().nullable(),
-      type: z.string().optional().nullable(),
-      isShared: z.boolean().optional().nullable(),
-      kind: z.string().optional().nullable()
-    })
-    .passthrough()
-    .optional()
-    .nullable()
+  kind: z.string().optional(),
+  documentId: z.string(),
+  source: z.string()
 })
 
 export type RagKnowledgeItemContent = z.infer<typeof RagKnowledgeItemContentSchema>
@@ -517,10 +490,9 @@ export const RAGKnowledgeItemSchema = z.object({
   id: UUIDSchema,
   agentId: UUIDSchema,
   content: RagKnowledgeItemContentSchema,
-  embedding: z.instanceof(Float32Array).optional(),
+  embedding: z.array(z.number()),
   createdAt: z.number().optional(),
-  similarity: z.number().optional(),
-  score: z.number().optional()
+  similarity: z.number().optional()
 })
 
 export type RAGKnowledgeItem = z.infer<typeof RAGKnowledgeItemSchema>

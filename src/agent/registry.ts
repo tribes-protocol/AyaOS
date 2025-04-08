@@ -25,7 +25,11 @@ export const AgentRegistry = {
   instances: new Map<string, AgentContext>(),
 
   async setup(options?: AyaOSOptions): Promise<AgentContext> {
-    const pathResolver = new PathManager(options?.dataDir)
+    const expandedDataDir = options?.dataDir?.startsWith('~')
+      ? options.dataDir.replace('~', process.env.HOME || '')
+      : options?.dataDir
+
+    const pathResolver = new PathManager(expandedDataDir)
     const dataDir = pathResolver.dataDir
 
     if (this.instances.has(dataDir)) {
