@@ -10,6 +10,7 @@ import {
   DEFAULT_SMALL_MODEL,
   LLM_PROXY,
   OPENAI_API_KEY,
+  PGLITE_DATA_DIR,
   WEBSEARCH_PROXY
 } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
@@ -317,6 +318,17 @@ export class Agent implements IAyaAgent {
     }
     if (character.secrets.OPENAI_BASE_URL === LLM_PROXY) {
       character.secrets.OPENAI_API_KEY = token
+    }
+
+    const isPgliteDataDirSet =
+      character.secrets?.[PGLITE_DATA_DIR] ||
+      character.settings?.[PGLITE_DATA_DIR] ||
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      character.settings?.secrets?.[PGLITE_DATA_DIR] ||
+      envSettings[PGLITE_DATA_DIR]
+
+    if (!isPgliteDataDirSet) {
+      character.secrets.PGLITE_DATA_DIR = path.join(this.context.dataDir, 'elizadb')
     }
 
     return character

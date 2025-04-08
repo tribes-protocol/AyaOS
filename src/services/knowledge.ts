@@ -105,7 +105,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       this.embeddingDimension = DIMENSION_MAP[embedding.length as keyof typeof DIMENSION_MAP]
 
       const postgresUrl = this.runtime.getSetting('POSTGRES_URL')
-      const pgliteDataDir = path.join(this.pathResolver.dataDir, 'pglite')
+      const pgliteDataDir = path.join(this.pathResolver.dataDir, 'ayadb')
 
       if (postgresUrl) {
         const pgModule = await import('pg')
