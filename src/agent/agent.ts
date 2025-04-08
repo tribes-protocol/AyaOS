@@ -299,13 +299,7 @@ export class Agent implements IAyaAgent {
       character.secrets.TAVILY_API_KEY = token
     }
 
-    const openaiApiKey =
-      character.secrets?.[OPENAI_API_KEY] ||
-      character.settings?.[OPENAI_API_KEY] ||
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      character.settings?.secrets?.[OPENAI_API_KEY] ||
-      envSettings[OPENAI_API_KEY]
-
+    const openaiApiKey = this.getConfigValue(character, envSettings, OPENAI_API_KEY)
     const isOpenaiApiKeySet = !isNull(openaiApiKey)
 
     // setup llm
@@ -320,18 +314,27 @@ export class Agent implements IAyaAgent {
       character.secrets.OPENAI_API_KEY = token
     }
 
-    const isPgliteDataDirSet =
-      character.secrets?.[PGLITE_DATA_DIR] ||
-      character.settings?.[PGLITE_DATA_DIR] ||
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      character.settings?.secrets?.[PGLITE_DATA_DIR] ||
-      envSettings[PGLITE_DATA_DIR]
+    const isPgliteDataDirSet = !isNull(this.getConfigValue(character, envSettings, PGLITE_DATA_DIR))
 
     if (!isPgliteDataDirSet) {
       character.secrets.PGLITE_DATA_DIR = path.join(this.context.dataDir, 'elizadb')
     }
 
     return character
+  }
+
+  private getConfigValue(
+    character: Character,
+    envSettings: Record<string, string>,
+    key: string
+  ): string | undefined {
+    return (
+      character.secrets?.[key] ||
+      character.settings?.[key] ||
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      character.settings?.secrets?.[key] ||
+      envSettings[key]
+    )
   }
 
   private processSettings(): Record<string, string> {
