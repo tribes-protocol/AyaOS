@@ -9,6 +9,7 @@ import {
   DEFAULT_LARGE_MODEL,
   DEFAULT_SMALL_MODEL,
   LLM_PROXY,
+  OPENAI_API_KEY,
   WEBSEARCH_PROXY
 } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
@@ -111,8 +112,10 @@ export class Agent implements IAyaAgent {
       this.context_ = context
       const { auth, managers } = context
 
+      const envSettings = this.processSettings()
+
       // step 2: load character and initialize database
-      const character: Character = await this.setupCharacter(auth)
+      const character: Character = await this.setupCharacter(auth, envSettings)
 
       // step 3: initialize required plugins
       this.plugins.push(sqlPlugin)
@@ -123,7 +126,7 @@ export class Agent implements IAyaAgent {
         character,
         plugins: this.plugins,
         agentId: character.id,
-        settings: this.processSettings()
+        settings: envSettings
       })
 
       this.runtime_ = runtime
@@ -264,7 +267,10 @@ export class Agent implements IAyaAgent {
     }
   }
 
-  private async setupCharacter(authInfo: AuthInfo): Promise<Character> {
+  private async setupCharacter(
+    authInfo: AuthInfo,
+    envSettings: Record<string, string>
+  ): Promise<Character> {
     logger.info('Loading character...')
     const { identity, token } = authInfo
 
@@ -276,11 +282,6 @@ export class Agent implements IAyaAgent {
     if (isNull(character.id)) {
       throw new Error('Character id not found')
     }
-
-    // character.templates = {
-    //   ...character.templates,
-    //   messageHandlerTemplate: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
-    // }
 
     character.secrets = character.secrets || {}
 
@@ -297,9 +298,17 @@ export class Agent implements IAyaAgent {
       character.secrets.TAVILY_API_KEY = token
     }
 
-    // FIXME: this will override user openai api key
+    const openaiApiKey =
+      character.secrets?.[OPENAI_API_KEY] ||
+      character.settings?.[OPENAI_API_KEY] ||
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      character.settings?.secrets?.[OPENAI_API_KEY] ||
+      envSettings[OPENAI_API_KEY]
+
+    const isOpenaiApiKeySet = !isNull(openaiApiKey)
+
     // setup llm
-    if (isNull(character.secrets.OPENAI_BASE_URL)) {
+    if (!isOpenaiApiKeySet) {
       character.secrets.OPENAI_BASE_URL = LLM_PROXY
       character.secrets.OPENAI_SMALL_MODEL = DEFAULT_SMALL_MODEL
       character.secrets.OPENAI_LARGE_MODEL = DEFAULT_LARGE_MODEL
@@ -309,8 +318,6 @@ export class Agent implements IAyaAgent {
     if (character.secrets.OPENAI_BASE_URL === LLM_PROXY) {
       character.secrets.OPENAI_API_KEY = token
     }
-
-    // logger.info('character', JSON.stringify(character, null, 2))
 
     return character
   }
