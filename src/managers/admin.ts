@@ -221,8 +221,8 @@ export class LoginManager {
     try {
       await this.getIdentity()
       return true
-    } catch (error) {
-      ayaLogger.error('Error parsing provision file:', error)
+    } catch {
+      ayaLogger.info('Provision file not found, assuming agent is not provisioned')
       return false
     }
   }
