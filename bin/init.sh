@@ -91,21 +91,5 @@ ORIGINAL_DIR=$(pwd)
 }
 cd "$ORIGINAL_DIR"
 
-# Display success message with a nice box
-echo
-echo "┌──────────────────────────────────────────────────────────────────────┐"
-echo "│                                                                      │"
-echo "│  ✓ Repository cloned successfully!                                   │"
-echo "│                                                                      │"
-echo "│  Next steps:                                                         │"
-echo "│                                                                      │"
-echo "│  1. cd $projectName                                                  │"
-echo "│                                                                      │"
-echo "│  2. Add your OpenAI API key to .env:                                 │"
-echo "│     OPENAI_API_KEY=your_api_key_here                                 │"
-echo "│                                                                      │"
-echo "│  3. Run the development server with: bun dev                         │"
-echo "│                                                                      │"
-echo "└──────────────────────────────────────────────────────────────────────┘"
-echo
-
+cd "$projectName"
+bun dev

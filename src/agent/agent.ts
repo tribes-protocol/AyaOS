@@ -9,6 +9,8 @@ import {
   DEFAULT_LARGE_MODEL,
   DEFAULT_SMALL_MODEL,
   LLM_PROXY,
+  OPENAI_API_KEY,
+  PGLITE_DATA_DIR,
   WEBSEARCH_PROXY
 } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
@@ -20,7 +22,7 @@ import {
   loadEnvFile
 } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
-import { AuthInfo, AyaOSOptions } from '@/common/types'
+import { AuthInfo, AyaOSOptions, CharacterSchema } from '@/common/types'
 import { ayaPlugin } from '@/plugins/aya'
 import {
   IKnowledgeService,
@@ -146,8 +148,10 @@ export class Agent implements IAyaAgent {
       this.context_ = context
       const { auth, managers } = context
 
+      const envSettings = this.processSettings()
+
       // step 2: load character and initialize database
-      const character: Character = await this.setupCharacter(auth)
+      const character = await this.setupCharacter(auth, envSettings)
 
       // step 3: initialize required plugins
       this.plugins.push(sqlPlugin)
@@ -158,7 +162,7 @@ export class Agent implements IAyaAgent {
         character,
         plugins: this.plugins,
         agentId: character.id,
-        settings: this.processSettings()
+        settings: envSettings
       })
 
       this.runtime_ = runtime
@@ -237,7 +241,7 @@ export class Agent implements IAyaAgent {
         await managers.config.start()
       }
 
-      logger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
+      ayaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
       console.log('sdk error', error)
       ayaLogger.error(
@@ -299,7 +303,10 @@ export class Agent implements IAyaAgent {
     }
   }
 
-  private async setupCharacter(authInfo: AuthInfo): Promise<Character> {
+  private async setupCharacter(
+    authInfo: AuthInfo,
+    envSettings: Record<string, string>
+  ): Promise<Character> {
     logger.info('Loading character...')
     const { identity, token } = authInfo
 
@@ -307,15 +314,10 @@ export class Agent implements IAyaAgent {
     const characterFile = path.join(CHARACTERS_DIR, `${characterId}.character.json`)
 
     const charString = await fs.promises.readFile(characterFile, 'utf8')
-    const character: Character = JSON.parse(charString)
+    const character = CharacterSchema.parse(JSON.parse(charString))
     if (isNull(character.id)) {
       throw new Error('Character id not found')
     }
-
-    // character.templates = {
-    //   ...character.templates,
-    //   messageHandlerTemplate: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
-    // }
 
     character.secrets = character.secrets || {}
 
@@ -332,8 +334,11 @@ export class Agent implements IAyaAgent {
       character.secrets.TAVILY_API_KEY = token
     }
 
+    const openaiApiKey = this.getConfigValue(character, envSettings, OPENAI_API_KEY)
+    const isOpenaiApiKeySet = !isNull(openaiApiKey)
+
     // setup llm
-    if (isNull(character.secrets.OPENAI_BASE_URL)) {
+    if (!isOpenaiApiKeySet) {
       character.secrets.OPENAI_BASE_URL = LLM_PROXY
       character.secrets.OPENAI_SMALL_MODEL = DEFAULT_SMALL_MODEL
       character.secrets.OPENAI_LARGE_MODEL = DEFAULT_LARGE_MODEL
@@ -344,9 +349,27 @@ export class Agent implements IAyaAgent {
       character.secrets.OPENAI_API_KEY = token
     }
 
-    // logger.info('character', JSON.stringify(character, null, 2))
+    const isPgliteDataDirSet = !isNull(this.getConfigValue(character, envSettings, PGLITE_DATA_DIR))
+
+    if (!isPgliteDataDirSet) {
+      character.secrets.PGLITE_DATA_DIR = path.join(this.context.dataDir, 'elizadb')
+    }
 
     return character
+  }
+
+  private getConfigValue(
+    character: Character,
+    envSettings: Record<string, string>,
+    key: string
+  ): string | undefined {
+    return (
+      character.secrets?.[key] ||
+      character.settings?.[key] ||
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      character.settings?.secrets?.[key] ||
+      envSettings[key]
+    )
   }
 
   private processSettings(): Record<string, string> {

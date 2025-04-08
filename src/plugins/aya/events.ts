@@ -184,7 +184,7 @@ export const messageReceivedHandler = async ({
         let retries = 0
         const maxRetries = 3
         while (retries < maxRetries && (!responseContent?.thought || !responseContent?.actions)) {
-          const response = await runtime.useModel(ModelType.TEXT_SMALL, {
+          const response = await runtime.useModel(ModelType.TEXT_LARGE, {
             prompt
           })
 
@@ -244,6 +244,7 @@ export const messageReceivedHandler = async ({
 
         await runtime.processActions(message, responseMessages, state, callback)
       }
+
       onComplete?.()
       await runtime.evaluate(message, state, shouldRespond, callback, responseMessages)
 
