@@ -26,7 +26,7 @@ export interface IKnowledgeService {
     filters?: {
       kind?: string
     }
-  }): Promise<RAGKnowledgeItem[]>
+  }): Promise<{ items: RAGKnowledgeItem[]; nextCursor?: number }>
   get(id: UUID): Promise<RAGKnowledgeItem | undefined>
   add(id: UUID, knowledge: RagKnowledgeItemContent): Promise<void>
   remove(id: UUID): Promise<void>

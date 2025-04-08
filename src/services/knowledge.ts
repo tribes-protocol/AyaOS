@@ -4,8 +4,7 @@ import { AyaAuthAPI } from '@/apis/aya-auth'
 import {
   AYA_AGENT_DATA_DIR_KEY,
   AYA_AGENT_IDENTITY_KEY,
-  AYA_JWT_SETTINGS_KEY,
-  DOCUMENT_TABLE_NAME
+  AYA_JWT_SETTINGS_KEY
 } from '@/common/constants'
 import { calculateChecksum, ensureStringSetting, isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
@@ -32,13 +31,23 @@ import { CSVLoader } from '@langchain/community/document_loaders/fs/csv'
 import { DocxLoader } from '@langchain/community/document_loaders/fs/docx'
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf'
 import axios from 'axios'
-import { and, asc, cosineDistance, desc, eq, gte, sql } from 'drizzle-orm'
+import { and, asc, cosineDistance, desc, eq, gt, gte, lt, sql } from 'drizzle-orm'
 import { drizzle as drizzlePg, NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { boolean, pgTable, text, timestamp, uuid, vector } from 'drizzle-orm/pg-core'
 import { drizzle, PgliteDatabase } from 'drizzle-orm/pglite'
 import fs from 'fs/promises'
 import { TextLoader } from 'langchain/document_loaders/fs/text'
 import path from 'path'
+import { v4 } from 'uuid'
+
+const DIMENSION_MAP = {
+  [VECTOR_DIMS.SMALL]: 'dim384',
+  [VECTOR_DIMS.MEDIUM]: 'dim512',
+  [VECTOR_DIMS.LARGE]: 'dim768',
+  [VECTOR_DIMS.XL]: 'dim1024',
+  [VECTOR_DIMS.XXL]: 'dim1536',
+  [VECTOR_DIMS.XXXL]: 'dim3072'
+} as const
 
 export const Knowledges = pgTable('knowledge', {
   id: uuid('id').$type<UUID>().primaryKey(),
@@ -72,7 +81,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   private readonly authAPI: AyaAuthAPI
   private readonly pathResolver: PathManager
   private db!: NodePgDatabase | PgliteDatabase
-  private embeddingDimension!: number
+  private embeddingDimension!: string
 
   static readonly serviceType = 'aya-os-knowledge-service'
   readonly capabilityDescription = ''
@@ -92,7 +101,8 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   private async initializeTables(): Promise<void> {
     try {
       const embedding = await this.runtime.useModel(ModelType.TEXT_EMBEDDING, null)
-      this.embeddingDimension = embedding.length
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      this.embeddingDimension = DIMENSION_MAP[embedding.length as keyof typeof DIMENSION_MAP]
 
       const postgresUrl = this.runtime.getSetting('POSTGRES_URL')
       const pgliteDataDir = this.runtime.getSetting('PGLITE_DATA_DIR') ?? './pglite'
@@ -123,6 +133,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           checksum TEXT,
           document_id UUID NOT NULL
         );
+        CREATE INDEX IF NOT EXISTS knowledge_kind_idx ON knowledge(kind);
+        CREATE INDEX IF NOT EXISTS knowledge_is_main_idx ON knowledge(is_main);
+        CREATE INDEX IF NOT EXISTS knowledge_document_id_idx ON knowledge(document_id);
       `)
 
       // Create knowledge_embeddings table if it doesn't exist
@@ -234,21 +247,19 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
       let cursor: number | undefined
       do {
-        const results = await this.runtime.getMemories({
-          agentId: this.runtime.agentId,
-          count: 100,
-          start: cursor,
-          tableName: DOCUMENT_TABLE_NAME
+        const { items, nextCursor } = await this.list({
+          limit: 100,
+          cursor
         })
 
-        for (const knowledge of results) {
+        for (const knowledge of items) {
           if (isNull(knowledge.id)) {
             continue
           }
           existingKnowledgeIds.add(knowledge.id)
         }
 
-        cursor = results[0]?.createdAt ? results[0].createdAt + 1 : undefined
+        cursor = nextCursor
       } while (cursor)
 
       const remoteKnowledgeIds: UUID[] = []
@@ -392,10 +403,17 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           isMain: false
         })
 
-        await tx.insert(KnowledgeEmbeddings).values({
+        const embeddingValues = {
+          id: v4(),
           knowledgeId: fragmentId,
-          [this.embeddingDimension]: embedding
-        })
+          createdAt: new Date()
+        }
+
+        const cleanVector = embedding.map((n) => (Number.isFinite(n) ? Number(n.toFixed(6)) : 0))
+
+        embeddingValues[this.embeddingDimension] = cleanVector
+
+        await tx.insert(KnowledgeEmbeddings).values(embeddingValues)
       })
     }
   }
@@ -403,16 +421,25 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   async list(options?: {
     limit?: number
     sort?: 'asc' | 'desc'
+    cursor?: number
     filters?: {
       kind?: string
     }
-  }): Promise<RAGKnowledgeItem[]> {
-    const { limit = 100, filters, sort = 'desc' } = options ?? {}
+  }): Promise<{ items: RAGKnowledgeItem[]; nextCursor?: number }> {
+    const { limit = 100, filters, sort = 'desc', cursor } = options ?? {}
 
-    const conditions = [eq(Knowledges.agentId, this.runtime.agentId)]
+    const conditions = [eq(Knowledges.agentId, this.runtime.agentId), eq(Knowledges.isMain, true)]
 
     if (filters?.kind) {
       conditions.push(eq(Knowledges.kind, filters.kind))
+    }
+
+    if (cursor) {
+      conditions.push(
+        sort === 'desc'
+          ? lt(Knowledges.createdAt, new Date(cursor))
+          : gt(Knowledges.createdAt, new Date(cursor))
+      )
     }
 
     const results = await this.db
@@ -422,7 +449,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       .orderBy(sort === 'asc' ? asc(Knowledges.createdAt) : desc(Knowledges.createdAt))
       .limit(limit)
 
-    return results.map((item) => ({
+    const items = results.map((item) => ({
       id: item.id,
       agentId: item.agentId,
       content: {
@@ -432,9 +459,16 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         source: item.source
       },
       embedding: [],
-      createdAt: item.createdAt ? Math.floor(item.createdAt.getTime()) : undefined,
-      similarity: 0
+      createdAt: item.createdAt ? Math.floor(item.createdAt.getTime()) : undefined
     }))
+
+    let nextCursor: number | undefined
+    if (items.length === limit) {
+      const lastItem = items[items.length - 1]
+      nextCursor = lastItem.createdAt
+    }
+
+    return { items, nextCursor }
   }
 
   async search(options: {
@@ -446,12 +480,17 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     const { q, limit, kind, matchThreshold = 0.5 } = options
     const embedding = await this.runtime.useModel(ModelType.TEXT_EMBEDDING, q)
 
+    const cleanVector = embedding.map((n) => (Number.isFinite(n) ? Number(n.toFixed(6)) : 0))
+
     const similarity = sql<number>`1 - (${cosineDistance(
       KnowledgeEmbeddings[this.embeddingDimension],
-      embedding
+      cleanVector
     )})`
 
-    const conditions = [gte(similarity, matchThreshold)]
+    const conditions = [
+      gte(similarity, matchThreshold),
+      eq(Knowledges.agentId, this.runtime.agentId)
+    ]
 
     if (kind) {
       conditions.push(eq(Knowledges.kind, kind))
@@ -461,7 +500,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       .select({
         knowledge: Knowledges,
         similarity,
-        knowledgeEmbeddings: KnowledgeEmbeddings
+        embedding: KnowledgeEmbeddings[this.embeddingDimension]
       })
       .from(KnowledgeEmbeddings)
       .innerJoin(Knowledges, eq(KnowledgeEmbeddings.knowledgeId, Knowledges.id))
@@ -469,7 +508,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       .orderBy(desc(similarity))
       .limit(limit)
 
-    return results.map(({ knowledge, similarity, knowledgeEmbeddings }) => ({
+    return results.map(({ knowledge, similarity, embedding }) => ({
       id: knowledge.id,
       agentId: knowledge.agentId,
       content: {
@@ -478,7 +517,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         kind: knowledge.kind ?? undefined,
         source: knowledge.source
       },
-      embedding: knowledgeEmbeddings[this.embeddingDimension] ?? [],
+      embedding: embedding ?? [],
       createdAt: knowledge.createdAt ? Math.floor(knowledge.createdAt.getTime()) : undefined,
       similarity
     }))
@@ -508,7 +547,11 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   async remove(id: UUID): Promise<void> {
     try {
+      const [knowledge] = await this.db.select().from(Knowledges).where(eq(Knowledges.id, id))
+
       await this.db.delete(Knowledges).where(eq(Knowledges.documentId, id))
+
+      await fs.unlink(path.join(this.pathResolver.knowledgeRoot, knowledge.source))
     } catch (error) {
       ayaLogger.error(`Error removing knowledge: ${error}`)
     }
