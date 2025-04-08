@@ -202,17 +202,11 @@ export class AyaClientService extends Service {
     ayaLogger.info('Handling admin command', command.kind)
     switch (command.kind) {
       case 'set_git':
-        ayaLogger.info('ignoring set_git. sentinel service is handling this', command)
-        break
-      case 'add_knowledge':
-        ayaLogger.info('ignoring add_knowledge', command)
+        ayaLogger.info('Ignoring set_git. sentinel service is handling this', command)
         break
       case 'set_env_vars':
-        ayaLogger.info('setting env vars', command)
+        ayaLogger.info('Setting env vars', command)
         await this.handleSetEnvvars(command.envVars)
-        break
-      case 'delete_knowledge':
-        ayaLogger.info('ignoring delete_knowledge', command)
         break
       default:
         throw new Error('Invalid command')

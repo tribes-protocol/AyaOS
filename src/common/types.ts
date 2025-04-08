@@ -347,18 +347,6 @@ export const SentinelSetGitCommandSchema = z.object({
   state: GitStateSchema
 })
 
-export const SentinelAddKnowledgeCommandSchema = z.object({
-  kind: z.literal('add_knowledge'),
-  source: z.string(),
-  filename: z.string()
-})
-
-export const SentinelDeleteKnowledgeCommandSchema = z.object({
-  kind: z.literal('delete_knowledge'),
-  source: z.string(),
-  filename: z.string()
-})
-
 export const SentinelSetEnvVarsCommandSchema = z.object({
   kind: z.literal('set_env_vars'),
   envVars: z.record(z.string(), z.string())
@@ -366,8 +354,6 @@ export const SentinelSetEnvVarsCommandSchema = z.object({
 
 export const SentinelCommandSchema = z.discriminatedUnion('kind', [
   SentinelSetGitCommandSchema,
-  SentinelAddKnowledgeCommandSchema,
-  SentinelDeleteKnowledgeCommandSchema,
   SentinelSetEnvVarsCommandSchema
 ])
 

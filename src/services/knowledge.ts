@@ -269,8 +269,6 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           cursor
         })
 
-        console.log('items', items)
-
         for (const knowledge of items) {
           if (isNull(knowledge.id)) {
             continue
