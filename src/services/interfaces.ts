@@ -6,8 +6,7 @@ import {
   RagKnowledgeItemContent,
   Transaction
 } from '@/common/types'
-
-import { Content, Memory, UUID } from '@elizaos/core'
+import { Memory, UUID } from '@elizaos/core'
 import { WalletClient } from 'viem'
 
 export interface IWalletService {
@@ -45,12 +44,4 @@ export interface IMemoriesService {
     type: string
     matchThreshold?: number
   }): Promise<Memory[]>
-}
-
-export interface ITelegramManager {
-  sendMessage(params: {
-    chatId: number | string
-    content: Content
-    replyToMessageId?: number | undefined
-  }): Promise<number>
 }
