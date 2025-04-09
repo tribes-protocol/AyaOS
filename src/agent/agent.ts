@@ -36,7 +36,6 @@ import { WalletService } from '@/services/wallet'
 import {
   Action,
   AgentRuntime,
-  Content,
   Evaluator,
   IAgentRuntime,
   logger,
@@ -54,25 +53,8 @@ import openaiPlugin from '@elizaos/plugin-openai'
 import sqlPlugin from '@elizaos/plugin-sql'
 import fs from 'fs'
 import path from 'path'
-import { TelegramService } from '@elizaos/plugin-telegram'
-
-class TelegramManager implements ITelegramManager {
-  constructor(private readonly telegram: TelegramService) {}
-
-  async sendMessage(params: {
-    chatId: number | string
-    content: Content
-    replyToMessageId?: number | undefined
-  }): Promise<number> {
-    const { chatId, content, replyToMessageId } = params
-    const [message] = await this.telegram.messageManager.sendMessage(
-      chatId,
-      content,
-      replyToMessageId
-    )
-    return message.message_id
-  }
-}
+import telegramPlugin from '@elizaos/plugin-telegram'
+import { TelegramManager } from '@/managers/telegram'
 
 export class Agent implements IAyaAgent {
   private services: (typeof Service)[] = []
@@ -82,6 +64,7 @@ export class Agent implements IAyaAgent {
   private evaluators: Evaluator[] = []
   private runtime_: AgentRuntime | undefined
   private context_?: AgentContext
+  private telegram_?: ITelegramManager
 
   constructor(readonly options?: AyaOSOptions) {}
 
@@ -128,13 +111,11 @@ export class Agent implements IAyaAgent {
   }
 
   get telegram(): ITelegramManager {
-    return new TelegramManager(
-      ensureRuntimeService<TelegramService>(
-        this.runtime,
-        TelegramService.serviceType,
-        'Telegram service not found'
-      )
-    )
+    if (isNull(this.telegram_)) {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      this.telegram_ = new TelegramManager(this.runtime.getService('telegram' as ServiceTypeName))
+    }
+    return this.telegram_
   }
 
   async start(): Promise<void> {
@@ -232,6 +213,11 @@ export class Agent implements IAyaAgent {
 
       await hackRegisterPlugin(ayaPlugin, this.runtime)
       // await hackRegisterPlugin(farcasterPlugin, this.runtime)
+      const TELEGRAM_BOT_TOKEN =
+        this.runtime.getSetting('TELEGRAM_BOT_TOKEN') || process.env.TELEGRAM_BOT_TOKEN
+      if (TELEGRAM_BOT_TOKEN) {
+        await hackRegisterPlugin(telegramPlugin, this.runtime)
+      }
 
       // start the managers
       const AGENTCOIN_MONITORING_ENABLED = this.runtime.getSetting('AGENTCOIN_MONITORING_ENABLED')
@@ -335,17 +321,14 @@ export class Agent implements IAyaAgent {
     }
 
     const openaiApiKey = this.getConfigValue(character, envSettings, OPENAI_API_KEY)
-    const isOpenaiApiKeySet = !isNull(openaiApiKey)
 
     // setup llm
-    if (!isOpenaiApiKeySet) {
+    if (isNull(openaiApiKey) || openaiApiKey.trim() === '') {
       character.secrets.OPENAI_BASE_URL = LLM_PROXY
       character.secrets.OPENAI_SMALL_MODEL = DEFAULT_SMALL_MODEL
       character.secrets.OPENAI_LARGE_MODEL = DEFAULT_LARGE_MODEL
       character.secrets.OPENAI_EMBEDDING_MODEL = DEFAULT_EMBEDDING_MODEL
       character.secrets.OPENAI_EMBEDDING_DIMENSIONS = DEFAULT_EMBEDDING_DIMENSIONS
-    }
-    if (character.secrets.OPENAI_BASE_URL === LLM_PROXY) {
       character.secrets.OPENAI_API_KEY = token
     }
 
