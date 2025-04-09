@@ -24,12 +24,7 @@ import {
 import { ayaLogger } from '@/common/logger'
 import { AuthInfo, AyaOSOptions, CharacterSchema } from '@/common/types'
 import { ayaPlugin } from '@/plugins/aya'
-import {
-  IKnowledgeService,
-  IMemoriesService,
-  ITelegramManager,
-  IWalletService
-} from '@/services/interfaces'
+import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
 import { MemoriesService } from '@/services/memories'
 import { WalletService } from '@/services/wallet'
@@ -55,6 +50,7 @@ import fs from 'fs'
 import path from 'path'
 import telegramPlugin from '@elizaos/plugin-telegram'
 import { TelegramManager } from '@/managers/telegram'
+import { ITelegramManager } from '@/managers/interfaces'
 
 export class Agent implements IAyaAgent {
   private services: (typeof Service)[] = []
