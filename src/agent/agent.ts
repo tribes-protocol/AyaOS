@@ -24,9 +24,8 @@ import {
 import { ayaLogger } from '@/common/logger'
 import { AuthInfo, AyaOSOptions, CharacterSchema } from '@/common/types'
 import { ayaPlugin } from '@/plugins/aya'
-import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
+import { IKnowledgeService, IWalletService } from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
-import { MemoriesService } from '@/services/memories'
 import { WalletService } from '@/services/wallet'
 import {
   Action,
@@ -87,14 +86,6 @@ export class Agent implements IAyaAgent {
       this.runtime,
       KnowledgeService.serviceType,
       'Knowledge base service not found'
-    )
-  }
-
-  get memories(): IMemoriesService {
-    return ensureRuntimeService<MemoriesService>(
-      this.runtime,
-      MemoriesService.serviceType,
-      'Memories service not found'
     )
   }
 
@@ -197,12 +188,7 @@ export class Agent implements IAyaAgent {
       this.actions.forEach(runtime.registerAction)
 
       // register services
-      const ayaServices: (typeof Service)[] = [
-        KnowledgeService,
-        MemoriesService,
-        WalletService,
-        ...this.services
-      ]
+      const ayaServices: (typeof Service)[] = [KnowledgeService, WalletService, ...this.services]
       for (const service of ayaServices) {
         await hackRegisterService(service, this.runtime)
       }

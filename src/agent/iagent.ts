@@ -1,11 +1,10 @@
-import { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
+import { IKnowledgeService, IWalletService } from '@/services/interfaces'
 import { Action, AgentRuntime, Plugin, Provider, Service, UUID } from '@elizaos/core'
 
 export interface IAyaAgent {
   readonly agentId: UUID
   readonly runtime: AgentRuntime
   readonly knowledge: IKnowledgeService
-  readonly memories: IMemoriesService
   readonly wallet: IWalletService
 
   start(): Promise<void>

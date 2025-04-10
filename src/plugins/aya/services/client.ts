@@ -41,6 +41,7 @@ import {
 } from '@elizaos/core'
 import fs from 'fs'
 import { io, Socket } from 'socket.io-client'
+
 function messageIdToUuid(messageId: number): UUID {
   return stringToUuid('agentcoin:' + messageId.toString())
 }

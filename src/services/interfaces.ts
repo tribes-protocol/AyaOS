@@ -6,7 +6,7 @@ import {
   RagKnowledgeItemContent,
   Transaction
 } from '@/common/types'
-import { Memory, UUID } from '@elizaos/core'
+import { UUID } from '@elizaos/core'
 import { WalletClient } from 'viem'
 
 export interface IWalletService {
@@ -35,13 +35,4 @@ export interface IKnowledgeService {
     kind?: string
     matchThreshold?: number
   }): Promise<RAGKnowledgeItem[]>
-}
-
-export interface IMemoriesService {
-  search(options: {
-    q: string
-    limit: number
-    type: string
-    matchThreshold?: number
-  }): Promise<Memory[]>
 }
