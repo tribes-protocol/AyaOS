@@ -35,6 +35,7 @@ export const messageReceivedHandler = async ({
   callback,
   onComplete
 }: MessageReceivedHandlerParams): Promise<void> => {
+  console.log('messageReceivedHandler:', JSON.stringify(message, null, 2))
   const messageId = message.id
   if (isNull(messageId)) {
     throw Error(`Message ID is required: ${message}`)
@@ -164,6 +165,8 @@ export const messageReceivedHandler = async ({
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const providers = responseObject?.providers as string[] | undefined
       logger.debug('*** Providers Value ***', providers)
+
+      console.log('responseObject', responseObject)
 
       const shouldRespond = responseObject?.action && responseObject.action === 'RESPOND'
       logger.debug('*** Should Respond ***', shouldRespond)

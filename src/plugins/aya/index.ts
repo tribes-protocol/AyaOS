@@ -1,4 +1,5 @@
 import { isNull } from '@/common/functions'
+import { webSearch } from '@/plugins/aya/actions/websearch'
 import { messageReceivedHandler } from '@/plugins/aya/events'
 import { AyaClientService } from '@/plugins/aya/services/client'
 import { WebSearchService } from '@/plugins/aya/services/websearch'
@@ -38,7 +39,7 @@ events[EventType.VOICE_MESSAGE_RECEIVED] = []
 export const ayaPlugin: Plugin = {
   name: '@tribesxyz/ayaos',
   description: 'Aya plugin for interacting with the Aya network',
-  actions,
+  actions: [...actions, webSearch],
   evaluators,
   providers,
   models,

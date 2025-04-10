@@ -69,24 +69,26 @@ export const webSearch: Action = {
     const searchResponse = await webSearchService.search(webSearchPrompt)
 
     if (searchResponse && searchResponse.results.length) {
-      const responseList = searchResponse.answer
-        ? `${searchResponse.answer}${
-            Array.isArray(searchResponse.results) && searchResponse.results.length > 0
-              ? `\n\nFor more details, you can check out these resources:\n${searchResponse.results
-                  .map(
-                    (result: SearchResult, index: number) =>
-                      `${index + 1}. [${result.title}](${result.url})`
-                  )
-                  .join('\n')}`
-              : ''
-          }`
-        : ''
+      const responseList = searchResponse.answer ? `${searchResponse.answer}\n\n` : ''
+
+      const resultsList = searchResponse.results
+        .map(
+          (result: SearchResult) =>
+            `* **[${result.title}](${result.url})**
+  * Content: ${result.content}
+  * Score: ${result.score}
+`
+        )
+        .join('')
+
+      const responseText = responseList + resultsList
 
       await callback?.({
-        text: MaxTokens(responseList, DEFAULT_MAX_WEB_SEARCH_TOKENS)
+        text: MaxTokens(responseText, DEFAULT_MAX_WEB_SEARCH_TOKENS)
       })
     } else {
       ayaLogger.error('search failed or returned no data.')
+      console.log('search failed or returned no data.')
     }
   },
   examples: [
@@ -101,7 +103,7 @@ export const webSearch: Action = {
         name: '{{agentName}}',
         content: {
           text: 'Here is the latest news about SpaceX launches:',
-          action: 'WEB_SEARCH'
+          actions: ['WEB_SEARCH']
         }
       }
     ],
@@ -116,7 +118,7 @@ export const webSearch: Action = {
         name: '{{agentName}}',
         content: {
           text: 'Here are the details I found about the iPhone 16 release:',
-          action: 'WEB_SEARCH'
+          actions: ['WEB_SEARCH']
         }
       }
     ],
@@ -131,7 +133,7 @@ export const webSearch: Action = {
         name: '{{agentName}}',
         content: {
           text: 'Here is the schedule for the next FIFA World Cup:',
-          action: 'WEB_SEARCH'
+          actions: ['WEB_SEARCH']
         }
       }
     ],
@@ -144,7 +146,7 @@ export const webSearch: Action = {
         name: '{{agentName}}',
         content: {
           text: 'Here is the latest stock price of Tesla I found:',
-          action: 'WEB_SEARCH'
+          actions: ['WEB_SEARCH']
         }
       }
     ],
@@ -159,7 +161,7 @@ export const webSearch: Action = {
         name: '{{agentName}}',
         content: {
           text: 'Here are the current trending movies in the US:',
-          action: 'WEB_SEARCH'
+          actions: ['WEB_SEARCH']
         }
       }
     ],
@@ -174,7 +176,7 @@ export const webSearch: Action = {
         name: '{{agentName}}',
         content: {
           text: 'Here is the latest score from the NBA finals:',
-          action: 'WEB_SEARCH'
+          actions: ['WEB_SEARCH']
         }
       }
     ],
@@ -187,7 +189,7 @@ export const webSearch: Action = {
         name: '{{agentName}}',
         content: {
           text: 'Here is the information about the next Apple keynote event:',
-          action: 'WEB_SEARCH'
+          actions: ['WEB_SEARCH']
         }
       }
     ]

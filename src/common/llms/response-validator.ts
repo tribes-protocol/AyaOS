@@ -4,8 +4,8 @@ import { z } from 'zod'
 
 const ResponseValidationSchema = z.object({
   valid: z.boolean(),
-  correctedResponse: z.string(),
-  correctedAction: z.string().optional().nullable(),
+  correctedText: z.string(),
+  correctedActions: z.array(z.string()).nullish(),
   explanation: z.string()
 })
 
@@ -52,16 +52,16 @@ ${requestText}
 
 ANSWER TO VALIDATE:
 <ANSWER>
-<TEXT>${response.text}</TEXT>
-<ACTION>${response.action}</ACTION>
+<TEXT>${response.message}</TEXT>
+<ACTIONS>${response.actions}</ACTIONS>
 </ANSWER>
 
 Return your analysis as a JSON object with the following structure. Make sure it's the 
 raw json. No markdown or anything else:
 {
 "valid": boolean,
-"correctedResponse": string // Original response if valid, corrected response if invalid
-"correctedAction": string | null // Original action if valid, corrected action if invalid (use ACTION.NAME if applicable)
+"correctedText": string // Original text if valid, corrected text if invalid
+"correctedActions": string[] | null // Original actions if valid, corrected actions if invalid (use ACTION.NAME if applicable)
 "explanation": string // Brief explanation of why the response was invalid (if applicable)
 }`
   /* eslint-enable max-len */
@@ -84,8 +84,8 @@ raw json. No markdown or anything else:
 
         return {
           ...response,
-          text: validationResult.correctedResponse,
-          action: validationResult.correctedAction ?? undefined
+          message: validationResult.correctedText,
+          actions: validationResult.correctedActions ?? undefined
         }
       } catch (parseError) {
         if (attempt === 2) {

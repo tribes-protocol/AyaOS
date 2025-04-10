@@ -44,13 +44,13 @@ import {
 } from '@elizaos/core'
 // import farcasterPlugin from '@elizaos/plugin-farcaster'
 import { AgentContext, AgentRegistry } from '@/agent/registry'
+import { ITelegramManager } from '@/managers/interfaces'
+import { TelegramManager } from '@/managers/telegram'
 import openaiPlugin from '@elizaos/plugin-openai'
 import sqlPlugin from '@elizaos/plugin-sql'
+import telegramPlugin from '@elizaos/plugin-telegram'
 import fs from 'fs'
 import path from 'path'
-import telegramPlugin from '@elizaos/plugin-telegram'
-import { TelegramManager } from '@/managers/telegram'
-import { ITelegramManager } from '@/managers/interfaces'
 
 export class Agent implements IAyaAgent {
   private services: (typeof Service)[] = []

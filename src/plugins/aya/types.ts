@@ -17,9 +17,9 @@ export const SearchImageSchema = z.object({
 
 export const TavilySearchResponseSchema = z.object({
   query: z.string(),
-  answer: z.string().optional().nullable(),
-  images: z.array(SearchImageSchema).optional().default([]),
-  results: z.array(SearchResultSchema).optional().default([]),
+  answer: z.string().optional().nullish(),
+  images: z.array(SearchImageSchema).default([]),
+  results: z.array(SearchResultSchema).default([]),
   response_time: z.number()
 })
 

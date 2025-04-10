@@ -11,7 +11,7 @@ export class WebSearchService extends Service implements IWebSearchService {
   private static services = new Map<UUID, WebSearchService>()
   static readonly serviceType = 'aya-os-websearch-service'
 
-  readonly capabilityDescription = 'The agent is able to search the web for information'
+  readonly capabilityDescription = ''
   private apiKey: string
   private apiUrl: string = 'https://api.tavily.com/search'
 
