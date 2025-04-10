@@ -131,7 +131,7 @@ export class AyaClientService extends Service {
         switch (event.kind) {
           case 'message': {
             // process message if allowed
-            await this.processMessage(channel, event.data)
+            await this.processMessages(channel, event.data)
             break
           }
           case 'status':
@@ -225,7 +225,10 @@ export class AyaClientService extends Service {
     await managers.config.checkEnvUpdate()
   }
 
-  private async sendStatus(channel: ChatChannel, status: MessageStatusEnum): Promise<() => void> {
+  private async sendStatusOnInterval(
+    channel: ChatChannel,
+    status: MessageStatusEnum
+  ): Promise<() => void> {
     await this.authAPI.sendStatus({ channel, status })
     const statusInterval = setInterval(async () => {
       await this.authAPI.sendStatus({ channel, status })
@@ -233,22 +236,23 @@ export class AyaClientService extends Service {
     return () => clearInterval(statusInterval)
   }
 
-  private async processMessage(channel: ChatChannel, data: unknown): Promise<void> {
-    const unsubscribeThinking = await this.sendStatus(channel, 'thinking')
+  private async processMessages(channel: ChatChannel, data: unknown): Promise<void> {
     const messages = HydratedMessageSchema.array().parse(data)
 
     const { message, user } = messages[0]
 
+    if (isNull(message)) {
+      ayaLogger.info('AgentcoinClient received empty message')
+      return
+    }
+
+    if (message.sender === this.identity) {
+      return
+    }
+
+    const stopStatusInterval = await this.sendStatusOnInterval(channel, 'thinking')
+
     try {
-      if (isNull(message)) {
-        ayaLogger.info('AgentcoinClient received empty message')
-        return
-      }
-
-      if (message.sender === this.identity) {
-        return
-      }
-
       const channelId = serializeChannel(channel)
       const roomId = stringToUuid(channelId)
       const entityId = stringToUuid(serializeIdentity(message.sender))
@@ -289,7 +293,7 @@ export class AyaClientService extends Service {
 
       // Create callback for handling responses
       const callback: HandlerCallback = async (content: Content, _files?: string[]) => {
-        unsubscribeThinking()
+        stopStatusInterval()
         const response = await this.sendMessageAsAgent({
           identity: message.sender,
           content,
@@ -307,12 +311,14 @@ export class AyaClientService extends Service {
       })
     } catch (error) {
       console.error('Error processing message', error)
-      unsubscribeThinking()
+      stopStatusInterval()
       await this.sendMessageAsAgent({
         identity: message.sender,
         content: { text: 'Error processing message due to unknown error' },
         channel
       })
+    } finally {
+      stopStatusInterval()
     }
   }
 
