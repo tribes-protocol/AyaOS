@@ -225,7 +225,10 @@ export class AyaClientService extends Service {
     await managers.config.checkEnvUpdate()
   }
 
-  private async sendStatus(channel: ChatChannel, status: MessageStatusEnum): Promise<() => void> {
+  private async sendStatusOnInterval(
+    channel: ChatChannel,
+    status: MessageStatusEnum
+  ): Promise<() => void> {
     await this.authAPI.sendStatus({ channel, status })
     const statusInterval = setInterval(async () => {
       await this.authAPI.sendStatus({ channel, status })
@@ -234,7 +237,7 @@ export class AyaClientService extends Service {
   }
 
   private async processMessage(channel: ChatChannel, data: unknown): Promise<void> {
-    const unsubscribeThinking = await this.sendStatus(channel, 'thinking')
+    const stopStatusInterval = await this.sendStatusOnInterval(channel, 'thinking')
     const messages = HydratedMessageSchema.array().parse(data)
 
     const { message, user } = messages[0]
@@ -289,7 +292,7 @@ export class AyaClientService extends Service {
 
       // Create callback for handling responses
       const callback: HandlerCallback = async (content: Content, _files?: string[]) => {
-        unsubscribeThinking()
+        stopStatusInterval()
         const response = await this.sendMessageAsAgent({
           identity: message.sender,
           content,
@@ -307,7 +310,7 @@ export class AyaClientService extends Service {
       })
     } catch (error) {
       console.error('Error processing message', error)
-      unsubscribeThinking()
+      stopStatusInterval()
       await this.sendMessageAsAgent({
         identity: message.sender,
         content: { text: 'Error processing message due to unknown error' },
