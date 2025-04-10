@@ -316,6 +316,8 @@ export class AyaClientService extends Service {
         content: { text: 'Error processing message due to unknown error' },
         channel
       })
+    } finally {
+      stopStatusInterval()
     }
   }
 
