@@ -131,7 +131,7 @@ export class AyaClientService extends Service {
         switch (event.kind) {
           case 'message': {
             // process message if allowed
-            await this.processMessage(channel, event.data)
+            await this.processMessages(channel, event.data)
             break
           }
           case 'status':
@@ -236,22 +236,23 @@ export class AyaClientService extends Service {
     return () => clearInterval(statusInterval)
   }
 
-  private async processMessage(channel: ChatChannel, data: unknown): Promise<void> {
-    const stopStatusInterval = await this.sendStatusOnInterval(channel, 'thinking')
+  private async processMessages(channel: ChatChannel, data: unknown): Promise<void> {
     const messages = HydratedMessageSchema.array().parse(data)
 
     const { message, user } = messages[0]
 
+    if (isNull(message)) {
+      ayaLogger.info('AgentcoinClient received empty message')
+      return
+    }
+
+    if (message.sender === this.identity) {
+      return
+    }
+
+    const stopStatusInterval = await this.sendStatusOnInterval(channel, 'thinking')
+
     try {
-      if (isNull(message)) {
-        ayaLogger.info('AgentcoinClient received empty message')
-        return
-      }
-
-      if (message.sender === this.identity) {
-        return
-      }
-
       const channelId = serializeChannel(channel)
       const roomId = stringToUuid(channelId)
       const entityId = stringToUuid(serializeIdentity(message.sender))
