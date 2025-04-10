@@ -112,7 +112,6 @@ export class AyaClientService extends Service {
 
     // listen on DMs
     this.socket.on(eventName, async (data: unknown) => {
-      ayaLogger.info('Agentcoin client received event', data)
       try {
         const event = MessageEventSchema.parse(data)
         const channel = event.channel
@@ -135,7 +134,7 @@ export class AyaClientService extends Service {
             break
           }
           case 'status':
-            ayaLogger.info('Received status', event.data.status)
+            ayaLogger.debug('Received status', event.data.status)
             break
         }
       } catch (error) {
@@ -249,6 +248,8 @@ export class AyaClientService extends Service {
     if (message.sender === this.identity) {
       return
     }
+
+    ayaLogger.info('Agentcoin client received event', data)
 
     const stopStatusInterval = await this.sendStatusOnInterval(channel, 'thinking')
 

@@ -2,26 +2,16 @@ import { ensureRuntimeService, isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { WebSearchService } from '@/plugins/aya/services/websearch'
 import type { SearchResult } from '@/plugins/aya/types'
-import { Action, IAgentRuntime, type HandlerCallback, type Memory, type State } from '@elizaos/core'
-import { encodingForModel, type TiktokenModel } from 'js-tiktoken'
+import {
+  Action,
+  IAgentRuntime,
+  ModelType,
+  type HandlerCallback,
+  type Memory,
+  type State
+} from '@elizaos/core'
 
 const DEFAULT_MAX_WEB_SEARCH_TOKENS = 4000
-const DEFAULT_MODEL_ENCODING = 'gpt-4o'
-
-function getTotalTokensFromString(
-  str: string,
-  encodingName: TiktokenModel = DEFAULT_MODEL_ENCODING
-): number {
-  const encoding = encodingForModel(encodingName)
-  return encoding.encode(str).length
-}
-
-function MaxTokens(data: string, maxTokens: number = DEFAULT_MAX_WEB_SEARCH_TOKENS): string {
-  if (getTotalTokensFromString(data) >= maxTokens) {
-    return data.slice(0, maxTokens)
-  }
-  return data
-}
 
 export const webSearch: Action = {
   name: 'WEB_SEARCH',
@@ -66,25 +56,44 @@ export const webSearch: Action = {
       return
     }
 
-    const searchResponse = await webSearchService.search(webSearchPrompt)
+    const searchResponse = await webSearchService.search(webSearchPrompt, {
+      limit: 10
+    })
 
     if (searchResponse && searchResponse.results.length) {
-      const responseList = searchResponse.answer ? `${searchResponse.answer}\n\n` : ''
+      const answer = searchResponse.answer ? `${searchResponse.answer}\n\n` : ''
 
-      const resultsList = searchResponse.results
-        .map(
-          (result: SearchResult) =>
-            `* **[${result.title}](${result.url})**
+      const responseText =
+        answer +
+        searchResponse.results
+          .map(
+            (result: SearchResult) =>
+              `* **[${result.title}](${result.url})**
   * Content: ${result.content}
   * Score: ${result.score}
 `
-        )
-        .join('')
+          )
+          .join('')
 
-      const responseText = responseList + resultsList
+      const summary = await runtime.useModel(ModelType.TEXT_LARGE, {
+        prompt: `Please provide a concise summary of the following search results in markdown 
+        bullet point format.  Focus on the most relevant information and key points. Keep the 
+        summary under ${DEFAULT_MAX_WEB_SEARCH_TOKENS} tokens.
+        
+        Format your response with:
+        - Main bullet points for key topics
+        - Sub-bullet points for supporting details
+        - Include relevant dates, facts, and figures
+        - Include the source url for each bullet point on the title
+        - don't alter the original title
 
+        Search Query: ${webSearchPrompt}
+
+        Search Results:
+        ${responseText}`
+      })
       await callback?.({
-        text: MaxTokens(responseText, DEFAULT_MAX_WEB_SEARCH_TOKENS)
+        text: summary
       })
     } else {
       ayaLogger.error('search failed or returned no data.')
