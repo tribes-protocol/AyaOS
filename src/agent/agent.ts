@@ -347,7 +347,8 @@ export class Agent implements IAyaAgent {
       character.settings?.[key] ||
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       character.settings?.secrets?.[key] ||
-      envSettings[key]
+      envSettings[key] ||
+      process.env[key]
     )
   }
 

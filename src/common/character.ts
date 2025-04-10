@@ -1,11 +1,3 @@
-import {
-  DEFAULT_EMBEDDING_DIMENSIONS,
-  DEFAULT_EMBEDDING_MODEL,
-  DEFAULT_LARGE_MODEL,
-  DEFAULT_SMALL_MODEL,
-  LLM_PROXY,
-  WEBSEARCH_PROXY
-} from '@/common/constants'
 import { Character, UUID } from '@elizaos/core'
 
 export function createGenericCharacter(name: string, id: UUID): Character {
@@ -24,14 +16,7 @@ export function createGenericCharacter(name: string, id: UUID): Character {
     ],
     adjectives: ['friendly', 'supportive', 'thoughtful', 'empathetic', 'genuine'],
     topics: ['conversation', 'reflection', 'ideas', 'thoughts', 'experiences'],
-    settings: {
-      OPENAI_BASE_URL: LLM_PROXY,
-      OPENAI_SMALL_MODEL: DEFAULT_SMALL_MODEL,
-      OPENAI_LARGE_MODEL: DEFAULT_LARGE_MODEL,
-      OPENAI_EMBEDDING_MODEL: DEFAULT_EMBEDDING_MODEL,
-      OPENAI_EMBEDDING_DIMENSIONS: DEFAULT_EMBEDDING_DIMENSIONS,
-      TAVILY_API_URL: WEBSEARCH_PROXY
-    },
+    settings: {},
     style: {
       all: ['friendly', 'genuine', 'supportive'],
       chat: ['conversational', 'empathetic', 'thoughtful'],
