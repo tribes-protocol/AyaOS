@@ -258,7 +258,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   private async syncKnowledge(): Promise<void> {
     try {
-      ayaLogger.info('Getting all knowledges...')
+      ayaLogger.debug('Getting all knowledges...')
       const knowledges = await this.getAllKnowledge()
       const existingKnowledgeIds = new Set<UUID>()
 
@@ -299,7 +299,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         await this.remove(knowledgeId)
       }
 
-      ayaLogger.info(
+      ayaLogger.debug(
         `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ` +
           `${knowledgeIdsToRemove.length} items removed`
       )
