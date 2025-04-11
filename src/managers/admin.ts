@@ -7,7 +7,6 @@ import { ayaLogger } from '@/common/logger'
 import {
   Agent,
   AgentIdentity,
-  AgentIdentitySchema,
   AgentRegistrationSchema,
   AuthInfo,
   CredentialsSchema,
@@ -214,7 +213,7 @@ export class LoginManager {
   private async getIdentity(): Promise<Identity> {
     const fileData = JSON.parse(fs.readFileSync(this.pathResolver.provisionFile, 'utf-8'))
     const { id } = ProvisionSchema.parse(fileData)
-    return AgentIdentitySchema.parse(id)
+    return id
   }
 
   private async isProvisioned(): Promise<boolean> {

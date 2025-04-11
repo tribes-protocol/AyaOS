@@ -73,6 +73,8 @@ export const KnowledgeEmbeddings = pgTable('knowledge_embeddings', {
   dim3072: vector('dim_3072', { dimensions: VECTOR_DIMS.XXXL })
 })
 
+const KNOWLEDGE_KIND = 'aya'
+
 export class KnowledgeService extends Service implements IKnowledgeService {
   static readonly instances = new Map<UUID, KnowledgeService>()
   private isRunning = false
@@ -266,7 +268,10 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       do {
         const { items, nextCursor } = await this.list({
           limit: 100,
-          cursor
+          cursor,
+          filters: {
+            kind: KNOWLEDGE_KIND
+          }
         })
 
         for (const knowledge of items) {
@@ -320,7 +325,8 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       await this.add(itemId, {
         text: content,
         documentId: itemId,
-        source: data.name
+        source: data.name,
+        kind: KNOWLEDGE_KIND
       })
     } catch (error) {
       ayaLogger.error(`Error processing file metadata for ${data.name}: ${error}`)

@@ -481,7 +481,8 @@ export const RagKnowledgeItemContentSchema = z.object({
   text: z.string(),
   kind: z.string().optional(),
   documentId: z.string(),
-  source: z.string()
+  source: z.string(),
+  metadata: z.record(z.string(), z.unknown()).nullish()
 })
 
 export type RagKnowledgeItemContent = z.infer<typeof RagKnowledgeItemContentSchema>
