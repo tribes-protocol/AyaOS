@@ -179,13 +179,13 @@ export class Agent implements IAyaAgent {
       await this.runtime.initialize()
 
       // register evaluators
-      this.evaluators.forEach(runtime.registerEvaluator)
+      this.evaluators.forEach(runtime.registerEvaluator.bind(runtime))
 
       // register providers
-      this.providers.forEach(runtime.registerContextProvider)
+      this.providers.forEach(runtime.registerContextProvider.bind(runtime))
 
       // register actions
-      this.actions.forEach(runtime.registerAction)
+      this.actions.forEach(runtime.registerAction.bind(runtime))
 
       // register services
       const ayaServices: (typeof Service)[] = [KnowledgeService, WalletService, ...this.services]
