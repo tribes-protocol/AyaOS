@@ -1,0 +1,7 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+- Make sure to read .eslintrc.json and adhere to all the rules defined in it when generating code.

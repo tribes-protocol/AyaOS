@@ -3,23 +3,9 @@ import { ayaLogger } from '@/common/logger'
 
 async function main(): Promise<void> {
   try {
-    console.log('hello, agent!')
-    const agent = new Agent({ dataDir: 'data' })
-    console.log('agent created')
-    agent.on('pre:llm', async (context) => {
-      console.log('pre:llm', context.memory?.content)
-      return true
-    })
-    console.log('pre:llm registered')
-
-    agent.on('post:llm', async (context) => {
-      console.log('post:llm', context.memory?.content)
-      return true
-    })
-    console.log('post:llm registered')
-
+    console.log('hello, agent ->', process.env.DATA_DIR)
+    const agent = new Agent({ dataDir: process.env.DATA_DIR })
     await agent.start()
-    console.log('agent started', agent.agentId)
   } catch (error) {
     console.error(`error:`, error)
     process.exit(1)
