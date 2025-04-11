@@ -3,7 +3,7 @@ import { Content, IAgentRuntime, ModelType } from '@elizaos/core'
 import { z } from 'zod'
 
 const ResponseValidationSchema = z.object({
-  valid: z.boolean(),
+  isValid: z.coerce.boolean(),
   correctedText: z.string(),
   correctedActions: z.array(z.string()).nullish(),
   explanation: z.string()
@@ -76,7 +76,7 @@ raw json. No markdown or anything else:
           await runtime.useModel(ModelType.OBJECT_LARGE, { prompt: validationPrompt })
         )
 
-        if (validationResult.valid) {
+        if (validationResult.isValid) {
           return response
         }
 
