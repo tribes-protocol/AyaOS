@@ -197,7 +197,6 @@ Always return a raw valid JSON object.
     }
 
     // Validate with schema
-    console.log('validationResult', validationResult)
     const validatedResponse = ValidatorResponseSchema.parse(validationResult)
     console.log('validatedResponse', validatedResponse)
 
