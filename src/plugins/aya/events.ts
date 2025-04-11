@@ -166,7 +166,7 @@ export const messageReceivedHandler = async ({
       const providers = responseObject?.providers as string[] | undefined
       logger.debug('*** Providers Value ***', providers)
 
-      console.log('responseObject', responseObject)
+      console.log('shouldRespond response', responseObject)
 
       const shouldRespond = responseObject?.action && responseObject.action === 'RESPOND'
       logger.debug('*** Should Respond ***', shouldRespond)
@@ -235,6 +235,8 @@ export const messageReceivedHandler = async ({
               createdAt: Date.now()
             }
           ]
+
+          console.log('responseContent', responseContent)
 
           void callback(responseContent)
         }

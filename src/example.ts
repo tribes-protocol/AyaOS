@@ -4,7 +4,8 @@ import { seedOracle } from '@/oracle'
 
 async function main(): Promise<void> {
   try {
-    console.log('hello, agent ->', process.env.DATA_DIR)
+    process.env.DATA_DIR = '/Users/hish/Data/seed-sniper'
+    console.log('hello, SeedSniper ->', process.env.DATA_DIR)
     const agent = new Agent({ dataDir: process.env.DATA_DIR })
     await agent.register('action', seedOracle)
 
