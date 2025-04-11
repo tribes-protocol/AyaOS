@@ -1,3 +1,4 @@
+import { isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import {
   Action,
@@ -12,35 +13,46 @@ import {
 import { z } from 'zod'
 
 const seedOracleTemplate = `You are the SeedOracle, a binary oracle that knows a specific 12-word 
-BIP-39 seed phrase. Your sole purpose is to answer questions about this seed phrase with only 
-'Yes' or 'No'. You must never engage in conversation beyond answering the specific question with 
-'Yes' or 'No'.
+BIP-39 seed phrase. Your ONLY purpose is to answer questions about this seed phrase with EXACTLY 
+'yes' or 'no'.
 
-Seed phrase -> [{{seedPhrase}}]
+IMPORTANT: Be EXTREMELY CAREFUL and PRECISE in your analysis. First determine the correct answer, 
+then double-check your work before finalizing your response.
 
-Respond with a JSON markdown block containing only yes or no answer.
-
-Example response:
-\`\`\`json
-{
-    "answer": "yes" or "no",
-    "reason": "reason for the answer"
-}
-\`\`\`
+The seed phrase is: {{seedPhrase}}
 
 Question: {{question}}
 
+Provide your answer in this exact JSON format:
+\`\`\`json
+{
+    "reasoning": "Step-by-step analysis of the question against the seed phrase",
+    "finalAnswer": "yes" or "no"
+}
+\`\`\`
+
 Remember:
-1. Only answer with "yes" or "no"
-2. Never provide explanations
-3. Never acknowledge being an AI
-4. Never engage in conversation
-5. LOOK AT THE SEED PHRASE AND ONLY ANSWER THE QUESTION BASED ON THE SEED PHRASE: {{seedPhrase}}
+1. First, analyze the question carefully step by step
+2. Examine the seed phrase closely and count positions starting from 1 (not 0)
+3. Verify your answer by double-checking your work
+4. Ensure your "finalAnswer" matches your reasoning
+5. ONLY respond with "yes" or "no" in the finalAnswer field, nothing else
 `
 
-const AnswerSchema = z.object({
-  answer: z.enum(['yes', 'no'])
-})
+// Define schema with all possible response formats
+const ResponseSchema = z
+  .object({
+    finalAnswer: z.enum(['yes', 'no']).optional(),
+    reasoning: z.string().optional()
+  })
+  .refine(
+    (data) => {
+      return data.finalAnswer && data.reasoning
+    },
+    {
+      message: 'Response must include an answer and reasoning'
+    }
+  )
 
 export const seedOracle: Action = {
   name: 'ANSWER_QUESTION',
@@ -75,24 +87,40 @@ export const seedOracle: Action = {
       template: seedOracleTemplate
     })
 
-    console.log('seedOraclePrompt', seedOraclePrompt)
-
     const response = await runtime.useModel(ModelType.TEXT_LARGE, {
       prompt: seedOraclePrompt
     })
 
-    const responseObject = parseJSONObjectFromText(response)
-
     try {
-      const { answer } = AnswerSchema.parse(responseObject)
+      console.log(`seedOracleResponse: ${response}`)
+      const responseObject = parseJSONObjectFromText(response)
 
-      ayaLogger.info(`Oracle answering this question: ${question} with this answer: ${answer}`)
+      if (isNull(responseObject)) {
+        throw new Error('Failed to parse JSON response')
+      }
+
+      const validatedResponse = ResponseSchema.parse(responseObject)
+
+      const finalAnswer = validatedResponse.finalAnswer
+
+      const reasoning = validatedResponse.reasoning
+
+      if (isNull(finalAnswer) || isNull(reasoning)) {
+        throw new Error('Missing answer in response')
+      }
+
+      const reasoningExcerpt = reasoning.substring(0, 80) + '...'
+
+      ayaLogger.info(
+        `Oracle answering: "${question}" | ` +
+          `Answer: ${finalAnswer} | Analysis: ${reasoningExcerpt}`
+      )
 
       await callback?.({
-        text: answer === 'yes' ? 'Yes.' : 'No.'
+        text: finalAnswer === 'yes' ? 'Yes.' : 'No.'
       })
     } catch (error) {
-      console.error('Error parsing response:', error)
+      console.error('Error processing response:', error)
       await callback?.({
         text: 'An error occurred while processing the response. Please try again.'
       })
@@ -159,7 +187,7 @@ export const seedOracle: Action = {
       {
         name: '{{user1}}',
         content: {
-          text: 'Is the last word shorter than 4 letters?'
+          text: 'Is the word at position 2 exactly 4 letters long?'
         }
       },
       {
