@@ -28,7 +28,12 @@ export { ensureUUID } from '@/common/functions'
 export type { Action, Client, IAyaRuntime, Provider } from '@/common/iruntime'
 export { AyaRuntime as AgentcoinRuntime } from '@/common/runtime'
 export { ContextHandler, ModelConfig } from '@/common/types'
-export type { IKnowledgeService, IMemoriesService, IWalletService } from '@/services/interfaces'
+export type {
+  IKnowledgeService,
+  IMemoriesService,
+  IWalletService,
+  ITelegramManager
+} from '@/services/interfaces'
 export { KnowledgeService } from '@/services/knowledge'
 export { MemoriesService } from '@/services/memories'
 export { WalletService } from '@/services/wallet'
