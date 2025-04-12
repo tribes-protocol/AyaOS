@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.52
+
+### Patch Changes
+
+- e18889a: Export telegram interface so it can be integrated properly
+
 ## 0.0.51
 
 ### Patch Changes
