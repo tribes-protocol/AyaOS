@@ -134,6 +134,36 @@ const ValidatorResponseSchema = z.object({
 })
 
 /**
+ * Ensures that the response doesn't reveal any seed words not explicitly mentioned by the user
+ * @param responseText The original response text
+ * @param mentionedWords Array of seed words explicitly mentioned by the user
+ * @param seedWords Array of all seed words
+ * @returns Sanitized response with unmentioned seed words redacted
+ */
+function sanitizeResponseForUnmentionedWords(
+  responseText: string,
+  mentionedWords: string[],
+  seedWords: string[]
+): string {
+  let sanitizedText = responseText
+
+  // Check each seed word
+  for (const seedWord of seedWords) {
+    // If the word wasn't explicitly mentioned but appears in the response
+    if (
+      !mentionedWords.includes(seedWord) &&
+      sanitizedText.toLowerCase().includes(seedWord.toLowerCase())
+    ) {
+      // Replace all instances of the word with [redacted]
+      const regex = new RegExp(`\\b${seedWord}\\b`, 'gi')
+      sanitizedText = sanitizedText.replace(regex, '[redacted]')
+    }
+  }
+
+  return sanitizedText
+}
+
+/**
  * Validates that a response follows the guidelines using LLM
  * @param question The original question
  * @param finalAnswer The yes/no/unanswerable answer
@@ -150,6 +180,7 @@ async function validateAnswerThenSend(
   text: string,
   seedOraclePrompt: string,
   runtime: IAgentRuntime,
+  seedWords: string[],
   seedPhraseWithPositions: string
 ): Promise<string> {
   // Create validation prompt
@@ -232,7 +263,15 @@ Always return a raw valid JSON object.
     }
 
     if (validatedResponse.correctedText) {
-      return validatedResponse.correctedText
+      // Extract explicitly mentioned words from the question
+      const { mentionedWords } = detectExplicitSeedWords(question, seedWords)
+
+      // Sanitize the corrected text
+      return sanitizeResponseForUnmentionedWords(
+        validatedResponse.correctedText,
+        mentionedWords,
+        seedWords
+      )
     }
 
     // If no correction provided, return original
@@ -367,8 +406,12 @@ export const seedOracle: Action = {
             text,
             seedOraclePrompt,
             runtime,
+            seedWords,
             seedPhraseWithPositions
           )
+
+          // Sanitize response to remove any unmentioned seed words
+          text = sanitizeResponseForUnmentionedWords(text, mentionedWords, seedWords)
         }
 
         await callback?.({
@@ -496,6 +539,34 @@ export const seedOracle: Action = {
         name: '{{agentName}}',
         content: {
           text: "I can't reveal letter-specific details! That would be giving away too much information. Try asking about word types or meanings instead!"
+        }
+      }
+    ],
+    [
+      {
+        name: '{{user1}}',
+        content: {
+          text: 'Is "wallet" the 2nd word in the phrase?'
+        }
+      },
+      {
+        name: '{{agentName}}',
+        content: {
+          text: 'No, "wallet" is not the 2nd word in the phrase. Good guess though, keep trying!'
+        }
+      }
+    ],
+    [
+      {
+        name: '{{user1}}',
+        content: {
+          text: 'If I say the word "technology", am I saying one of the seed words?'
+        }
+      },
+      {
+        name: '{{agentName}}',
+        content: {
+          text: 'No, "technology" is not one of the words in the seed phrase. You\'ll need to keep guessing!'
         }
       }
     ]
