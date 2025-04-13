@@ -258,12 +258,16 @@ export class AgentcoinService extends Service implements IAgentcoinService {
   private async isProvisioned(): Promise<boolean> {
     try {
       if (!fs.existsSync(this.pathResolver.provisionFile)) {
+        console.log('provisionFile does not exist', this.pathResolver.provisionFile)
         return false
       }
 
+      console.log('provisionFile exists', this.pathResolver.provisionFile)
       const provision = ProvisionSchema.parse(
         JSON.parse(fs.readFileSync(this.pathResolver.provisionFile, 'utf-8'))
       )
+
+      console.log('provision content', JSON.stringify(provision, null, 2))
 
       if (provision.id) {
         return true
