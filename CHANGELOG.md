@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.53
+
+### Patch Changes
+
+- e82bb20: add debug logging
+
 ## 0.0.52
 
 ### Patch Changes
