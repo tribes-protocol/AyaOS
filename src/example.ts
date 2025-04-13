@@ -12,7 +12,6 @@ async function main(): Promise<void> {
     await agent.start()
   } catch (error) {
     console.error(`error:`, error)
-    process.exit(1)
   }
 }
 

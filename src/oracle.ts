@@ -367,8 +367,9 @@ export const seedOracle: Action = {
     let finalAnswer: string | undefined
     let reasoning: string | undefined
     let text: string | undefined
+    let hasResponded = false
 
-    while (attempts < MAX_RETRIES) {
+    while (attempts < MAX_RETRIES && !hasResponded) {
       attempts++
       try {
         const response = await runtime.useModel(ModelType.TEXT_LARGE, {
@@ -408,15 +409,24 @@ export const seedOracle: Action = {
           text = sanitizeResponseForUnmentionedWords(text, mentionedWords, seedWords)
         }
 
-        await callback?.({
-          text
-        })
+        if (callback && !hasResponded) {
+          await callback?.({
+            text
+          })
+          hasResponded = true
+        }
 
         break
       } catch (error) {
         console.error(`Error on attempt ${attempts}:`, error)
-        if (attempts >= MAX_RETRIES) {
+        if (attempts >= MAX_RETRIES && !hasResponded) {
           console.error(`Failed to get valid response after ${MAX_RETRIES} attempts`)
+          if (callback) {
+            await callback({
+              text: "I'm having trouble processing your question. Could you try asking in a different way?"
+            })
+            hasResponded = true
+          }
           break
         }
       }
