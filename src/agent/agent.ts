@@ -1,6 +1,7 @@
 import { IAyaAgent } from '@/agent/iagent'
 import { AgentcoinAPI } from '@/apis/agentcoinfun'
 import { initializeClients } from '@/clients'
+import { TelegramClient } from '@/clients/telegram/telegramClient'
 import { getTokenForProvider } from '@/common/config'
 import { CHARACTERS_DIR } from '@/common/constants'
 import { ensure, ensureUUID, isNull } from '@/common/functions'
@@ -17,8 +18,8 @@ import { EventService } from '@/services/event'
 import {
   IKnowledgeService,
   IMemoriesService,
-  IWalletService,
-  ITelegramManager
+  ITelegramManager,
+  IWalletService
 } from '@/services/interfaces'
 import { KeychainService } from '@/services/keychain'
 import { KnowledgeService } from '@/services/knowledge'
@@ -38,7 +39,6 @@ import {
 import { bootstrapPlugin } from '@elizaos/plugin-bootstrap'
 import fs from 'fs'
 import path from 'path'
-import { TelegramClient } from '@/clients/telegram/telegramClient'
 
 const reservedAgentDirs = new Set<string | undefined>()
 
@@ -60,6 +60,7 @@ export class Agent implements IAyaAgent {
   public matchLimit?: number
 
   constructor(options?: AyaOSOptions) {
+    console.log('agent options dataDir', options?.dataDir)
     this.modelConfig = options?.modelConfig
     if (reservedAgentDirs.has(options?.dataDir)) {
       throw new Error('Data directory already used. Please provide a unique data directory.')
