@@ -80,20 +80,14 @@ cd "$ORIGINAL_DIR"
 mkdir -p "$dataDir"
 
 # Get the directory where this script is located
-SCRIPT_DIR=""
-if ! SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"; then
-    echo "Error: Failed to determine script location" >&2
-    exit 1
-fi
+SCRIPT_DIR="$(dirname "$(realpath "$BASH_SOURCE[0]")")"
+PROJECT_ROOT="$(realpath "$SCRIPT_DIR/..")"
 
 echo "===== SCRIPT LOCATION DEBUG ====="
 echo "Script directory (SCRIPT_DIR): $SCRIPT_DIR"
 echo "Listing contents of SCRIPT_DIR:"
 ls -la "$SCRIPT_DIR"
 echo
-
-# Get the parent directory (project root)
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 echo "PROJECT_ROOT: $PROJECT_ROOT"
 echo "Listing contents of PROJECT_ROOT:"
