@@ -1,0 +1,2 @@
+# Ignore bin JavaScript files for TypeScript linting
+bin/*.js 
