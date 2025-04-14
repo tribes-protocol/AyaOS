@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.57
+
+### Patch Changes
+
+- 802f802: fix script symlink
+
 ## 0.0.56
 
 ### Patch Changes
