@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.59
+
+### Patch Changes
+
+- c68415a: try script
+
 ## 0.0.58
 
 ### Patch Changes
