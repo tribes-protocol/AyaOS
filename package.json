@@ -5,7 +5,9 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "scripts",
+    "bin"
   ],
   "bin": {
     "ayaos": "bin/init.sh",
