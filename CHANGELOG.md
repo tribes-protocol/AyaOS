@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.61
+
+### Patch Changes
+
+- d6f1319: fix package.json
+
 ## 0.0.60
 
 ### Patch Changes
