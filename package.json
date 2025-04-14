@@ -1,17 +1,16 @@
 {
   "name": "@tribesxyz/ayaos",
-  "version": "0.0.59",
+  "version": "0.0.60",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "files": [
     "dist",
-    "scripts",
     "bin"
   ],
   "bin": {
-    "ayaos": "bin/init.sh",
-    "init": "bin/init.sh init"
+    "ayaos": "bin/init.js",
+    "init": "bin/init.js init"
   },
   "publishConfig": {
     "access": "public"
