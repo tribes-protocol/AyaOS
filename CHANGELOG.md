@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.58
+
+### Patch Changes
+
+- 1e2dad7: use js script
+
 ## 0.0.57
 
 ### Patch Changes
