@@ -171,7 +171,7 @@ console.log()
 // ----------------------------------------------------------------------------
 // 10. Check explicitly if create-agent.ts exists
 // ----------------------------------------------------------------------------
-const createAgentPath = path.join(projectRoot, 'scripts', 'create-agent.ts')
+const createAgentPath = path.join(projectRoot, 'dist', 'create-agent.js')
 if (!fs.existsSync(createAgentPath)) {
   console.error(`ERROR: ${createAgentPath} does NOT exist.`)
   console.error('Terminating.')

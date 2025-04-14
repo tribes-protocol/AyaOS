@@ -17,7 +17,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "bun run type-check && tsup src/index.ts --format esm --dts",
+    "build": "bun run build-project && bun run build-script",
+    "build-project": "bun run type-check && tsup src/index.ts --format esm --dts",
+    "build-script": "tsup scripts/create-agent.ts --format esm --dts",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "dev": "tsx src/example.ts",
