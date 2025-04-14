@@ -37,21 +37,6 @@ try {
 }
 
 // ----------------------------------------------------------------------------
-// 3. Environment debug info
-// ----------------------------------------------------------------------------
-console.log('===== ENVIRONMENT DEBUG =====')
-console.log('Current working directory:', process.cwd())
-console.log('PATH:', process.env.PATH)
-try {
-  const whichBun = execSync('command -v bun').toString().trim()
-  console.log('Which bun:', whichBun)
-} catch {
-  console.log('Which bun: (not found)')
-}
-console.log('Shell:', process.env.SHELL || 'unknown')
-console.log('=============================')
-
-// ----------------------------------------------------------------------------
 // 4. Prompt user for input
 // ----------------------------------------------------------------------------
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
@@ -145,29 +130,6 @@ const __filename = fileURLToPath(import.meta.url)
 const scriptDir = path.dirname(__filename)
 const projectRoot = path.resolve(scriptDir, '..')
 
-console.log('===== SCRIPT LOCATION DEBUG =====')
-console.log('Script directory (scriptDir):', scriptDir)
-try {
-  execSync(`ls -la "${scriptDir}"`, { stdio: 'inherit' })
-} catch {
-  console.log('(Could not list scriptDir contents.)')
-}
-
-console.log('\nPROJECT_ROOT:', projectRoot)
-try {
-  execSync(`ls -la "${projectRoot}"`, { stdio: 'inherit' })
-} catch {
-  console.log('(Could not list projectRoot contents.)')
-}
-
-console.log('\nListing contents of PROJECT_ROOT/scripts:')
-try {
-  execSync(`ls -la "${path.join(projectRoot, 'scripts')}"`, { stdio: 'inherit' })
-} catch {
-  console.log(`No scripts directory found at ${path.join(projectRoot, 'scripts')}`)
-}
-console.log()
-
 // ----------------------------------------------------------------------------
 // 10. Check explicitly if create-agent.ts exists
 // ----------------------------------------------------------------------------
@@ -183,8 +145,6 @@ if (!fs.existsSync(createAgentPath)) {
 // ----------------------------------------------------------------------------
 console.log('===== RUNNING create-agent.ts =====')
 try {
-  // If you need 'tsx', do: `bun run tsx ${createAgentPath} ...`
-  // or: `bun x tsx ${createAgentPath} ...`
   execSync(`bun run "${createAgentPath}" "${dataDir}" "${agentName}" "${agentPurpose}"`, {
     stdio: 'inherit',
     cwd: path.join(originalDir, projectName)
