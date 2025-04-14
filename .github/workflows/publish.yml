@@ -27,7 +27,7 @@ jobs:
       - name: Set NPM tag
         run: |
           if [[ "${GITHUB_REF##*/}" == "hish/upgrade_to_v2" ]]; then
-            echo "NPM_TAG=v2" >> $GITHUB_ENV
+            echo "NPM_TAG=beta" >> $GITHUB_ENV
           else
             echo "NPM_TAG=latest" >> $GITHUB_ENV
           fi
