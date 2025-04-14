@@ -31,7 +31,7 @@ import { CSVLoader } from '@langchain/community/document_loaders/fs/csv'
 import { DocxLoader } from '@langchain/community/document_loaders/fs/docx'
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf'
 import axios from 'axios'
-import { and, asc, cosineDistance, desc, eq, gt, gte, lt, sql } from 'drizzle-orm'
+import { and, asc, cosineDistance, desc, eq, gt, gte, lt, ne, sql } from 'drizzle-orm'
 import { drizzle as drizzlePg, NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { pgTable, text, timestamp, uuid, vector } from 'drizzle-orm/pg-core'
 import { drizzle, PgliteDatabase } from 'drizzle-orm/pglite'
@@ -149,10 +149,10 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         'CREATE INDEX IF NOT EXISTS "idx_knowledge_agent_id" ON "knowledge" USING btree ("agent_id");'
       )
       await this.db.execute(
-        'CREATE INDEX IF NOT EXISTS "idx_knowledge_is_main" ON "knowledge" USING btree ("is_main");'
+        'CREATE INDEX IF NOT EXISTS "idx_knowledge_parent_id" ON "knowledge" USING btree ("parent_id");'
       )
       await this.db.execute(
-        'CREATE INDEX IF NOT EXISTS "idx_knowledge_parent_id" ON "knowledge" USING btree ("parent_id");'
+        'CREATE INDEX IF NOT EXISTS "idx_knowledge_main_items" ON "knowledge" USING btree ("parent_id") WHERE parent_id = id;'
       )
 
       // Create knowledge_embeddings table if it doesn't exist
@@ -511,7 +511,8 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
     const conditions = [
       gte(similarity, matchThreshold),
-      eq(Knowledges.agentId, this.runtime.agentId)
+      eq(Knowledges.agentId, this.runtime.agentId),
+      ne(Knowledges.parentId, Knowledges.id)
     ]
 
     if (kind) {
