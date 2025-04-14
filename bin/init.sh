@@ -70,21 +70,83 @@ cd "$ORIGINAL_DIR"
 # Create data directory if it doesn't exist
 mkdir -p "$dataDir"
 
-# Get the directory where this script is located
-ORIGINAL_DIR=$(pwd)
-SCRIPT_DIR=""
-if ! SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"; then
-    echo "Error: Failed to determine script location" >&2
-    exit 1
-fi
-cd "$ORIGINAL_DIR" # Return to original directory
+# Create a simple temporary TypeScript script that will help us find the create-agent.ts module
+TEMP_SCRIPT=$(mktemp)
+cat > "$TEMP_SCRIPT" << 'EOL'
+try {
+  const path = require('path');
+  const fs = require('fs');
+  
+  // Try to resolve via require.resolve
+  try {
+    // First check for direct module
+    console.log(require.resolve('@tribesxyz/ayaos/scripts/create-agent.ts'));
+    process.exit(0);
+  } catch (e) {
+    // If that fails, look relative to current directory
+    const scriptDir = path.dirname(process.argv[1]);
+    const packageDir = path.resolve(scriptDir, '..');
+    
+    // Try common locations
+    const possibleLocations = [
+      path.join(packageDir, 'scripts', 'create-agent.ts'),
+      path.join(packageDir, 'dist', 'scripts', 'create-agent.ts'),
+      path.join(packageDir, 'node_modules', '@tribesxyz', 'ayaos', 'scripts', 'create-agent.ts')
+    ];
+    
+    for (const loc of possibleLocations) {
+      if (fs.existsSync(loc)) {
+        console.log(loc);
+        process.exit(0);
+      }
+    }
+  }
+  
+  // If we get here, we couldn't find it
+  console.error('Could not find create-agent.ts script');
+  process.exit(1);
+} catch (error) {
+  console.error('Error finding script:', error);
+  process.exit(1);
+}
+EOL
 
-# Get the parent directory (project root)
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+# Run the temp script with node to find the location of create-agent.ts
+CREATE_AGENT_SCRIPT=$(node "$TEMP_SCRIPT" 2>/dev/null)
+EXIT_CODE=$?
+rm "$TEMP_SCRIPT"
+
+# If the script wasn't found, try manual paths as a fallback
+if [ $EXIT_CODE -ne 0 ]; then
+  # Get the directory where this script is located
+  SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+  PACKAGE_ROOT="$(dirname "$SCRIPT_DIR")"
+  
+  # Try some common locations
+  CREATE_AGENT_SCRIPT=""
+  for path in \
+    "$PACKAGE_ROOT/scripts/create-agent.ts" \
+    "$PACKAGE_ROOT/dist/scripts/create-agent.ts" \
+    "$(bun pm bin)/../@tribesxyz/ayaos/scripts/create-agent.ts" \
+    "$(npm root -g)/@tribesxyz/ayaos/scripts/create-agent.ts" \
+    "$(npm root)/@tribesxyz/ayaos/scripts/create-agent.ts"; do
+    if [ -f "$path" ]; then
+      CREATE_AGENT_SCRIPT="$path"
+      break
+    fi
+  done
+fi
+
+# Check if we found the script
+if [ -z "$CREATE_AGENT_SCRIPT" ] || [ ! -f "$CREATE_AGENT_SCRIPT" ]; then
+  echo "Error: Cannot find the create-agent.ts script"
+  echo "Please ensure the scripts directory is included in the published package"
+  exit 1
+fi
 
 # Run create-agent script with bun
 ORIGINAL_DIR=$(pwd)
-(cd "$projectName" && bun run "$PROJECT_ROOT/scripts/create-agent.ts" "$dataDir" "$agentName" "$agentPurpose") || {
+(cd "$projectName" && bun run "$CREATE_AGENT_SCRIPT" "$dataDir" "$agentName" "$agentPurpose") || {
   echo "Failed to create agent"
   cd "$ORIGINAL_DIR"
   exit 1
