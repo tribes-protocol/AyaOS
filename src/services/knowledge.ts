@@ -33,7 +33,7 @@ import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf'
 import axios from 'axios'
 import { and, asc, cosineDistance, desc, eq, gt, gte, lt, sql } from 'drizzle-orm'
 import { drizzle as drizzlePg, NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { boolean, pgTable, text, timestamp, uuid, vector } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, uuid, vector } from 'drizzle-orm/pg-core'
 import { drizzle, PgliteDatabase } from 'drizzle-orm/pglite'
 import fs from 'fs/promises'
 import { TextLoader } from 'langchain/document_loaders/fs/text'
@@ -56,9 +56,8 @@ export const Knowledges = pgTable('knowledge', {
   kind: text('kind'),
   source: text('source').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-  isMain: boolean('is_main').default(false),
   checksum: text('checksum'),
-  documentId: uuid('document_id').notNull()
+  parentId: uuid('parent_id').notNull()
 })
 
 export const KnowledgeEmbeddings = pgTable('knowledge_embeddings', {
@@ -137,9 +136,8 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           kind TEXT,
           source TEXT NOT NULL,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          is_main BOOLEAN DEFAULT FALSE,
           checksum TEXT,
-          document_id UUID NOT NULL
+          parent_id UUID NOT NULL
         );
       `)
 
@@ -154,7 +152,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         'CREATE INDEX IF NOT EXISTS "idx_knowledge_is_main" ON "knowledge" USING btree ("is_main");'
       )
       await this.db.execute(
-        'CREATE INDEX IF NOT EXISTS "idx_knowledge_document_id" ON "knowledge" USING btree ("document_id");'
+        'CREATE INDEX IF NOT EXISTS "idx_knowledge_parent_id" ON "knowledge" USING btree ("parent_id");'
       )
 
       // Create knowledge_embeddings table if it doesn't exist
@@ -324,7 +322,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
       await this.add(itemId, {
         text: content,
-        documentId: itemId,
+        parentId: itemId,
         source: data.name,
         kind: KNOWLEDGE_KIND
       })
@@ -402,8 +400,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       kind,
       source: knowledge.source,
       checksum,
-      documentId: id,
-      isMain: true
+      parentId: id
     })
 
     // Create fragments using splitChunks
@@ -422,8 +419,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
           text: fragments[i],
           kind,
           source: knowledge.source,
-          documentId: id,
-          isMain: false
+          parentId: id
         })
 
         const embeddingValues = {
@@ -451,7 +447,10 @@ export class KnowledgeService extends Service implements IKnowledgeService {
   }): Promise<{ items: RAGKnowledgeItem[]; nextCursor?: number }> {
     const { limit = 100, filters, sort = 'desc', cursor } = options ?? {}
 
-    const conditions = [eq(Knowledges.agentId, this.runtime.agentId), eq(Knowledges.isMain, true)]
+    const conditions = [
+      eq(Knowledges.agentId, this.runtime.agentId),
+      eq(Knowledges.parentId, Knowledges.id)
+    ]
 
     if (filters?.kind) {
       conditions.push(eq(Knowledges.kind, filters.kind))
@@ -477,7 +476,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       agentId: item.agentId,
       content: {
         text: item.text,
-        documentId: item.documentId,
+        parentId: item.parentId,
         kind: item.kind ?? undefined,
         source: item.source
       },
@@ -536,7 +535,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       agentId: knowledge.agentId,
       content: {
         text: knowledge.text,
-        documentId: knowledge.documentId,
+        parentId: knowledge.parentId,
         kind: knowledge.kind ?? undefined,
         source: knowledge.source
       },
@@ -559,7 +558,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       agentId: knowledge.agentId,
       content: {
         text: knowledge.text,
-        documentId: knowledge.documentId,
+        parentId: knowledge.parentId,
         kind: knowledge.kind ?? undefined,
         source: knowledge.source
       },
@@ -572,7 +571,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     try {
       const [knowledge] = await this.db.select().from(Knowledges).where(eq(Knowledges.id, id))
 
-      await this.db.delete(Knowledges).where(eq(Knowledges.documentId, id))
+      await this.db.delete(Knowledges).where(eq(Knowledges.parentId, id))
 
       await fs.unlink(path.join(this.pathResolver.knowledgeRoot, knowledge.source))
     } catch (error) {
