@@ -1,21 +1,24 @@
 {
   "name": "@tribesxyz/ayaos",
-  "version": "0.0.50",
+  "version": "0.0.62",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
   "bin": {
-    "ayaos": "bin/init.sh",
-    "init": "bin/init.sh init"
+    "ayaos": "bin/init.js",
+    "init": "bin/init.js init"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "bun run type-check && tsup src/index.ts --format esm --dts",
+    "build": "bun run build-project && bun run build-script",
+    "build-project": "bun run type-check && tsup src/index.ts --format esm --dts",
+    "build-script": "tsup scripts/create-agent.ts --format esm --dts",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "dev": "dotenv --e .env -- tsx src/example.ts",
@@ -37,7 +40,7 @@
     "@turnkey/viem": "0.6.10",
     "agent-twitter-client": "0.0.18",
     "amqplib": "0.10.5",
-    "axios": "1.7.9",
+    "axios": "1.8.2",
     "d3-dsv": "2",
     "discord.js": "14.16.3",
     "dotenv": "16.4.7",

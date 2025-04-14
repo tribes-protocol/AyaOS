@@ -1,5 +1,77 @@
 # @tribesxyz/ayaos
 
+## 0.0.62
+
+### Patch Changes
+
+- 08844d4: remove debug logs from script
+
+## 0.0.61
+
+### Patch Changes
+
+- d6f1319: fix package.json
+
+## 0.0.60
+
+### Patch Changes
+
+- 104af3b: build script
+
+## 0.0.59
+
+### Patch Changes
+
+- c68415a: try script
+
+## 0.0.58
+
+### Patch Changes
+
+- 1e2dad7: use js script
+
+## 0.0.57
+
+### Patch Changes
+
+- 802f802: fix script symlink
+
+## 0.0.56
+
+### Patch Changes
+
+- 77c113f: Check script log
+
+## 0.0.55
+
+### Patch Changes
+
+- 51cc03e: Include scripts directory
+
+## 0.0.54
+
+### Patch Changes
+
+- 2b918bb: Fix script location
+
+## 0.0.53
+
+### Patch Changes
+
+- e82bb20: add debug logging
+
+## 0.0.52
+
+### Patch Changes
+
+- e18889a: Export telegram interface so it can be integrated properly
+
+## 0.0.51
+
+### Patch Changes
+
+- 8fa70c5: add ability to send telegram messages through the agent on command
+
 ## 0.0.50
 
 ### Patch Changes
