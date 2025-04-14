@@ -10,8 +10,8 @@
     "bin"
   ],
   "bin": {
-    "ayaos": "bin/init.js",
-    "init": "bin/init.js init"
+    "ayaos": "bin/init.sh",
+    "init": "bin/init.sh init"
   },
   "publishConfig": {
     "access": "public"
