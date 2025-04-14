@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.54
+
+### Patch Changes
+
+- 2b918bb: Fix script location
+
 ## 0.0.53
 
 ### Patch Changes
