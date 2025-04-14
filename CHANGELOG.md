@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.62
+
+### Patch Changes
+
+- 08844d4: remove debug logs from script
+
 ## 0.0.61
 
 ### Patch Changes
