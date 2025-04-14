@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.60
+
+### Patch Changes
+
+- 104af3b: build script
+
 ## 0.0.59
 
 ### Patch Changes
