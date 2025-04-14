@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.56
+
+### Patch Changes
+
+- 77c113f: Check script log
+
 ## 0.0.55
 
 ### Patch Changes
