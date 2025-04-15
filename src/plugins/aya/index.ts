@@ -1,4 +1,5 @@
 import { isNull } from '@/common/functions'
+import { capabilitiesAction } from '@/plugins/aya/actions/capabilities'
 import { ignoreAction } from '@/plugins/aya/actions/ignore'
 import { replyAction } from '@/plugins/aya/actions/reply'
 import { webSearch } from '@/plugins/aya/actions/websearch'
@@ -159,7 +160,7 @@ const events = {
 export const ayaPlugin: Plugin = {
   name: '@tribesxyz/ayaos',
   description: 'Aya plugin for interacting with the Aya network',
-  actions: [replyAction, ignoreAction, webSearch],
+  actions: [replyAction, ignoreAction, webSearch, capabilitiesAction],
   evaluators: [],
   providers: [
     timeProvider,
