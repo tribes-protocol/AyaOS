@@ -13,9 +13,16 @@ import {
 } from '@elizaos/core'
 import { z } from 'zod'
 
-const requestCounts = new Map<UUID, { count: number; resetTime: number }>()
+// Define the rate limit constants
 const MAX_REQUESTS_PER_HOUR = 2
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000
+
+const RATE_LIMIT_CACHE_PREFIX = 'rate_limit_data_'
+
+const RateLimitDataSchema = z.object({
+  count: z.number(),
+  resetTime: z.number()
+})
 
 const seedOracleTemplate = `You are the SeedOracle, a binary oracle that knows a specific 12-word 
 BIP-39 seed phrase. Your ONLY purpose is to answer questions about this seed phrase with EXACTLY 
@@ -63,6 +70,60 @@ const ResponseSchema = z
       message: 'Response must include an answer and reasoning'
     }
   )
+
+/**
+ * Gets the rate limit data for an entity from the cache
+ */
+async function getRateLimitData(
+  runtime: IAgentRuntime,
+  entityId: UUID
+): Promise<{ count: number; resetTime: number }> {
+  const cacheKey = `${RATE_LIMIT_CACHE_PREFIX}${entityId}`
+
+  try {
+    const cachedData = await runtime.getCache<string | { count: number; resetTime: number }>(
+      cacheKey
+    )
+
+    if (cachedData) {
+      // Handle both string (JSON) format and direct object format
+      if (typeof cachedData === 'string') {
+        try {
+          return RateLimitDataSchema.parse(JSON.parse(cachedData))
+        } catch (parseError) {
+          ayaLogger.error(`Error parsing cached JSON data: ${parseError}`)
+        }
+      } else {
+        // If it's already an object, validate it directly
+        return RateLimitDataSchema.parse(cachedData)
+      }
+    }
+  } catch (error) {
+    ayaLogger.error(`Error retrieving rate limit data from cache: ${error}`)
+  }
+
+  // Return default data if no valid cache data exists
+  const now = Date.now()
+  return { count: 0, resetTime: now + RATE_LIMIT_WINDOW }
+}
+
+/**
+ * Updates the rate limit data for an entity in the cache
+ */
+async function updateRateLimitData(
+  runtime: IAgentRuntime,
+  entityId: UUID,
+  data: { count: number; resetTime: number }
+): Promise<void> {
+  const cacheKey = `${RATE_LIMIT_CACHE_PREFIX}${entityId}`
+
+  try {
+    // Store the object directly instead of stringifying it
+    await runtime.setCache(cacheKey, data)
+  } catch (error) {
+    ayaLogger.error(`Error updating rate limit data in cache: ${error}`)
+  }
+}
 
 /**
  * Process a single oracle request
@@ -200,23 +261,16 @@ export const seedOracle: Action = {
     const entityId = memory.entityId
     const now = Date.now()
 
-    if (!requestCounts.has(entityId)) {
-      requestCounts.set(entityId, { count: 0, resetTime: now + RATE_LIMIT_WINDOW })
+    const rateLimitData = await getRateLimitData(runtime, entityId)
+
+    if (now >= rateLimitData.resetTime) {
+      rateLimitData.count = 0
+      rateLimitData.resetTime = now + RATE_LIMIT_WINDOW
+      await updateRateLimitData(runtime, entityId, rateLimitData)
     }
 
-    let requestCountData = requestCounts.get(entityId)
-    if (isNull(requestCountData)) {
-      requestCountData = { count: 0, resetTime: now + RATE_LIMIT_WINDOW }
-      requestCounts.set(entityId, requestCountData)
-    }
-
-    if (now >= requestCountData.resetTime) {
-      requestCountData.count = 0
-      requestCountData.resetTime = now + RATE_LIMIT_WINDOW
-    }
-
-    if (requestCountData.count >= MAX_REQUESTS_PER_HOUR) {
-      const remainingMs = requestCountData.resetTime - now
+    if (rateLimitData.count >= MAX_REQUESTS_PER_HOUR) {
+      const remainingMs = rateLimitData.resetTime - now
       const remainingMinutes = Math.ceil(remainingMs / 60000)
 
       await callback?.({
@@ -228,13 +282,15 @@ export const seedOracle: Action = {
       return
     }
 
-    requestCountData.count++
+    rateLimitData.count++
+    await updateRateLimitData(runtime, entityId, rateLimitData)
+
     await processOracleRequest(runtime, memory, state, callback)
 
-    const resetTimeISO = new Date(requestCountData.resetTime).toISOString()
+    const resetTimeISO = new Date(rateLimitData.resetTime).toISOString()
     ayaLogger.info(
       `Oracle request from entityId ${entityId}. ` +
-        `Count: ${requestCountData.count}/${MAX_REQUESTS_PER_HOUR} until ${resetTimeISO}`
+        `Count: ${rateLimitData.count}/${MAX_REQUESTS_PER_HOUR} until ${resetTimeISO}`
     )
   },
   examples: [
