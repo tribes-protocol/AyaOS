@@ -7,12 +7,6 @@ declare module '@elizaos/plugin-bootstrap' {
   export default bootstrapPlugin
 }
 
-declare module '@elizaos/plugin-openai' {
-  import { Plugin } from '@elizaos/core'
-  const openaiPlugin: Plugin
-  export default openaiPlugin
-}
-
 declare module '@elizaos/plugin-sql' {
   import { Plugin } from '@elizaos/core'
   const sqlPlugin: Plugin

@@ -45,11 +45,11 @@ import {
 import { AgentContext, AgentRegistry } from '@/agent/registry'
 import { ITelegramManager } from '@/managers/interfaces'
 import { TelegramManager } from '@/managers/telegram'
-import openaiPlugin from '@elizaos/plugin-openai'
 import sqlPlugin from '@elizaos/plugin-sql'
 import telegramPlugin from '@elizaos/plugin-telegram'
 import fs from 'fs'
 import path from 'path'
+import openaiPlugin from '@/plugins/openai'
 
 export class Agent implements IAyaAgent {
   private services: (typeof Service)[] = []
