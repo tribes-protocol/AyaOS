@@ -45,11 +45,11 @@ import {
 import { AgentContext, AgentRegistry } from '@/agent/registry'
 import { ITelegramManager } from '@/managers/interfaces'
 import { TelegramManager } from '@/managers/telegram'
+import openaiPlugin from '@/plugins/openai'
 import sqlPlugin from '@elizaos/plugin-sql'
 import telegramPlugin from '@elizaos/plugin-telegram'
 import fs from 'fs'
 import path from 'path'
-import openaiPlugin from '@/plugins/openai'
 
 export class Agent implements IAyaAgent {
   private services: (typeof Service)[] = []
@@ -319,6 +319,8 @@ export class Agent implements IAyaAgent {
     if (!isPgliteDataDirSet) {
       character.secrets.PGLITE_DATA_DIR = path.join(this.context.dataDir, 'elizadb')
     }
+
+    logger.info('loaded character', character.name)
 
     return character
   }

@@ -1,24 +1,60 @@
 import { AgentRegistry } from '@/agent/registry'
 import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
-import { ensureStringSetting, isNull } from '@/common/functions'
+import { ensureStringSetting, isNull, toJsonTreeString } from '@/common/functions'
 import { validateResponse } from '@/common/llms/response-validator'
 import {
   asUUID,
+  ChannelType,
   composePromptFromState,
   Content,
   createUniqueUuid,
   EventType,
+  IAgentRuntime,
+  InvokePayload,
   logger,
   Memory,
-  messageHandlerTemplate,
   MessageReceivedHandlerParams,
   ModelType,
   parseJSONObjectFromText,
-  shouldRespondTemplate
+  postCreationTemplate,
+  shouldRespondTemplate,
+  truncateToCompleteSentence
 } from '@elizaos/core'
 import { v4 } from 'uuid'
 
-const latestResponseIds = new Map<string, Map<string, string>>()
+export const messageHandlerTemplate = `
+# Task: Generate dialog and actions for the character {{agentName}}.
+{{providers}}
+# Instructions: Write a thought and plan for {{agentName}} and decide what actions to take. Also 
+include the providers that {{agentName}} will use to have the right context for responding and
+acting, if any.
+
+First, think about what you want to do next and plan your actions. Then, write the next message 
+and include the actions you plan to take.
+"thought" should be a short description of what the agent is thinking about and planning.
+"actions" should be an array of the actions {{agentName}} plans to take based on the thought 
+(if none, use IGNORE, if simply responding with text, use REPLY)
+"providers" should be an optional array of the providers that {{agentName}} will use to have the 
+right context for responding and acting
+"evaluators" should be an optional array of the evaluators that {{agentName}} will use to evaluate 
+the conversation after responding
+"message" should be the next message for {{agentName}} which they will send to the conversation.
+These are the available valid actions: {{actionNames}}
+
+IMPORTANT: The order of actions matters. Actions are executed in the sequence they are listed 
+in your response. Ensure your actions are ordered logically to accomplish the task effectively. 
+
+Response format should be formatted in a valid JSON block like this:
+\`\`\`json
+{
+    "thought": "<string>",
+    "actions": ["<string>", "<string>", ...],
+    "providers": ["<string>", "<string>", ...],
+    "message": "<string>"
+}
+\`\`\`
+
+Your response should include the valid JSON block and nothing else.`.trim()
 
 /**
  * Handles incoming messages and generates responses based on the provided runtime
@@ -43,20 +79,6 @@ export const messageReceivedHandler = async ({
 
   const dataDir = ensureStringSetting(runtime, AYA_AGENT_DATA_DIR_KEY)
   const { rateLimiter } = AgentRegistry.get(dataDir)
-
-  // Generate a new response ID
-  const responseId = v4()
-  // Get or create the agent-specific map
-  if (!latestResponseIds.has(runtime.agentId)) {
-    latestResponseIds.set(runtime.agentId, new Map<string, string>())
-  }
-  const agentResponses = latestResponseIds.get(runtime.agentId)
-  if (!agentResponses) {
-    throw new Error('Agent responses map not found')
-  }
-
-  // Set this as the latest response ID for this agent+room
-  agentResponses.set(message.roomId, responseId)
 
   // Generate a unique run ID for tracking this message handler execution
   const runId = asUUID(v4())
@@ -181,6 +203,8 @@ export const messageReceivedHandler = async ({
           template: runtime.character.templates?.messageHandlerTemplate || messageHandlerTemplate
         })
 
+        console.log('prompt', prompt)
+
         let responseContent: Content | null = null
 
         // Retry if missing required fields
@@ -198,16 +222,6 @@ export const messageReceivedHandler = async ({
           if (!responseContent?.thought && !responseContent?.actions) {
             logger.warn('*** Missing required fields, retrying... ***')
           }
-        }
-
-        // Check if this is still the latest response ID for this agent+room
-        const currentResponseId = agentResponses.get(message.roomId)
-        if (currentResponseId !== responseId) {
-          logger.info(
-            `Response discarded - newer message being processed for agent:` +
-              ` ${runtime.agentId}, room: ${message.roomId}`
-          )
-          return
         }
 
         if (responseContent) {
@@ -235,15 +249,9 @@ export const messageReceivedHandler = async ({
               createdAt: Date.now()
             }
           ]
-
-          void callback(responseContent)
         }
 
-        // Clean up the response ID
-        agentResponses.delete(message.roomId)
-        if (agentResponses.size === 0) {
-          latestResponseIds.delete(runtime.agentId)
-        }
+        console.log('responseMessages', toJsonTreeString(responseMessages, { pretty: true }))
 
         await runtime.processActions(message, responseMessages, state, callback)
       }
@@ -291,4 +299,151 @@ export const messageReceivedHandler = async ({
       clearTimeout(timeoutId)
     }
   }
+}
+
+export const reactionReceivedHandler = async ({
+  runtime,
+  message
+}: {
+  runtime: IAgentRuntime
+  message: Memory
+}): Promise<void> => {
+  try {
+    await runtime.createMemory(message, 'messages')
+  } catch (error) {
+    if (error instanceof Error && error.message === '23505') {
+      logger.warn('Duplicate reaction memory, skipping')
+      return
+    }
+    logger.error('Error in reaction handler:', error)
+  }
+}
+
+export const postGeneratedHandler = async ({
+  runtime,
+  callback,
+  worldId,
+  userId,
+  roomId,
+  source
+}: InvokePayload): Promise<void> => {
+  logger.info('Generating new post...')
+  // Ensure world exists first
+  await runtime.ensureWorldExists({
+    id: worldId,
+    name: `${runtime.character.name}'s Feed`,
+    agentId: runtime.agentId,
+    serverId: userId
+  })
+
+  // Ensure timeline room exists
+  await runtime.ensureRoomExists({
+    id: roomId,
+    name: `${runtime.character.name}'s Feed`,
+    source,
+    type: ChannelType.FEED,
+    channelId: `${userId}-home`,
+    serverId: userId,
+    worldId
+  })
+
+  const message = {
+    id: createUniqueUuid(runtime, `tweet-${Date.now()}`),
+    entityId: runtime.agentId,
+    agentId: runtime.agentId,
+    roomId,
+    content: {}
+  }
+
+  // Compose state with relevant context for tweet generation
+  const state = await runtime.composeState(message, undefined, [
+    'CHARACTER',
+    'RECENT_MESSAGES',
+    'ENTITIES'
+  ])
+
+  // Generate prompt for tweet content
+  const postPrompt = composePromptFromState({
+    state,
+    template: runtime.character.templates?.postCreationTemplate || postCreationTemplate
+  })
+
+  const jsonResponse: {
+    post: string
+    thought: string
+  } = await runtime.useModel(ModelType.OBJECT_LARGE, {
+    prompt: postPrompt,
+    output: 'no-schema'
+  })
+
+  /**
+   * Cleans up a tweet text by removing quotes and fixing newlines
+   */
+  function cleanupPostText(text: string): string {
+    // Remove quotes
+    let cleanedText = text.replace(/^['"](.*)['"]$/, '$1')
+    // Fix newlines
+    cleanedText = cleanedText.replaceAll(/\\n/g, '\n\n')
+    // Truncate to Twitter's character limit (280)
+    if (cleanedText.length > 280) {
+      cleanedText = truncateToCompleteSentence(cleanedText, 280)
+    }
+    return cleanedText
+  }
+
+  // Cleanup the tweet text
+  const cleanedText = cleanupPostText(jsonResponse.post)
+
+  // Prepare media if included
+  // const mediaData: MediaData[] = [];
+  // if (jsonResponse.imagePrompt) {
+  // 	const images = await runtime.useModel(ModelType.IMAGE, {
+  // 		prompt: jsonResponse.imagePrompt,
+  // 		output: "no-schema",
+  // 	});
+  // 	try {
+  // 		// Convert image prompt to Media format for fetchMediaData
+  // 		const imagePromptMedia: any[] = images
+
+  // 		// Fetch media using the utility function
+  // 		const fetchedMedia = await fetchMediaData(imagePromptMedia);
+  // 		mediaData.push(...fetchedMedia);
+  // 	} catch (error) {
+  // 		logger.error("Error fetching media for tweet:", error);
+  // 	}
+  // }
+
+  // Create the response memory
+  const responseMessages = [
+    {
+      id: asUUID(v4()),
+      entityId: runtime.agentId,
+      agentId: runtime.agentId,
+      content: {
+        text: cleanedText,
+        source,
+        channelType: ChannelType.FEED,
+        thought: jsonResponse.thought || '',
+        type: 'post'
+      },
+      roomId: message.roomId,
+      createdAt: Date.now()
+    }
+  ]
+
+  for (const message of responseMessages) {
+    await callback?.(message.content)
+  }
+
+  // Process the actions and execute the callback
+  // await runtime.processActions(message, responseMessages, state, callback);
+
+  // // Run any configured evaluators
+  // await runtime.evaluate(
+  // 	message,
+  // 	state,
+  // 	true, // Post generation is always a "responding" scenario
+  // 	callback,
+  // 	responseMessages,
+  // );
 }

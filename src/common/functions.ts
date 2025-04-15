@@ -309,3 +309,20 @@ export function ensureStringSetting(runtime: IAgentRuntime, key: string): string
   }
   return value
 }
+
+export function compactMap<T>(array: (T | null | undefined)[]): T[] {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  return array.filter((item) => !isNull(item)) as T[]
+}
+
+export function toJsonTreeString(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  obj: any,
+  { pretty = false }: { pretty?: boolean } = {}
+): string | null {
+  if (isNull(obj)) {
+    return null
+  }
+
+  return JSON.stringify(toJsonTree(obj), null, pretty ? 2 : undefined)
+}
