@@ -13,8 +13,7 @@ import {
 } from '@elizaos/core'
 import { z } from 'zod'
 
-// Define the rate limit constants
-const MAX_REQUESTS_PER_HOUR = 2
+const MAX_REQUESTS_PER_HOUR = 20
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000
 
 const RATE_LIMIT_CACHE_PREFIX = 'rate_limit_data_'
@@ -39,13 +38,29 @@ The seed phrase is: {{seedPhrase}}
 
 Question: {{question}}
 
-Provide your answer in this exact JSON format:
+First, determine if this is a yes/no question about the seed phrase. If it's not a yes/no question 
+(e.g., it's asking "what", "how", "tell me", etc.) or not related to the seed phrase, respond with:
 \`\`\`json
 {
+    "isYesNoQuestion": false,
+    "reasoning": "Explanation of why this isn't a yes/no question about the seed phrase"
+}
+\`\`\`
+
+If it IS a valid yes/no question about the seed phrase, provide your answer in this exact JSON 
+format:
+\`\`\`json
+{
+    "isYesNoQuestion": true,
     "reasoning": "Step-by-step analysis of the question against the seed phrase",
     "finalAnswer": "yes" or "no"
 }
 \`\`\`
+
+IMPORTANT: Follow strict JSON format rules:
+- The "isYesNoQuestion" field must be a boolean value (true or false without quotes)
+- Strings must be in quotes ("yes" or "no")
+- Proper JSON formatting is critical for my processing system
 
 Remember:
 1. First, analyze the question carefully step by step
@@ -59,15 +74,19 @@ Remember:
 // Define schema with all possible response formats
 const ResponseSchema = z
   .object({
+    isYesNoQuestion: z.boolean(),
     finalAnswer: z.enum(['yes', 'no']).optional(),
-    reasoning: z.string().optional()
+    reasoning: z.string()
   })
   .refine(
     (data) => {
-      return data.finalAnswer && data.reasoning
+      if (data.isYesNoQuestion) {
+        return data.finalAnswer !== undefined && data.reasoning !== undefined
+      }
+      return data.reasoning !== undefined
     },
     {
-      message: 'Response must include an answer and reasoning'
+      message: 'Response schema validation failed'
     }
   )
 
@@ -137,8 +156,13 @@ async function processOracleRequest(
   state = await runtime.composeState(memory)
 
   const seedPhrase = runtime.getSetting('SEED_PHRASE')
-  if (!seedPhrase) {
+  if (isNull(seedPhrase)) {
     throw new Error('Seed phrase is not set')
+  }
+
+  const address = runtime.getSetting('ADDRESS')
+  if (isNull(address)) {
+    throw new Error('Address is not set')
   }
 
   const question = memory.content.text
@@ -154,6 +178,7 @@ async function processOracleRequest(
   // Maximum number of retries
   const MAX_RETRIES = 3
   let attempts = 0
+  let isYesNoQuestion: boolean | undefined
   let finalAnswer: string | undefined
   let reasoning: string | undefined
 
@@ -201,16 +226,36 @@ async function processOracleRequest(
         continue
       }
 
-      const validatedResponse = ResponseSchema.parse(responseObject)
-      finalAnswer = validatedResponse.finalAnswer
-      reasoning = validatedResponse.reasoning
+      try {
+        // Normalize the response object to ensure proper types
+        // Convert string "true"/"false" to actual boolean values
+        if (typeof responseObject.isYesNoQuestion === 'string') {
+          responseObject.isYesNoQuestion = responseObject.isYesNoQuestion.toLowerCase() === 'true'
+        }
 
-      if (!finalAnswer || !reasoning) {
-        console.log(`Missing required fields, retrying (attempt ${attempts})`)
+        // Force finalAnswer to be lowercase string if present
+        if (responseObject.finalAnswer) {
+          responseObject.finalAnswer = String(responseObject.finalAnswer).toLowerCase()
+        }
+
+        const validatedResponse = ResponseSchema.parse(responseObject)
+        isYesNoQuestion = validatedResponse.isYesNoQuestion
+        reasoning = validatedResponse.reasoning
+
+        if (isYesNoQuestion) {
+          finalAnswer = validatedResponse.finalAnswer
+
+          if (!finalAnswer) {
+            console.log(`Missing finalAnswer for yes/no question, retrying (attempt ${attempts})`)
+            continue
+          }
+        }
+
+        break
+      } catch (validationError) {
+        console.error(`Validation error on attempt ${attempts}:`, validationError)
         continue
       }
-
-      break
     } catch (error) {
       console.error(`Error on attempt ${attempts}:`, error)
       if (attempts >= MAX_RETRIES) {
@@ -220,20 +265,44 @@ async function processOracleRequest(
   }
 
   try {
-    if (!finalAnswer || !reasoning) {
+    if (isYesNoQuestion === undefined || !reasoning) {
       throw new Error(`Failed to get valid response after ${MAX_RETRIES} attempts`)
     }
 
-    const reasoningExcerpt = reasoning.substring(0, 80) + '...'
+    if (isYesNoQuestion) {
+      if (!finalAnswer) {
+        throw new Error(`Missing finalAnswer for yes/no question after ${MAX_RETRIES} attempts`)
+      }
 
-    ayaLogger.info(
-      `Oracle answering: "${question}" | ` +
-        `Answer: ${finalAnswer} | Analysis: ${reasoningExcerpt}`
-    )
+      const reasoningExcerpt = reasoning.substring(0, 80) + '...'
 
-    await callback?.({
-      text: finalAnswer === 'yes' ? 'Yes.' : 'No.'
-    })
+      ayaLogger.info(
+        `Oracle answering yes/no question: "${question}" | ` +
+          `Answer: ${finalAnswer} | Analysis: ${reasoningExcerpt}`
+      )
+
+      await callback?.({
+        text: finalAnswer === 'yes' ? 'Yes.' : 'No.'
+      })
+    } else {
+      const gameExplanation =
+        "I'm the SeedOracle, guardian of a 12-word BIP-39 seed phrase.\n\n" +
+        'Rules:\n' +
+        '1. You can only ask yes/no questions about the seed phrase\n' +
+        '2. You have 20 questions per hour\n' +
+        '3. First person to correctly guess all 12 words can claim the prize money\n' +
+        "4. Questions must be towards the seed phrase and binary, like 'Is the first word shorter than 5 letters?'\n" +
+        `5. The address of the seed phrase is: ${address}\n\n` +
+        'Good luck finding the seed phrase!'
+
+      ayaLogger.info(
+        `Oracle responding to non-yes/no question: "${question}" with game explanation`
+      )
+
+      await callback?.({
+        text: gameExplanation
+      })
+    }
   } catch (error) {
     console.error('Error processing response:', error)
     await callback?.({
