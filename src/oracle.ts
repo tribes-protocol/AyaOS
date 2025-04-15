@@ -4,14 +4,113 @@ import {
   Action,
   composePromptFromState,
   IAgentRuntime,
+  logger,
   ModelType,
   parseJSONObjectFromText,
+  Plugin,
+  TextEmbeddingParams,
   UUID,
   type HandlerCallback,
   type Memory,
   type State
 } from '@elizaos/core'
+import openaiPlugin from '@elizaos/plugin-openai'
 import { z } from 'zod'
+
+export const openRouterPlugin: Plugin = {
+  ...openaiPlugin,
+  models: {
+    ...openaiPlugin.models,
+    [ModelType.TEXT_EMBEDDING]: async (
+      runtime: IAgentRuntime,
+      params: TextEmbeddingParams | string | null
+    ): Promise<number[]> => {
+      const embeddingDimension = 1536
+
+      // Handle null input (initialization case)
+      if (params === null) {
+        logger.debug('Creating test embedding for initialization')
+        // Return a consistent vector for null input
+        const testVector = Array(embeddingDimension).fill(0)
+        testVector[0] = 0.1 // Make it non-zero
+        return testVector
+      }
+
+      // Get the text from whatever format was provided
+      let text: string
+      if (typeof params === 'string') {
+        text = params // Direct string input
+      } else if (typeof params === 'object' && params.text) {
+        text = params.text // Object with text property
+      } else {
+        logger.warn('Invalid input format for embedding')
+        // Return a fallback for invalid input
+        const fallbackVector = Array(embeddingDimension).fill(0)
+        fallbackVector[0] = 0.2 // Different value for tracking
+        return fallbackVector
+      }
+
+      // Skip API call for empty text
+      if (!text.trim()) {
+        logger.warn('Empty text for embedding')
+        const emptyVector = Array(embeddingDimension).fill(0)
+        emptyVector[0] = 0.3 // Different value for tracking
+        return emptyVector
+      }
+
+      const openAiApiKey = runtime.getSetting('OPENAI_EMBEDDING_API_KEY')
+
+      if (isNull(openAiApiKey)) {
+        throw new Error('OPENAI_EMBEDDING_API_KEY is not set')
+      }
+
+      try {
+        const baseURL = 'https://api.openai.com/v1'
+
+        // Call the OpenAI API
+        const response = await fetch(`${baseURL}/embeddings`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${openAiApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'text-embedding-3-small',
+            input: text
+          })
+        })
+
+        if (!response.ok) {
+          logger.error(`OpenAI API error: ${response.status} - ${response.statusText}`)
+          const errorVector = Array(embeddingDimension).fill(0)
+          errorVector[0] = 0.4 // Different value for tracking
+          return errorVector
+        }
+
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        const data = (await response.json()) as {
+          data: [{ embedding: number[] }]
+        }
+
+        if (!data?.data?.[0]?.embedding) {
+          logger.error('API returned invalid structure')
+          const errorVector = Array(embeddingDimension).fill(0)
+          errorVector[0] = 0.5 // Different value for tracking
+          return errorVector
+        }
+
+        const embedding = data.data[0].embedding
+        logger.log(`Got valid embedding with length ${embedding.length}`)
+        return embedding
+      } catch (error) {
+        logger.error('Error generating embedding:', error)
+        const errorVector = Array(embeddingDimension).fill(0)
+        errorVector[0] = 0.6 // Different value for tracking
+        return errorVector
+      }
+    }
+  }
+}
 
 const MAX_REQUESTS_PER_HOUR = 20
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000
@@ -281,20 +380,18 @@ async function processOracleRequest(
   }
 
   try {
-    if (isYesNoQuestion === undefined || !reasoning) {
+    if (isYesNoQuestion === undefined || isNull(reasoning)) {
       throw new Error(`Failed to get valid response after ${MAX_RETRIES} attempts`)
     }
 
     if (isYesNoQuestion) {
-      if (!finalAnswer) {
+      if (isNull(finalAnswer)) {
         throw new Error(`Missing finalAnswer for yes/no question after ${MAX_RETRIES} attempts`)
       }
 
-      const reasoningExcerpt = reasoning.substring(0, 80) + '...'
-
       ayaLogger.info(
         `Oracle answering yes/no question: "${question}" | ` +
-          `Answer: ${finalAnswer} | Analysis: ${reasoningExcerpt}`
+          `Answer: ${finalAnswer} | Analysis: ${reasoning}`
       )
 
       await callback?.({
