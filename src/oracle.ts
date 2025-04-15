@@ -405,7 +405,8 @@ async function processOracleRequest(
         '2. You have 20 questions per hour\n' +
         '3. First person to correctly guess all 12 words can claim the prize money\n' +
         "4. Questions must be towards the seed phrase and binary, like 'Is the first word shorter than 5 letters?'\n" +
-        `5. The address of the seed phrase is: ${address}\n\n` +
+        '5. Question should always mention which position of the seed phrase is being asked about if asking about a specific word\n' +
+        `6. The address of the seed phrase is: ${address}\n\n` +
         'Good luck finding the seed phrase!'
 
       ayaLogger.info(
