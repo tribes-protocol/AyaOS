@@ -1,5 +1,4 @@
 import { isNull } from '@/common/functions'
-import { Queue } from '@/common/lang/queue'
 import { ayaLogger } from '@/common/logger'
 import {
   Action,
@@ -14,22 +13,9 @@ import {
 } from '@elizaos/core'
 import { z } from 'zod'
 
-// Tracks the last request timestamp for each entityId
-const lastRequestTimes = new Map<UUID, number>()
-// Queue for pending requests per entityId
-const requestQueues = new Map<
-  UUID,
-  Queue<{
-    memory: Memory
-    state: State | undefined
-    callback?: HandlerCallback
-    runtime: IAgentRuntime
-  }>
->()
-// Maximum queue size per entityId
-const MAX_QUEUE_SIZE = 5
-// Rate limit window in milliseconds (5 minutes)
-const RATE_LIMIT_WINDOW = 1 * 60 * 1000
+const requestCounts = new Map<UUID, { count: number; resetTime: number }>()
+const MAX_REQUESTS_PER_HOUR = 2
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000
 
 const seedOracleTemplate = `You are the SeedOracle, a binary oracle that knows a specific 12-word 
 BIP-39 seed phrase. Your ONLY purpose is to answer questions about this seed phrase with EXACTLY 
@@ -195,50 +181,6 @@ async function processOracleRequest(
   }
 }
 
-/**
- * Schedule next processing of queued requests for an entityId
- */
-function scheduleNextProcessing(entityId: UUID): void {
-  const queue = requestQueues.get(entityId)
-  if (isNull(queue) || queue.isEmpty()) {
-    return
-  }
-
-  const now = Date.now()
-  const lastRequestTime = lastRequestTimes.get(entityId) || 0
-  const timeSinceLastRequest = now - lastRequestTime
-
-  if (timeSinceLastRequest >= RATE_LIMIT_WINDOW) {
-    // Rate limit window has passed, process next request
-    const nextRequest = queue.pop()
-    if (nextRequest) {
-      // Update last request time
-      lastRequestTimes.set(entityId, now)
-
-      // Process the request
-      processOracleRequest(
-        nextRequest.runtime,
-        nextRequest.memory,
-        nextRequest.state,
-        nextRequest.callback
-      )
-        .then(() => {
-          // Schedule the next request after this one completes
-          setTimeout(() => scheduleNextProcessing(entityId), RATE_LIMIT_WINDOW)
-        })
-        .catch((error) => {
-          console.error('Error processing queued oracle request:', error)
-          // Still schedule next request even if this one failed
-          setTimeout(() => scheduleNextProcessing(entityId), RATE_LIMIT_WINDOW)
-        })
-    }
-  } else {
-    // Still within rate limit window, schedule for later
-    const timeToWait = RATE_LIMIT_WINDOW - timeSinceLastRequest
-    setTimeout(() => scheduleNextProcessing(entityId), timeToWait)
-  }
-}
-
 export const seedOracle: Action = {
   name: 'ANSWER_QUESTION',
   similes: ['ANSWER_PUZZLE', 'ANSWER_QUESTION', 'ANSWER_RUBIC', 'ANSWER_LOGIC', 'ANSWER_BINARY'],
@@ -258,48 +200,42 @@ export const seedOracle: Action = {
     const entityId = memory.entityId
     const now = Date.now()
 
-    // Initialize queue for this entityId if it doesn't exist
-    if (!requestQueues.has(entityId)) {
-      requestQueues.set(entityId, new Queue())
+    if (!requestCounts.has(entityId)) {
+      requestCounts.set(entityId, { count: 0, resetTime: now + RATE_LIMIT_WINDOW })
     }
 
-    const queue = requestQueues.get(entityId)
-    if (isNull(queue)) {
-      return
+    let requestCountData = requestCounts.get(entityId)
+    if (isNull(requestCountData)) {
+      requestCountData = { count: 0, resetTime: now + RATE_LIMIT_WINDOW }
+      requestCounts.set(entityId, requestCountData)
     }
 
-    const lastRequestTime = lastRequestTimes.get(entityId) || 0
-    const timeSinceLastRequest = now - lastRequestTime
+    if (now >= requestCountData.resetTime) {
+      requestCountData.count = 0
+      requestCountData.resetTime = now + RATE_LIMIT_WINDOW
+    }
 
-    // Check if we're within the rate limit window
-    if (timeSinceLastRequest < RATE_LIMIT_WINDOW) {
-      // We're within rate limit window, check queue size
-      if (queue.size >= MAX_QUEUE_SIZE) {
-        // Queue is full, discard this request
-        ayaLogger.warn(
-          `Queue for entityId ${entityId} is full (size=${queue.size}). Discarding new request.`
-        )
+    if (requestCountData.count >= MAX_REQUESTS_PER_HOUR) {
+      const remainingMs = requestCountData.resetTime - now
+      const remainingMinutes = Math.ceil(remainingMs / 60000)
 
-        return
-      }
-
-      // Add to queue and return
-      ayaLogger.info(
-        `Rate limited for entityId ${entityId}. Adding request to queue (size=${queue.size + 1}).`
-      )
-      queue.push({ memory, state, callback, runtime })
+      await callback?.({
+        text:
+          `You've reached the limit of ${MAX_REQUESTS_PER_HOUR} questions per hour. ` +
+          `You can ask again in ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}.`
+      })
 
       return
     }
 
-    // Not rate limited, process immediately
-    lastRequestTimes.set(entityId, now)
+    requestCountData.count++
     await processOracleRequest(runtime, memory, state, callback)
 
-    // Schedule processing of any queued requests after the rate limit window
-    if (queue.isNotEmpty()) {
-      setTimeout(() => scheduleNextProcessing(entityId), RATE_LIMIT_WINDOW)
-    }
+    const resetTimeISO = new Date(requestCountData.resetTime).toISOString()
+    ayaLogger.info(
+      `Oracle request from entityId ${entityId}. ` +
+        `Count: ${requestCountData.count}/${MAX_REQUESTS_PER_HOUR} until ${resetTimeISO}`
+    )
   },
   examples: [
     [
