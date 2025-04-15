@@ -135,7 +135,7 @@ then double-check your work before finalizing your response.
 
 The seed phrase is: {{seedPhrase}}
 
-Question: {{question}}
+Current question: {{question}}
 
 First, determine if this is a yes/no question about the seed phrase. If it's not a yes/no question 
 (e.g., it's asking "what", "how", "tell me", etc.) or not related to the seed phrase, respond with:
@@ -252,7 +252,9 @@ async function processOracleRequest(
   state: State | undefined,
   callback?: HandlerCallback
 ): Promise<void> {
-  state = await runtime.composeState(memory)
+  state = await runtime.composeState(memory, ['RECENT_MESSAGES'])
+
+  console.log(`state: ${JSON.stringify(state)}`)
 
   const seedPhrase = runtime.getSetting('SEED_PHRASE')
   if (isNull(seedPhrase)) {
