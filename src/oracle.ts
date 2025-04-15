@@ -165,6 +165,22 @@ async function processOracleRequest(
     throw new Error('Address is not set')
   }
 
+  const oracleSolved = runtime.getSetting('ORACLE_SOLVED')
+  if (oracleSolved) {
+    throw new Error('Oracle is already solved')
+  }
+
+  if (oracleSolved) {
+    await callback?.({
+      text:
+        'The game has been solved, the seed phrase was: ' +
+        seedPhrase +
+        '. Stay tuned for the next round of the game!'
+    })
+
+    return
+  }
+
   const question = memory.content.text
 
   state.values.seedPhrase = seedPhrase
