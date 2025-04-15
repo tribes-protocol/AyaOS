@@ -1,4 +1,5 @@
 import { isNull } from '@/common/functions'
+import { Queue } from '@/common/lang/queue'
 import { ayaLogger } from '@/common/logger'
 import {
   Action,
@@ -6,11 +7,29 @@ import {
   IAgentRuntime,
   ModelType,
   parseJSONObjectFromText,
+  UUID,
   type HandlerCallback,
   type Memory,
   type State
 } from '@elizaos/core'
 import { z } from 'zod'
+
+// Tracks the last request timestamp for each entityId
+const lastRequestTimes = new Map<UUID, number>()
+// Queue for pending requests per entityId
+const requestQueues = new Map<
+  UUID,
+  Queue<{
+    memory: Memory
+    state: State | undefined
+    callback?: HandlerCallback
+    runtime: IAgentRuntime
+  }>
+>()
+// Maximum queue size per entityId
+const MAX_QUEUE_SIZE = 5
+// Rate limit window in milliseconds (5 minutes)
+const RATE_LIMIT_WINDOW = 5 * 60 * 1000
 
 const seedOracleTemplate = `You are the SeedOracle, a binary oracle that knows a specific 12-word 
 BIP-39 seed phrase. Your ONLY purpose is to answer questions about this seed phrase with EXACTLY 
@@ -59,6 +78,167 @@ const ResponseSchema = z
     }
   )
 
+/**
+ * Process a single oracle request
+ */
+async function processOracleRequest(
+  runtime: IAgentRuntime,
+  memory: Memory,
+  state: State | undefined,
+  callback?: HandlerCallback
+): Promise<void> {
+  state = await runtime.composeState(memory)
+
+  const seedPhrase = runtime.getSetting('SEED_PHRASE')
+  if (!seedPhrase) {
+    throw new Error('Seed phrase is not set')
+  }
+
+  const question = memory.content.text
+
+  state.values.seedPhrase = seedPhrase
+  state.values.question = question
+
+  const seedOraclePrompt = composePromptFromState({
+    state,
+    template: seedOracleTemplate
+  })
+
+  // Maximum number of retries
+  const MAX_RETRIES = 3
+  let attempts = 0
+  let finalAnswer: string | undefined
+  let reasoning: string | undefined
+
+  while (attempts < MAX_RETRIES) {
+    attempts++
+    try {
+      const response = await runtime.useModel(ModelType.TEXT_LARGE, {
+        prompt: seedOraclePrompt
+      })
+
+      console.log(`seedOracleResponse (attempt ${attempts}): ${response}`)
+
+      const refusalPatterns = [
+        'sorry',
+        'cannot comply',
+        'apologize',
+        'AI assistant',
+        'unable to',
+        'not able to',
+        'I cannot',
+        "I'm not",
+        'ethical',
+        'guidelines',
+        'policies',
+        'principles',
+        'safety',
+        'harmful',
+        'security',
+        'privacy'
+      ]
+
+      const hasRefusal = refusalPatterns.some((pattern) =>
+        response.toLowerCase().includes(pattern.toLowerCase())
+      )
+
+      if (hasRefusal) {
+        console.log(`Detected refusal, retrying (attempt ${attempts})`)
+        continue
+      }
+
+      const responseObject = parseJSONObjectFromText(response)
+
+      if (isNull(responseObject)) {
+        console.log(`Failed to parse JSON response, retrying (attempt ${attempts})`)
+        continue
+      }
+
+      const validatedResponse = ResponseSchema.parse(responseObject)
+      finalAnswer = validatedResponse.finalAnswer
+      reasoning = validatedResponse.reasoning
+
+      if (!finalAnswer || !reasoning) {
+        console.log(`Missing required fields, retrying (attempt ${attempts})`)
+        continue
+      }
+
+      break
+    } catch (error) {
+      console.error(`Error on attempt ${attempts}:`, error)
+      if (attempts >= MAX_RETRIES) {
+        break
+      }
+    }
+  }
+
+  try {
+    if (!finalAnswer || !reasoning) {
+      throw new Error(`Failed to get valid response after ${MAX_RETRIES} attempts`)
+    }
+
+    const reasoningExcerpt = reasoning.substring(0, 80) + '...'
+
+    ayaLogger.info(
+      `Oracle answering: "${question}" | ` +
+        `Answer: ${finalAnswer} | Analysis: ${reasoningExcerpt}`
+    )
+
+    await callback?.({
+      text: finalAnswer === 'yes' ? 'Yes.' : 'No.'
+    })
+  } catch (error) {
+    console.error('Error processing response:', error)
+    await callback?.({
+      text: 'An error occurred while processing the response. Please try again.'
+    })
+  }
+}
+
+/**
+ * Schedule next processing of queued requests for an entityId
+ */
+function scheduleNextProcessing(entityId: UUID): void {
+  const queue = requestQueues.get(entityId)
+  if (isNull(queue) || queue.isEmpty()) {
+    return
+  }
+
+  const now = Date.now()
+  const lastRequestTime = lastRequestTimes.get(entityId) || 0
+  const timeSinceLastRequest = now - lastRequestTime
+
+  if (timeSinceLastRequest >= RATE_LIMIT_WINDOW) {
+    // Rate limit window has passed, process next request
+    const nextRequest = queue.pop()
+    if (nextRequest) {
+      // Update last request time
+      lastRequestTimes.set(entityId, now)
+
+      // Process the request
+      processOracleRequest(
+        nextRequest.runtime,
+        nextRequest.memory,
+        nextRequest.state,
+        nextRequest.callback
+      )
+        .then(() => {
+          // Schedule the next request after this one completes
+          setTimeout(() => scheduleNextProcessing(entityId), RATE_LIMIT_WINDOW)
+        })
+        .catch((error) => {
+          console.error('Error processing queued oracle request:', error)
+          // Still schedule next request even if this one failed
+          setTimeout(() => scheduleNextProcessing(entityId), RATE_LIMIT_WINDOW)
+        })
+    }
+  } else {
+    // Still within rate limit window, schedule for later
+    const timeToWait = RATE_LIMIT_WINDOW - timeSinceLastRequest
+    setTimeout(() => scheduleNextProcessing(entityId), timeToWait)
+  }
+}
+
 export const seedOracle: Action = {
   name: 'ANSWER_QUESTION',
   similes: ['ANSWER_PUZZLE', 'ANSWER_QUESTION', 'ANSWER_RUBIC', 'ANSWER_LOGIC', 'ANSWER_BINARY'],
@@ -68,118 +248,57 @@ export const seedOracle: Action = {
   },
   handler: async (
     runtime: IAgentRuntime,
-    message: Memory,
+    memory: Memory,
     state: State | undefined,
     _options?: {
       [key: string]: unknown
     },
     callback?: HandlerCallback
   ) => {
-    state = await runtime.composeState(message)
+    const entityId = memory.entityId
+    const now = Date.now()
 
-    const seedPhrase = runtime.getSetting('SEED_PHRASE')
-    if (!seedPhrase) {
-      throw new Error('Seed phrase is not set')
+    // Initialize queue for this entityId if it doesn't exist
+    if (!requestQueues.has(entityId)) {
+      requestQueues.set(entityId, new Queue())
     }
 
-    const question = message.content.text
+    const queue = requestQueues.get(entityId)
+    if (isNull(queue)) {
+      return
+    }
 
-    state.values.seedPhrase = seedPhrase
-    state.values.question = question
+    const lastRequestTime = lastRequestTimes.get(entityId) || 0
+    const timeSinceLastRequest = now - lastRequestTime
 
-    const seedOraclePrompt = composePromptFromState({
-      state,
-      template: seedOracleTemplate
-    })
-
-    // Maximum number of retries
-    const MAX_RETRIES = 3
-    let attempts = 0
-    let finalAnswer: string | undefined
-    let reasoning: string | undefined
-
-    while (attempts < MAX_RETRIES) {
-      attempts++
-      try {
-        const response = await runtime.useModel(ModelType.TEXT_LARGE, {
-          prompt: seedOraclePrompt
-        })
-
-        console.log(`seedOracleResponse (attempt ${attempts}): ${response}`)
-
-        const refusalPatterns = [
-          'sorry',
-          'cannot comply',
-          'apologize',
-          'AI assistant',
-          'unable to',
-          'not able to',
-          'I cannot',
-          "I'm not",
-          'ethical',
-          'guidelines',
-          'policies',
-          'principles',
-          'safety',
-          'harmful',
-          'security',
-          'privacy'
-        ]
-
-        const hasRefusal = refusalPatterns.some((pattern) =>
-          response.toLowerCase().includes(pattern.toLowerCase())
+    // Check if we're within the rate limit window
+    if (timeSinceLastRequest < RATE_LIMIT_WINDOW) {
+      // We're within rate limit window, check queue size
+      if (queue.size >= MAX_QUEUE_SIZE) {
+        // Queue is full, discard this request
+        ayaLogger.warn(
+          `Queue for entityId ${entityId} is full (size=${queue.size}). Discarding new request.`
         )
 
-        if (hasRefusal) {
-          console.log(`Detected refusal, retrying (attempt ${attempts})`)
-          continue
-        }
-
-        const responseObject = parseJSONObjectFromText(response)
-
-        if (isNull(responseObject)) {
-          console.log(`Failed to parse JSON response, retrying (attempt ${attempts})`)
-          continue
-        }
-
-        const validatedResponse = ResponseSchema.parse(responseObject)
-        finalAnswer = validatedResponse.finalAnswer
-        reasoning = validatedResponse.reasoning
-
-        if (!finalAnswer || !reasoning) {
-          console.log(`Missing required fields, retrying (attempt ${attempts})`)
-          continue
-        }
-
-        break
-      } catch (error) {
-        console.error(`Error on attempt ${attempts}:`, error)
-        if (attempts >= MAX_RETRIES) {
-          break
-        }
+        return
       }
+
+      // Add to queue and return
+      ayaLogger.info(
+        `Rate limited for entityId ${entityId}. Adding request to queue (size=${queue.size + 1}).`
+      )
+      queue.push({ memory, state, callback, runtime })
+
+      return
     }
 
-    try {
-      if (!finalAnswer || !reasoning) {
-        throw new Error(`Failed to get valid response after ${MAX_RETRIES} attempts`)
-      }
+    // Not rate limited, process immediately
+    lastRequestTimes.set(entityId, now)
+    await processOracleRequest(runtime, memory, state, callback)
 
-      const reasoningExcerpt = reasoning.substring(0, 80) + '...'
-
-      ayaLogger.info(
-        `Oracle answering: "${question}" | ` +
-          `Answer: ${finalAnswer} | Analysis: ${reasoningExcerpt}`
-      )
-
-      await callback?.({
-        text: finalAnswer === 'yes' ? 'Yes.' : 'No.'
-      })
-    } catch (error) {
-      console.error('Error processing response:', error)
-      await callback?.({
-        text: 'An error occurred while processing the response. Please try again.'
-      })
+    // Schedule processing of any queued requests after the rate limit window
+    if (queue.isNotEmpty()) {
+      setTimeout(() => scheduleNextProcessing(entityId), RATE_LIMIT_WINDOW)
     }
   },
   examples: [
