@@ -252,9 +252,7 @@ async function processOracleRequest(
   state: State | undefined,
   callback?: HandlerCallback
 ): Promise<void> {
-  state = await runtime.composeState(memory, ['RECENT_MESSAGES'])
-
-  console.log(`state: ${JSON.stringify(state)}`)
+  state = await runtime.composeState(memory)
 
   const seedPhrase = runtime.getSetting('SEED_PHRASE')
   if (isNull(seedPhrase)) {
