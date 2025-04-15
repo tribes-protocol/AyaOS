@@ -226,6 +226,21 @@ export class Agent implements IAyaAgent {
     }
 
     ayaLogger.success('agent runtime started id:', runtime.agentId, 'name', runtime.character.name)
+
+    const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${this.context.auth.identity}`
+    // Calculate box width based on URL length
+    const boxWidth = Math.max(70, agentUrl.length + 6)
+
+    // Print a fancy bordered URL message
+    console.log('\n┌' + '─'.repeat(boxWidth) + '┐')
+    console.log('│' + ' '.repeat(boxWidth) + '│')
+    console.log('│' + '  🚀 Your agent is ready!  '.padEnd(boxWidth, ' ') + '│')
+    console.log('│' + ' '.repeat(boxWidth) + '│')
+    console.log('│' + '  Visit your agent at:'.padEnd(boxWidth, ' ') + '│')
+    console.log('│' + ' '.repeat(boxWidth) + '│')
+    console.log('│' + `  ${agentUrl}`.padEnd(boxWidth, ' ') + '│')
+    console.log('│' + ' '.repeat(boxWidth) + '│')
+    console.log('└' + '─'.repeat(boxWidth) + '┘\n')
   }
 
   async register(kind: 'service', handler: typeof Service): Promise<void>

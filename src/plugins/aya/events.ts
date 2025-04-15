@@ -203,7 +203,7 @@ export const messageReceivedHandler = async ({
           template: runtime.character.templates?.messageHandlerTemplate || messageHandlerTemplate
         })
 
-        console.log('prompt', prompt)
+        // console.log('prompt', prompt)
 
         let responseContent: Content | null = null
 
