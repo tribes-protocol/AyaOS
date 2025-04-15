@@ -164,12 +164,12 @@ export const messageReceivedHandler = async ({
       // Safely handle the case where parsing returns null
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const providers = responseObject?.providers as string[] | undefined
-      logger.debug('*** Providers Value ***', providers)
+      logger.debug(`*** Providers Value ***: ${providers}`)
 
       console.log('responseObject', responseObject)
 
       const shouldRespond = responseObject?.action && responseObject.action === 'RESPOND'
-      logger.debug('*** Should Respond ***', shouldRespond)
+      logger.debug(`*** Should Respond ***: ${shouldRespond}`)
 
       state = await runtime.composeState(message, undefined, providers)
 

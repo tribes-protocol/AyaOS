@@ -1,4 +1,5 @@
 import { IAyaAgent } from '@/agent/iagent'
+import { AgentContext, AgentRegistry } from '@/agent/registry'
 import {
   AYA_AGENT_DATA_DIR_KEY,
   AYA_AGENT_IDENTITY_KEY,
@@ -23,6 +24,8 @@ import {
 } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { AuthInfo, AyaOSOptions, CharacterSchema } from '@/common/types'
+import { ITelegramManager } from '@/managers/interfaces'
+import { TelegramManager } from '@/managers/telegram'
 import { ayaPlugin } from '@/plugins/aya'
 import { IKnowledgeService, IWalletService } from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
@@ -41,10 +44,7 @@ import {
   UUID,
   type Character
 } from '@elizaos/core'
-// import farcasterPlugin from '@elizaos/plugin-farcaster'
-import { AgentContext, AgentRegistry } from '@/agent/registry'
-import { ITelegramManager } from '@/managers/interfaces'
-import { TelegramManager } from '@/managers/telegram'
+import farcasterPlugin from '@elizaos/plugin-farcaster'
 import openaiPlugin from '@elizaos/plugin-openai'
 import sqlPlugin from '@elizaos/plugin-sql'
 import telegramPlugin from '@elizaos/plugin-telegram'
@@ -194,11 +194,14 @@ export class Agent implements IAyaAgent {
       }
 
       await hackRegisterPlugin(ayaPlugin, this.runtime)
-      // await hackRegisterPlugin(farcasterPlugin, this.runtime)
-      const TELEGRAM_BOT_TOKEN =
-        this.runtime.getSetting('TELEGRAM_BOT_TOKEN') || process.env.TELEGRAM_BOT_TOKEN
+      const TELEGRAM_BOT_TOKEN = this.runtime.getSetting('TELEGRAM_BOT_TOKEN')
       if (TELEGRAM_BOT_TOKEN) {
         await hackRegisterPlugin(telegramPlugin, this.runtime)
+      }
+
+      const FARCASTER_SIGNER_UUID = this.runtime.getSetting('FARCASTER_NEYNAR_SIGNER_UUID')
+      if (FARCASTER_SIGNER_UUID) {
+        await hackRegisterPlugin(farcasterPlugin, this.runtime)
       }
 
       // start the managers

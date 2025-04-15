@@ -9,3 +9,4 @@ db.sqlite
 pglite
 src/characters/
 .DS_Store
+oracle_data/

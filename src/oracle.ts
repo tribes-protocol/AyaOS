@@ -29,7 +29,7 @@ const requestQueues = new Map<
 // Maximum queue size per entityId
 const MAX_QUEUE_SIZE = 5
 // Rate limit window in milliseconds (5 minutes)
-const RATE_LIMIT_WINDOW = 5 * 60 * 1000
+const RATE_LIMIT_WINDOW = 1 * 60 * 1000
 
 const seedOracleTemplate = `You are the SeedOracle, a binary oracle that knows a specific 12-word 
 BIP-39 seed phrase. Your ONLY purpose is to answer questions about this seed phrase with EXACTLY 
