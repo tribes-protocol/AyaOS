@@ -16,6 +16,7 @@
     "access": "public"
   },
   "scripts": {
+    "clean": "rm -rf dist",
     "build": "bun run build-project && bun run build-script",
     "build-project": "bun run type-check && tsup src/index.ts --format esm --dts",
     "build-script": "tsup scripts/create-agent.ts --format esm --dts",
