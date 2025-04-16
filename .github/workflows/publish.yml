@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - 'main'
-      - 'hish/upgrade_to_v2'
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -23,14 +22,6 @@ jobs:
 
       - name: Build project
         run: bun run build
-
-      - name: Set NPM tag
-        run: |
-          if [[ "${GITHUB_REF##*/}" == "hish/upgrade_to_v2" ]]; then
-            echo "NPM_TAG=beta" >> $GITHUB_ENV
-          else
-            echo "NPM_TAG=latest" >> $GITHUB_ENV
-          fi
 
       - name: Create Release Pull Request or Publish
         id: changesets

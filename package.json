@@ -23,7 +23,8 @@
     "lint": "eslint src/**/*.ts",
     "dev": "dotenv --e .env -- tsx src/example.ts",
     "check-packages": "bash ./scripts/check-packages.sh",
-    "release": "tsx scripts/release.ts"
+    "release": "changeset publish",
+    "release:beta": "changeset publish --tag beta"
   },
   "dependencies": {
     "@elizaos/core": "1.0.0-beta.28",
