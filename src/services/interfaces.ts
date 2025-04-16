@@ -19,7 +19,7 @@ export interface IWalletService {
 }
 
 export interface IKnowledgeService {
-  list(options: {
+  list(options?: {
     limit?: number
     sort?: 'asc' | 'desc'
     filters?: {
