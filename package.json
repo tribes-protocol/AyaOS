@@ -1,6 +1,6 @@
 {
   "name": "@tribesxyz/ayaos",
-  "version": "0.1.0-beta.0",
+  "version": "0.1.0-beta.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -16,7 +16,7 @@
     "access": "public"
   },
   "scripts": {
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist; rm -rf node_modules",
     "build": "bun run build-project && bun run build-script",
     "build-project": "bun run type-check && tsup src/index.ts --format esm --dts",
     "build-script": "tsup scripts/create-agent.ts --format esm --dts",

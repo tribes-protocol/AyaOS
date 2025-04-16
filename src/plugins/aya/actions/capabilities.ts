@@ -1,4 +1,3 @@
-import { compactMap } from '@/common/functions'
 import {
   Action,
   IAgentRuntime,
@@ -38,19 +37,7 @@ export const capabilitiesAction: Action = {
     callback?: HandlerCallback
   ) => {
     // Collect all available actions
-    const actionPromises = runtime.actions.map(async (action: Action) => {
-      if (IGNORE_ACTIONS.has(action.name)) {
-        return undefined
-      }
-      const result = await action.validate(runtime, message, state)
-      if (result) {
-        return action
-      }
-      return undefined
-    })
-
-    const resolvedActions = await Promise.all(actionPromises)
-    const actionsData = compactMap(resolvedActions)
+    const actionsData = runtime.actions.filter((action) => !IGNORE_ACTIONS.has(action.name))
 
     // Create description list for summarization
     const actionDescriptions = actionsData
