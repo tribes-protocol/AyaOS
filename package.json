@@ -1,6 +1,6 @@
 {
   "name": "@tribesxyz/ayaos",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -24,8 +24,8 @@
     "lint": "eslint src/**/*.ts",
     "dev": "dotenv --e .env -- tsx src/example.ts",
     "check-packages": "bash ./scripts/check-packages.sh",
-    "release": "changeset publish",
-    "release:beta": "changeset publish --tag beta"
+    "release": "bun run build && changeset publish",
+    "release:beta": "bun run build && changeset publish --tag beta"
   },
   "dependencies": {
     "@ai-sdk/openai": "1.3.12",
