@@ -13,13 +13,19 @@ AyaOS is a high-level framework built on top of ElizaOS for creating autonomous 
 
 Choose one of these two options to get started:
 
-#### Option 1: Use npx (Recommended)
+#### Option 1: Use bun (Recommended)
 
-You can initialize a new project directly using npx (or bunx):
+You can initialize a new project directly using bunx (or npx):
 
 ```bash
+# Install bun if needed
+curl -fsSL https://bun.sh/install | bash
+
+# Using the `init` function requires bun to be installed 
 bunx @tribesxyz/ayaos init
-# or
+
+# OR install as global package
+
 bun install -g @tribesxyz/ayaos
 bunx ayaos init
 ```
