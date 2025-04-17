@@ -1,8 +1,37 @@
+import RateLimiter from '@/agent/ratelimiter'
 import { UUID_PATTERN } from '@/common/constants'
 import { isRequiredString, sortIdentities } from '@/common/functions'
-import { Content, Memory, ModelConfiguration, ModelProviderName, State, UUID } from '@elizaos/core'
+import { Content, Memory, State, UUID } from '@elizaos/core'
 import { isAddress } from 'viem'
 import { z } from 'zod'
+
+// Define a Zod schema for UUID validation
+// UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+export const UUIDSchema = z
+  .string()
+  .refine((val) => UUID_PATTERN.test(val), {
+    message: 'Invalid UUID format. Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+  })
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  .transform((val) => val as UUID)
+
+// Represents a media attachment
+export const MediaSchema = z.object({
+  /** Unique identifier */
+  id: z.string(),
+  /** Media URL */
+  url: z.string(),
+  /** Media title */
+  title: z.string(),
+  /** Media source */
+  source: z.string(),
+  /** Media description */
+  description: z.string(),
+  /** Text content */
+  text: z.string(),
+  /** Content type */
+  contentType: z.string().optional()
+})
 
 export const ErrorResponseSchema = z.object({
   error: z.string()
@@ -212,48 +241,55 @@ export type UserEvent = z.infer<typeof UserDmEventSchema>
 // Character schema
 
 export const CharacterMessageSchema = z.object({
-  user: z.string(),
-  content: z.object({
-    text: z.string()
-  })
+  name: z.string(),
+  content: z
+    .object({
+      text: z.string(),
+      thought: z.string().optional(),
+      actions: z.array(z.string()).optional(),
+      providers: z.array(z.string()).optional(),
+      source: z.string().optional(),
+      url: z.string().optional(),
+      inReplyTo: UUIDSchema.optional(),
+      attachments: z.array(MediaSchema).optional()
+    })
+    .passthrough()
 })
 
 export type CharacterMessage = z.infer<typeof CharacterMessageSchema>
 
-export const BaseCharacterSchema = z.object({
-  system: z.string().optional().nullable(),
-  bio: z.array(z.string()),
-  lore: z.array(z.string()),
-  knowledge: z.array(z.string()),
-  messageExamples: z.array(z.array(CharacterMessageSchema)),
-  postExamples: z.array(z.string()),
-  topics: z.array(z.string()),
-  style: z.object({
-    all: z.array(z.string()),
-    chat: z.array(z.string()),
-    post: z.array(z.string())
-  }),
-  adjectives: z.array(z.string())
-})
-
-export type BaseCharacter = z.infer<typeof BaseCharacterSchema>
-
-export const CharacterSchema = BaseCharacterSchema.extend({
-  id: z.string().optional().nullable(),
+export const CharacterSchema = z.object({
+  id: UUIDSchema.optional(),
   name: z.string(),
-  clients: z.array(z.string()),
-  modelProvider: z.string(),
-  settings: z.object({
-    secrets: z.record(z.string()).optional().nullable(),
-    ragKnowledge: z.boolean().optional().nullable(),
-    voice: z
-      .object({
-        model: z.string()
-      })
-      .optional()
-      .nullable()
-  }),
-  plugins: z.array(z.string())
+  username: z.string().optional(),
+  system: z.string().optional(),
+  templates: z.record(z.string()).optional(),
+  bio: z.union([z.string(), z.array(z.string())]),
+  messageExamples: z.array(z.array(CharacterMessageSchema)).optional(),
+  postExamples: z.array(z.string()).optional(),
+  topics: z.array(z.string()).optional(),
+  adjectives: z.array(z.string()).optional(),
+  knowledge: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          path: z.string(),
+          shared: z.boolean().optional()
+        })
+      ])
+    )
+    .optional(),
+  plugins: z.array(z.string()).optional(),
+  settings: z.record(z.any()).optional(),
+  secrets: z.record(z.union([z.string(), z.boolean(), z.number()])).optional(),
+  style: z
+    .object({
+      all: z.array(z.string()).optional(),
+      chat: z.array(z.string()).optional(),
+      post: z.array(z.string()).optional()
+    })
+    .optional()
 })
 
 export type Character = z.infer<typeof CharacterSchema>
@@ -309,22 +345,14 @@ export const SentinelSetGitCommandSchema = z.object({
   state: GitStateSchema
 })
 
-export const SentinelSetKnowledgeCommandSchema = z.object({
-  kind: z.literal('set_knowledge'),
-  url: z.string(),
-  filename: z.string()
-})
-
-export const SentinelDeleteKnowledgeCommandSchema = z.object({
-  kind: z.literal('delete_knowledge'),
-  url: z.string(),
-  filename: z.string()
+export const SentinelSetEnvVarsCommandSchema = z.object({
+  kind: z.literal('set_env_vars'),
+  envVars: z.record(z.string(), z.string())
 })
 
 export const SentinelCommandSchema = z.discriminatedUnion('kind', [
   SentinelSetGitCommandSchema,
-  SentinelSetKnowledgeCommandSchema,
-  SentinelDeleteKnowledgeCommandSchema
+  SentinelSetEnvVarsCommandSchema
 ])
 
 export type SentinelCommand = z.infer<typeof SentinelCommandSchema>
@@ -337,17 +365,6 @@ export interface Context {
 }
 
 export type ContextHandler = (context: Context) => Promise<boolean>
-
-export type SdkEventKind = 'pre:llm' | 'post:llm' | 'pre:action' | 'post:action'
-
-export enum ServiceKind {
-  wallet = 'wallet-service',
-  config = 'config-service',
-  agent = 'agent-service',
-  knowledge = 'knowledge-service',
-  knowledgeBase = 'knowledge-base-service',
-  memories = 'memories-service'
-}
 
 const PdfFileSchema = z.object({
   kind: z.literal('pdf'),
@@ -446,61 +463,40 @@ export const CredentialsSchema = z.object({
 
 export type Credentials = z.infer<typeof CredentialsSchema>
 
-export type ModelConfig = ModelConfiguration & {
-  provider: ModelProviderName
-  endpoint?: string
-  apiKey?: string
-}
+export const EmbeddingsConfigSchema = z.object({
+  model: z.string(),
+  dimensions: z.number(),
+  endpoint: z.string(),
+  apiKey: z.string()
+})
+
+export type EmbeddingsConfig = z.infer<typeof EmbeddingsConfigSchema>
 
 export interface AyaOSOptions {
   dataDir?: string
-  modelConfig?: ModelConfig
-  knowledge?: {
-    matchThreshold?: number
-    matchLimit?: number
-  }
+  rateLimiter?: RateLimiter
 }
 
 export const RagKnowledgeItemContentSchema = z.object({
   text: z.string(),
-  metadata: z
-    .object({
-      isMain: z.boolean().optional().nullable(),
-      isChunk: z.boolean().optional().nullable(),
-      originalId: z.string().optional().nullable(),
-      chunkIndex: z.number().optional().nullable(),
-      source: z.string().optional().nullable(),
-      type: z.string().optional().nullable(),
-      isShared: z.boolean().optional().nullable(),
-      kind: z.string().optional().nullable()
-    })
-    .passthrough()
-    .optional()
-    .nullable()
+  kind: z.string().optional(),
+  parentId: z.string(),
+  source: z.string(),
+  metadata: z.record(z.string(), z.unknown()).nullish()
 })
 
 export type RagKnowledgeItemContent = z.infer<typeof RagKnowledgeItemContentSchema>
 
-// Define a Zod schema for UUID validation
-// UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-export const UUIDSchema = z
-  .string()
-  .refine((val) => UUID_PATTERN.test(val), {
-    message: 'Invalid UUID format. Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-  })
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  .transform((val) => val as UUID)
-
-// Represents a media attachment
-export const MediaSchema = z.object({
-  id: z.string(),
-  url: z.string(),
-  title: z.string(),
-  source: z.string(),
-  description: z.string(),
-  text: z.string(),
-  contentType: z.string().optional()
+export const RAGKnowledgeItemSchema = z.object({
+  id: UUIDSchema,
+  agentId: UUIDSchema,
+  content: RagKnowledgeItemContentSchema,
+  embedding: z.array(z.number()),
+  createdAt: z.number().optional(),
+  similarity: z.number().optional()
 })
+
+export type RAGKnowledgeItem = z.infer<typeof RAGKnowledgeItemSchema>
 
 // Create a Zod schema for Content
 export const MemoryContentSchema = z
@@ -528,10 +524,7 @@ export const AgentSchema = z
 
 export type Agent = z.infer<typeof AgentSchema>
 
-export const ButtonSchema = z.object({
-  text: z.string(),
-  url: z.string(),
-  kind: z.enum(['login', 'url'])
-})
-
-export type Button = z.infer<typeof ButtonSchema>
+export interface AuthInfo {
+  identity: Identity
+  token: string
+}
