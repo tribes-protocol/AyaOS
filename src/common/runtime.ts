@@ -22,6 +22,7 @@ import {
   Memory,
   ModelClass,
   ModelProviderName,
+  parseJSONObjectFromText,
   Plugin,
   Service,
   ServiceType,
@@ -31,10 +32,17 @@ import {
 import { z } from 'zod'
 
 const ResponseValidationSchema = z.object({
-  valid: z.boolean(),
+  valid: z.union([
+    z.boolean(),
+    z.string().transform((val) => {
+      if (val === 'true') return true
+      if (val === 'false') return false
+      throw new Error(`Invalid boolean string: ${val}`)
+    })
+  ]),
   correctedResponse: z.string(),
   correctedAction: z.string().optional().nullable(),
-  explanation: z.string()
+  reasoning: z.string().default('No explanation provided')
 })
 
 export class AyaRuntime extends AgentRuntime implements IAyaRuntime {
@@ -317,28 +325,35 @@ ANSWER TO VALIDATE:
   <ACTION>${response.action}</ACTION>
 </ANSWER>
 
-Return your analysis as a JSON object with the following structure. Make sure it's the 
-raw json. No markdown or anything else:
+Return your analysis as a JSON string with the following structure. 
+REQUIREMENT: Make sure it's wrapped in markdown code block:
+\`\`\`json
 {
   "valid": boolean,
   "correctedResponse": string // Original response if valid, corrected response if invalid
   "correctedAction": string | null // Original action if valid, corrected action if invalid (use ACTION.NAME if applicable)
-  "explanation": string // Brief explanation of why the response was invalid (if applicable)
-}`
+  "reasoning": string // Brief explanation of why the response was invalid (if applicable)
+}
+\`\`\`
+`
     /* eslint-enable max-len */
 
     try {
       console.log('Validating request:', JSON.stringify(response, null, 2))
-      const validationResult = await generateText({
-        runtime: this,
-        context: validationPrompt,
-        modelClass: ModelClass.MEDIUM
-      })
 
       // Try to parse the result up to three times
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const parsed = ResponseValidationSchema.parse(JSON.parse(validationResult))
+          const validationResult = await generateText({
+            runtime: this,
+            context: validationPrompt,
+            modelClass: ModelClass.MEDIUM
+          })
+
+          console.log('Validation result:', validationResult)
+          const cleanedResult = parseJSONObjectFromText(validationResult)
+
+          const parsed = ResponseValidationSchema.parse(cleanedResult)
           if (parsed.valid) {
             return response
           }
