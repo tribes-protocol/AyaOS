@@ -3,10 +3,17 @@ import { Content, IAgentRuntime, ModelType } from '@elizaos/core'
 import { z } from 'zod'
 
 const ResponseValidationSchema = z.object({
-  valid: z.boolean(),
+  valid: z.union([
+    z.boolean(),
+    z.string().transform((val) => {
+      if (val === 'true') return true
+      if (val === 'false') return false
+      throw new Error(`Invalid boolean string: ${val}`)
+    })
+  ]),
   correctedText: z.string(),
   correctedActions: z.array(z.string()).nullish(),
-  explanation: z.string()
+  reasoning: z.string().default('No explanation provided')
 })
 
 type ResponseValidatorParams = {
@@ -62,7 +69,7 @@ raw json. No markdown or anything else:
 "valid": boolean,
 "correctedText": string // Original text if valid, corrected text if invalid
 "correctedActions": string[] | null // Original actions if valid, corrected actions if invalid (use ACTION.NAME if applicable)
-"explanation": string // Brief explanation of why the response was invalid (if applicable)
+"reasoning": string // Brief explanation of why the response was invalid (if applicable)
 }`
   /* eslint-enable max-len */
 
