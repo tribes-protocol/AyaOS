@@ -429,8 +429,8 @@ export const seedOracle: Action = {
   name: 'ANSWER_QUESTION',
   similes: ['ANSWER_PUZZLE', 'ANSWER_QUESTION', 'ANSWER_RUBIC', 'ANSWER_LOGIC', 'ANSWER_BINARY'],
   description: 'Answer the puzzle question with a binary response.',
-  validate: async (_runtime: IAgentRuntime, message: Memory) => {
-    return message.content.source === 'farcaster'
+  validate: async (_runtime: IAgentRuntime) => {
+    return true
   },
   handler: async (
     runtime: IAgentRuntime,
