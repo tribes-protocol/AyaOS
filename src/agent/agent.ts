@@ -242,7 +242,7 @@ export class Agent implements IAyaAgent {
     console.log('└' + '─'.repeat(boxWidth) + '┘\n')
   }
 
-  async register(kind: 'service', handler: typeof Service): Promise<void>
+  async register(kind: 'service', handler: Service): Promise<void>
   async register(kind: 'provider', handler: Provider): Promise<void>
   async register(kind: 'action', handler: Action): Promise<void>
   async register(kind: 'plugin', handler: Plugin): Promise<void>
