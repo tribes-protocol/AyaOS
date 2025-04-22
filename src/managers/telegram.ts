@@ -1,5 +1,5 @@
 import { ITelegramManager } from '@/managers/interfaces'
-import { Content } from '@elizaos/core'
+import { TelegramContent } from '@/plugins/telegram/types'
 import { Context } from 'telegraf'
 
 export class TelegramManager implements ITelegramManager {
@@ -13,17 +13,11 @@ export class TelegramManager implements ITelegramManager {
 
   async sendMessage(params: {
     chatId: number | string
-    content: Content
+    content: TelegramContent
     replyToMessageId?: number | undefined
-  }): Promise<number> {
+  }): Promise<void> {
     const { chatId, content, replyToMessageId } = params
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const [message] = await this.telegram.messageManager.sendMessage(
-      chatId,
-      content,
-      replyToMessageId
-    )
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    return message.message_id
+    await this.telegram.messageManager.sendMessage(chatId, content, replyToMessageId)
   }
 }

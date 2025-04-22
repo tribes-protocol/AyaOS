@@ -8,5 +8,5 @@ export interface ITelegramManager {
     chatId: number | string
     content: Content
     replyToMessageId?: number | undefined
-  }): Promise<number>
+  }): Promise<void>
 }
