@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.3
+
+### Patch Changes
+
+- d7beb6b: make sure reply is first action
+
 ## 0.1.2
 
 ### Patch Changes
