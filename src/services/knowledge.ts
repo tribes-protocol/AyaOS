@@ -1,67 +1,192 @@
-import { AgentcoinAPI } from '@/apis/agentcoinfun'
-import { calculateChecksum, isNull } from '@/common/functions'
+import { AgentRegistry } from '@/agent/registry'
+import { AgentcoinAPI } from '@/apis/aya'
+import { AyaAuthAPI } from '@/apis/aya-auth'
+import {
+  AYA_AGENT_DATA_DIR_KEY,
+  AYA_AGENT_IDENTITY_KEY,
+  AYA_JWT_SETTINGS_KEY
+} from '@/common/constants'
+import { calculateChecksum, ensureStringSetting, isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
-import { AyaRuntime } from '@/common/runtime'
-import { Identity, Knowledge, RagKnowledgeItemContent, ServiceKind } from '@/common/types'
+import {
+  AgentIdentitySchema,
+  Identity,
+  Knowledge,
+  RAGKnowledgeItem,
+  RagKnowledgeItemContent
+} from '@/common/types'
+import { PathManager } from '@/managers/path'
 import { IKnowledgeService } from '@/services/interfaces'
 import {
-  embed,
-  getEmbeddingZeroVector,
+  createUniqueUuid,
   IAgentRuntime,
-  RAGKnowledgeItem,
-  RAGKnowledgeManager,
+  ModelType,
   Service,
-  ServiceType,
+  splitChunks,
   stringToUuid,
-  UUID
+  UUID,
+  VECTOR_DIMS
 } from '@elizaos/core'
 import { CSVLoader } from '@langchain/community/document_loaders/fs/csv'
 import { DocxLoader } from '@langchain/community/document_loaders/fs/docx'
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf'
 import axios from 'axios'
+import { and, asc, cosineDistance, desc, eq, gt, gte, lt, ne, sql } from 'drizzle-orm'
+import { drizzle as drizzlePg, NodePgDatabase } from 'drizzle-orm/node-postgres'
+import { pgTable, text, timestamp, uuid, vector } from 'drizzle-orm/pg-core'
+import { drizzle, PgliteDatabase } from 'drizzle-orm/pglite'
 import fs from 'fs/promises'
 import { TextLoader } from 'langchain/document_loaders/fs/text'
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 import path from 'path'
+import { v4 } from 'uuid'
 
-const AGENTCOIN_SOURCE = 'agentcoin'
+const DIMENSION_MAP = {
+  [VECTOR_DIMS.SMALL]: 'dim384',
+  [VECTOR_DIMS.MEDIUM]: 'dim512',
+  [VECTOR_DIMS.LARGE]: 'dim768',
+  [VECTOR_DIMS.XL]: 'dim1024',
+  [VECTOR_DIMS.XXL]: 'dim1536',
+  [VECTOR_DIMS.XXXL]: 'dim3072'
+} as const
+
+export const Knowledges = pgTable('knowledge', {
+  id: uuid('id').$type<UUID>().primaryKey(),
+  agentId: uuid('agent_id').$type<UUID>().notNull(),
+  text: text('text').notNull(),
+  kind: text('kind'),
+  source: text('source').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  checksum: text('checksum'),
+  parentId: uuid('parent_id').notNull()
+})
+
+export const KnowledgeEmbeddings = pgTable('knowledge_embeddings', {
+  id: uuid('id').primaryKey().defaultRandom().notNull(),
+  knowledgeId: uuid('knowledge_id').references(() => Knowledges.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  dim384: vector('dim_384', { dimensions: VECTOR_DIMS.SMALL }),
+  dim512: vector('dim_512', { dimensions: VECTOR_DIMS.MEDIUM }),
+  dim768: vector('dim_768', { dimensions: VECTOR_DIMS.LARGE }),
+  dim1024: vector('dim_1024', { dimensions: VECTOR_DIMS.XL }),
+  dim1536: vector('dim_1536', { dimensions: VECTOR_DIMS.XXL }),
+  dim3072: vector('dim_3072', { dimensions: VECTOR_DIMS.XXXL })
+})
+
+const KNOWLEDGE_KIND = 'aya'
 
 export class KnowledgeService extends Service implements IKnowledgeService {
-  private readonly knowledgeRoot: string
+  static readonly instances = new Map<UUID, KnowledgeService>()
   private isRunning = false
-  private readonly textSplitter = new RecursiveCharacterTextSplitter({
-    chunkSize: 7000, // text-embedding-ada-002 has a max token limit of ~8000
-    chunkOverlap: 500,
-    separators: ['\n## ', '\n### ', '\n#### ', '\n', ' ', '']
-  })
+  private readonly api = new AgentcoinAPI()
+  private readonly identity: Identity
+  private readonly authAPI: AyaAuthAPI
+  private readonly pathResolver: PathManager
+  private db!: NodePgDatabase | PgliteDatabase
+  private embeddingDimension!: string
 
-  static get serviceType(): ServiceType {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    return ServiceKind.knowledge as unknown as ServiceType
+  static readonly serviceType = 'aya-os-knowledge-service'
+  readonly capabilityDescription = ''
+
+  constructor(readonly runtime: IAgentRuntime) {
+    super(runtime)
+    const token = ensureStringSetting(runtime, AYA_JWT_SETTINGS_KEY)
+    const identity = ensureStringSetting(runtime, AYA_AGENT_IDENTITY_KEY)
+    const dataDir = ensureStringSetting(runtime, AYA_AGENT_DATA_DIR_KEY)
+    this.authAPI = new AyaAuthAPI(token)
+    this.identity = AgentIdentitySchema.parse(identity)
+
+    const { managers } = AgentRegistry.get(dataDir)
+    this.pathResolver = managers.path
   }
 
-  async initialize(_: IAgentRuntime): Promise<void> {
-    ayaLogger.info('initializing knowledge service')
-  }
+  private async initializeTables(): Promise<void> {
+    try {
+      const embedding = await this.runtime.useModel(ModelType.TEXT_EMBEDDING, null)
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      this.embeddingDimension = DIMENSION_MAP[embedding.length as keyof typeof DIMENSION_MAP]
 
-  constructor(
-    private readonly runtime: AyaRuntime,
-    private readonly agentCoinApi: AgentcoinAPI,
-    private readonly agentCoinCookie: string,
-    private readonly agentCoinIdentity: Identity
-  ) {
-    super()
-    if (this.runtime.ragKnowledgeManager instanceof RAGKnowledgeManager) {
-      this.knowledgeRoot = this.runtime.ragKnowledgeManager.knowledgeRoot
-    } else {
-      throw new Error('RAGKnowledgeManager not found')
+      const postgresUrl = this.runtime.getSetting('POSTGRES_URL')
+      const pgliteDataDir = path.join(this.pathResolver.dataDir, 'ayadb')
+
+      if (postgresUrl) {
+        const pgModule = await import('pg')
+        const { Pool } = pgModule.default || pgModule
+        const pool = new Pool({ connectionString: postgresUrl })
+        this.db = drizzlePg(pool)
+        ayaLogger.success('Connected to PostgreSQL database')
+      } else {
+        const { PGlite } = await import('@electric-sql/pglite')
+        const { vector } = await import('@electric-sql/pglite/vector')
+        const { fuzzystrmatch } = await import('@electric-sql/pglite/contrib/fuzzystrmatch')
+        const pglite = new PGlite({ dataDir: pgliteDataDir, extensions: { vector, fuzzystrmatch } })
+
+        this.db = drizzle(pglite)
+        ayaLogger.success('Connected to PGlite database')
+
+        await this.db.execute('CREATE EXTENSION IF NOT EXISTS vector;')
+        await this.db.execute('CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;')
+      }
+
+      // Create knowledge table if it doesn't exist
+      await this.db.execute(`
+        CREATE TABLE IF NOT EXISTS knowledge (
+          id UUID PRIMARY KEY,
+          agent_id UUID NOT NULL,
+          text TEXT NOT NULL,
+          kind TEXT,
+          source TEXT NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          checksum TEXT,
+          parent_id UUID NOT NULL
+        );
+      `)
+
+      // Create indexes separately
+      await this.db.execute(
+        'CREATE INDEX IF NOT EXISTS "idx_knowledge_id" ON "knowledge" USING btree ("id");'
+      )
+      await this.db.execute(
+        'CREATE INDEX IF NOT EXISTS "idx_knowledge_agent_id" ON "knowledge" USING btree ("agent_id");'
+      )
+      await this.db.execute(
+        'CREATE INDEX IF NOT EXISTS "idx_knowledge_parent_id" ON "knowledge" USING btree ("parent_id");'
+      )
+      await this.db.execute(
+        'CREATE INDEX IF NOT EXISTS "idx_knowledge_main_items" ON "knowledge" USING btree ("parent_id") WHERE parent_id = id;'
+      )
+
+      // Create knowledge_embeddings table if it doesn't exist
+      await this.db.execute(`
+        CREATE TABLE IF NOT EXISTS knowledge_embeddings (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          knowledge_id UUID REFERENCES knowledge(id) ON DELETE CASCADE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          dim_384 VECTOR(${VECTOR_DIMS.SMALL}),
+          dim_512 VECTOR(${VECTOR_DIMS.MEDIUM}),
+          dim_768 VECTOR(${VECTOR_DIMS.LARGE}),
+          dim_1024 VECTOR(${VECTOR_DIMS.XL}),
+          dim_1536 VECTOR(${VECTOR_DIMS.XXL}),
+          dim_3072 VECTOR(${VECTOR_DIMS.XXXL})
+        );
+      `)
+
+      ayaLogger.success('Database tables initialized successfully')
+    } catch (error) {
+      console.error('Failed to initialize database tables:', error)
+      throw new Error(
+        `Failed to initialize database tables: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      )
     }
   }
 
-  async start(): Promise<void> {
+  private async start(): Promise<void> {
     if (this.isRunning) {
       return
     }
+
+    await this.initializeTables()
 
     this.isRunning = true
     while (this.isRunning) {
@@ -69,9 +194,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         await this.syncKnowledge()
       } catch (error) {
         if (error instanceof Error) {
-          ayaLogger.error('⚠️ Error in sync job:', error.message)
+          console.error('⚠️ Error in sync job:', error.message)
         } else {
-          ayaLogger.error('⚠️ Error in sync job:', error)
+          console.error('⚠️ Error in sync job:', error)
         }
       }
       // Wait for 1 minute before the next run
@@ -82,7 +207,29 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   async stop(): Promise<void> {
     this.isRunning = false
-    ayaLogger.info('Knowledge sync service stopped')
+    console.log('Knowledge sync service stopped')
+  }
+
+  static async start(runtime: IAgentRuntime): Promise<Service> {
+    let instance = KnowledgeService.instances.get(runtime.agentId)
+    if (instance) {
+      return instance
+    }
+
+    instance = new KnowledgeService(runtime)
+    KnowledgeService.instances.set(runtime.agentId, instance)
+    // don't await this. it'll lock up the main process
+    void instance.start()
+    return instance
+  }
+
+  static async stop(runtime: IAgentRuntime): Promise<unknown> {
+    const instance = KnowledgeService.instances.get(runtime.agentId)
+    if (isNull(instance)) {
+      return undefined
+    }
+    await instance.stop()
+    return instance
   }
 
   private async getAllKnowledge(): Promise<Knowledge[]> {
@@ -91,8 +238,8 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     const limit = 100
 
     while (true) {
-      const knowledges = await this.agentCoinApi.getKnowledges(this.agentCoinIdentity, {
-        cookie: this.agentCoinCookie,
+      const knowledges = await this.api.getKnowledges(this.identity, {
+        cookie: this.authAPI.cookie,
         limit,
         cursor
       })
@@ -106,39 +253,28 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       cursor = knowledges[knowledges.length - 1].id
     }
 
-    ayaLogger.debug(`Found ${allKnowledge.length} knowledges`)
-
     return allKnowledge
   }
 
   private async syncKnowledge(): Promise<void> {
-    ayaLogger.debug('Syncing knowledge...')
     try {
       const knowledges = await this.getAllKnowledge()
-
-      // Use fetchKnowledge with filtering by source and isChunk
       const existingKnowledgeIds = new Set<UUID>()
 
-      // Fetch parent knowledge items with source=agentcoin directly using database filters
-      let cursor: string | undefined
-      let i = 0
+      let cursor: number | undefined
       do {
-        const { results, cursor: nextCursor } = await this.runtime.databaseAdapter.fetchKnowledge({
-          agentId: this.runtime.agentId,
+        const { items, nextCursor } = await this.list({
           limit: 100,
           cursor,
           filters: {
-            isChunk: false,
-            source: AGENTCOIN_SOURCE
+            kind: KNOWLEDGE_KIND
           }
         })
 
-        ayaLogger.debug(
-          `Found ${AGENTCOIN_SOURCE} ${results.length} knowledge items in page ${i++}`
-        )
-
-        // Add their IDs to the set (no filtering needed anymore as it's done at DB level)
-        for (const knowledge of results) {
+        for (const knowledge of items) {
+          if (isNull(knowledge.id)) {
+            continue
+          }
           existingKnowledgeIds.add(knowledge.id)
         }
 
@@ -151,31 +287,31 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         remoteKnowledgeIds.push(itemId)
 
         if (!existingKnowledgeIds.has(itemId)) {
-          ayaLogger.info(`Processing new knowledge: ${knowledge.name}`)
+          console.log(`Processing new knowledge: ${knowledge.name}`)
           await this.processFileKnowledge(knowledge, itemId)
         }
       }
 
-      // Find IDs to remove by filtering existing IDs not present in remote IDs
       const knowledgeIdsToRemove = Array.from(existingKnowledgeIds).filter(
         (id) => !remoteKnowledgeIds.includes(id)
       )
 
       for (const knowledgeId of knowledgeIdsToRemove) {
-        ayaLogger.info(`Removing knowledge: ${knowledgeId}`)
+        console.log(`Removing knowledge: ${knowledgeId}`)
         await this.remove(knowledgeId)
       }
 
-      await this.runtime.ragKnowledgeManager.cleanupDeletedKnowledgeFiles()
-      ayaLogger.debug(
-        `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ` +
-          `${knowledgeIdsToRemove.length} items removed`
-      )
+      if (remoteKnowledgeIds.length > 0 || knowledgeIdsToRemove.length > 0) {
+        console.debug(
+          `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ` +
+            `${knowledgeIdsToRemove.length} items removed`
+        )
+      }
     } catch (error) {
       if (error instanceof Error) {
-        ayaLogger.error('Error processing knowledge files:', error.message)
+        console.error(`Error processing knowledge files: ${error.message}`)
       } else {
-        ayaLogger.error('Error processing knowledge files:', error)
+        console.error(`Error processing knowledge files: ${error}`)
       }
       throw error
     }
@@ -187,18 +323,17 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
       await this.add(itemId, {
         text: content,
-        metadata: {
-          source: AGENTCOIN_SOURCE
-        }
+        parentId: itemId,
+        source: data.name,
+        kind: KNOWLEDGE_KIND
       })
     } catch (error) {
-      ayaLogger.error(`Error processing file metadata for ${data.name}:`, error)
+      console.error(`Error processing file metadata for ${data.name}: ${error}`)
     }
   }
 
   private async downloadFile(file: Knowledge): Promise<string> {
-    await fs.mkdir(this.knowledgeRoot, { recursive: true })
-    const outputPath = path.join(this.knowledgeRoot, file.name)
+    const outputPath = path.join(this.pathResolver.knowledgeRoot, file.name)
 
     try {
       const response = await axios({
@@ -223,7 +358,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
       const fileExtension = path.extname(file.name).toLowerCase()
       if (!isValidFileExtension(fileExtension)) {
-        ayaLogger.error(`Unsupported file type: ${fileExtension}`)
+        console.error(`Unsupported file type: ${fileExtension}`)
         throw new Error(`Unsupported file type: ${fileExtension}`)
       }
 
@@ -233,148 +368,222 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         const loader = new LoaderClass(outputPath)
         const docs = await loader.load()
         const content = docs.map((doc) => doc.pageContent).join('\n')
-        ayaLogger.info(`Successfully processed file: ${file.name}`)
+        console.log(`Successfully processed file: ${file.name}`)
         return content
       } catch (error) {
-        ayaLogger.error(`Error parsing ${fileExtension} file: ${file.name}`, error)
+        console.error(`Error parsing ${fileExtension} file: ${file.name}`, error)
         return ''
       }
     } catch (error) {
-      ayaLogger.error(`Error processing file from ${file.metadata.url}:`, error)
+      console.error(`Error processing file from ${file.metadata.url}:`, error)
       throw error
     }
+  }
+
+  async add(id: UUID, knowledge: RagKnowledgeItemContent): Promise<void> {
+    const agentId = this.runtime.agentId
+    const checksum = calculateChecksum(knowledge.text)
+    const kind = knowledge.kind
+
+    const [item] = await this.db.select().from(Knowledges).where(eq(Knowledges.id, id))
+
+    if (isNull(item)) {
+      // console.debug(`[${kind}] knowledge=[${id}] does not exist. creating...`)
+    } else if (item?.checksum === checksum) {
+      // console.debug(`[${kind}] knowledge=[${id}] already exists. skipping...`)
+      return
+    }
+
+    await this.db.insert(Knowledges).values({
+      id,
+      agentId,
+      text: '',
+      kind,
+      source: knowledge.source,
+      checksum,
+      parentId: id
+    })
+
+    // Create fragments using splitChunks
+    const fragments = await splitChunks(knowledge.text, 7000, 500)
+
+    // Store each fragment with link to source document
+    for (let i = 0; i < fragments.length; i++) {
+      const embedding = await this.runtime.useModel(ModelType.TEXT_EMBEDDING, fragments[i])
+
+      const fragmentId = createUniqueUuid(this, `${id}-fragment-${i}`)
+
+      await this.db.transaction(async (tx: NodePgDatabase | PgliteDatabase) => {
+        await tx.insert(Knowledges).values({
+          id: fragmentId,
+          agentId,
+          text: fragments[i],
+          kind,
+          source: knowledge.source,
+          parentId: id
+        })
+
+        const embeddingValues = {
+          id: v4(),
+          knowledgeId: fragmentId,
+          createdAt: new Date()
+        }
+
+        const cleanVector = embedding.map((n) => (Number.isFinite(n) ? Number(n.toFixed(6)) : 0))
+
+        embeddingValues[this.embeddingDimension] = cleanVector
+
+        await tx.insert(KnowledgeEmbeddings).values(embeddingValues)
+      })
+    }
+
+    console.debug(`[${kind}] indexed knowledge=[${id}] with ${fragments.length} fragments`)
   }
 
   async list(options?: {
     limit?: number
     sort?: 'asc' | 'desc'
+    cursor?: number
     filters?: {
-      isChunk?: boolean
-      source?: string
       kind?: string
     }
-  }): Promise<RAGKnowledgeItem[]> {
-    const { limit, filters, sort } = options ?? {}
+  }): Promise<{ items: RAGKnowledgeItem[]; nextCursor?: number }> {
+    const { limit = 100, filters, sort = 'desc', cursor } = options ?? {}
 
-    // Use fetchKnowledge which supports filters instead of getKnowledge
-    const { results } = await this.runtime.databaseAdapter.fetchKnowledge({
-      agentId: this.runtime.agentId,
-      limit,
-      filters,
-      sort
-    })
+    const conditions = [
+      eq(Knowledges.agentId, this.runtime.agentId),
+      ne(Knowledges.parentId, Knowledges.id)
+    ]
 
-    return results
+    if (filters?.kind) {
+      conditions.push(eq(Knowledges.kind, filters.kind))
+    }
+
+    if (cursor) {
+      conditions.push(
+        sort === 'desc'
+          ? lt(Knowledges.createdAt, new Date(cursor))
+          : gt(Knowledges.createdAt, new Date(cursor))
+      )
+    }
+
+    const query = this.db
+      .select()
+      .from(Knowledges)
+      .where(and(...conditions))
+      .orderBy(sort === 'asc' ? asc(Knowledges.createdAt) : desc(Knowledges.createdAt))
+      .limit(limit)
+
+    // console.debug('Knowledge list query:', query.toSQL())
+
+    const results = await query
+
+    const items = results.map((item) => ({
+      id: item.id,
+      agentId: item.agentId,
+      content: {
+        text: item.text,
+        parentId: item.parentId,
+        kind: item.kind ?? undefined,
+        source: item.source
+      },
+      embedding: [],
+      createdAt: item.createdAt ? Math.floor(item.createdAt.getTime()) : undefined
+    }))
+
+    let nextCursor: number | undefined
+    if (items.length === limit) {
+      const lastItem = items[items.length - 1]
+      nextCursor = lastItem.createdAt
+    }
+
+    return { items, nextCursor }
   }
 
   async search(options: {
     q: string
-    limit: number
+    limit?: number
+    kind?: string
     matchThreshold?: number
   }): Promise<RAGKnowledgeItem[]> {
-    const { q, limit, matchThreshold = 0.5 } = options
-    return this.runtime.databaseAdapter.searchKnowledge({
-      agentId: this.runtime.agentId,
-      embedding: new Float32Array(await embed(this.runtime, q)),
-      match_threshold: matchThreshold,
-      match_count: limit
-    })
+    const { q, limit = 10, kind, matchThreshold = 0.5 } = options
+    const embedding = await this.runtime.useModel(ModelType.TEXT_EMBEDDING, q)
+
+    const cleanVector = embedding.map((n) => (Number.isFinite(n) ? Number(n.toFixed(6)) : 0))
+
+    const similarity = sql<number>`1 - (${cosineDistance(
+      KnowledgeEmbeddings[this.embeddingDimension],
+      cleanVector
+    )})`
+
+    const conditions = [
+      gte(similarity, matchThreshold),
+      eq(Knowledges.agentId, this.runtime.agentId),
+      ne(Knowledges.parentId, Knowledges.id)
+    ]
+
+    if (kind) {
+      conditions.push(eq(Knowledges.kind, kind))
+    }
+
+    const results = await this.db
+      .select({
+        knowledge: Knowledges,
+        similarity,
+        embedding: KnowledgeEmbeddings[this.embeddingDimension]
+      })
+      .from(KnowledgeEmbeddings)
+      .innerJoin(Knowledges, eq(KnowledgeEmbeddings.knowledgeId, Knowledges.id))
+      .where(and(...conditions))
+      .orderBy(desc(similarity))
+      .limit(limit)
+
+    return results.map(({ knowledge, similarity, embedding }) => ({
+      id: knowledge.id,
+      agentId: knowledge.agentId,
+      content: {
+        text: knowledge.text,
+        parentId: knowledge.parentId,
+        kind: knowledge.kind ?? undefined,
+        source: knowledge.source
+      },
+      embedding: embedding ?? [],
+      createdAt: knowledge.createdAt ? Math.floor(knowledge.createdAt.getTime()) : undefined,
+      similarity
+    }))
   }
 
   async get(id: UUID): Promise<RAGKnowledgeItem | undefined> {
-    const knowledge = await this.runtime.databaseAdapter.getKnowledge({
-      agentId: this.runtime.agentId,
-      id,
-      limit: 1
-    })
-    return knowledge[0]
-  }
+    const [knowledge] = await this.db.select().from(Knowledges).where(eq(Knowledges.id, id))
 
-  async add(id: UUID, knowledge: RagKnowledgeItemContent): Promise<void> {
-    const databaseAdapter = this.runtime.databaseAdapter
-    const agentId = this.runtime.agentId
-    const checksum = calculateChecksum(knowledge.text)
-    const kind = knowledge.metadata?.kind ?? '<unknown>'
-    const storedKB: RAGKnowledgeItem | undefined = (
-      await databaseAdapter.getKnowledge({
-        id,
-        agentId,
-        limit: 1
-      })
-    )[0]
+    const [embedding] = await this.db
+      .select()
+      .from(KnowledgeEmbeddings)
+      .where(eq(KnowledgeEmbeddings.knowledgeId, knowledge.id))
 
-    if (isNull(storedKB)) {
-      ayaLogger.debug(`[${kind}] knowledge=[${id}] does not exist. creating...`)
-    } else if (storedKB?.content.metadata?.checksum === checksum) {
-      ayaLogger.debug(`[${kind}] knowledge=[${id}] already exists. skipping...`)
-      return
-    }
-
-    // create main knowledge item
-    const knowledgeItem: RAGKnowledgeItem = {
-      id,
-      agentId,
+    return {
+      id: knowledge.id,
+      agentId: knowledge.agentId,
       content: {
-        text: '',
-        metadata: {
-          ...Object.fromEntries(
-            Object.entries(knowledge.metadata || {}).filter(([_, v]) => v !== null)
-          ),
-          isMain: true,
-          isChunk: false,
-          originalId: undefined,
-          chunkIndex: undefined,
-          checksum
-        }
+        text: knowledge.text,
+        parentId: knowledge.parentId,
+        kind: knowledge.kind ?? undefined,
+        source: knowledge.source
       },
-      embedding: new Float32Array(getEmbeddingZeroVector()),
-      createdAt: Date.now()
-    }
-
-    // delete old knowledge item
-    if (storedKB) {
-      await databaseAdapter.removeKnowledge(id)
-    }
-
-    // create main knowledge item
-    await databaseAdapter.createKnowledge(knowledgeItem)
-
-    // Split the content into chunks
-    const chunks = await this.textSplitter.createDocuments([knowledge.text])
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i]
-      const chunkId: UUID = stringToUuid(`${id}-${i}`)
-
-      ayaLogger.info(`processing chunk id=${chunkId} page=${i} id=${id} kind=${kind}`)
-
-      const embeddings = await embed(this.runtime, chunk.pageContent)
-      const knowledgeItem: RAGKnowledgeItem = {
-        id: chunkId,
-        agentId,
-        content: {
-          text: chunk.pageContent,
-          metadata: {
-            ...Object.fromEntries(
-              Object.entries(knowledge.metadata || {}).filter(([_, v]) => v !== null)
-            ),
-            isMain: false,
-            isChunk: true,
-            originalId: id,
-            chunkIndex: i,
-            source: undefined,
-            kind,
-            checksum
-          }
-        },
-        embedding: new Float32Array(embeddings),
-        createdAt: Date.now()
-      }
-
-      await databaseAdapter.createKnowledge(knowledgeItem)
+      embedding: embedding?.[this.embeddingDimension] ?? [],
+      createdAt: knowledge.createdAt ? Math.floor(knowledge.createdAt.getTime()) : undefined
     }
   }
 
   async remove(id: UUID): Promise<void> {
-    await this.runtime.databaseAdapter.removeKnowledge(id)
+    try {
+      const [knowledge] = await this.db.select().from(Knowledges).where(eq(Knowledges.id, id))
+
+      await this.db.delete(Knowledges).where(eq(Knowledges.parentId, id))
+
+      await fs.unlink(path.join(this.pathResolver.knowledgeRoot, knowledge.source))
+    } catch (error) {
+      console.error(`Error removing knowledge: ${error}`)
+    }
   }
 }

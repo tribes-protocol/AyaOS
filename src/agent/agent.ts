@@ -1,82 +1,78 @@
 import { IAyaAgent } from '@/agent/iagent'
-import { AgentcoinAPI } from '@/apis/agentcoinfun'
-import { initializeClients } from '@/clients'
-import { TelegramClient } from '@/clients/telegram/telegramClient'
-import { getTokenForProvider } from '@/common/config'
-import { CHARACTERS_DIR } from '@/common/constants'
-import { ensure, ensureUUID, isNull } from '@/common/functions'
-import { Action, Provider } from '@/common/iruntime'
+import { AgentContext, AgentRegistry } from '@/agent/registry'
+import {
+  AYA_AGENT_DATA_DIR_KEY,
+  AYA_AGENT_IDENTITY_KEY,
+  AYA_JWT_SETTINGS_KEY,
+  CHARACTERS_DIR,
+  DEFAULT_EMBEDDING_DIMENSIONS,
+  DEFAULT_EMBEDDING_MODEL,
+  DEFAULT_LARGE_MODEL,
+  DEFAULT_SMALL_MODEL,
+  LLM_PROXY,
+  OPENAI_API_KEY,
+  PGLITE_DATA_DIR,
+  WEBSEARCH_PROXY
+} from '@/common/constants'
+import { AGENTCOIN_FUN_API_URL } from '@/common/env'
+import {
+  ensureRuntimeService,
+  ensureUUID,
+  isNull,
+  isRequiredString,
+  loadEnvFile
+} from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
-import { PathResolver } from '@/common/path-resolver'
-import { AyaRuntime } from '@/common/runtime'
-import { AyaOSOptions, Context, ContextHandler, ModelConfig, SdkEventKind } from '@/common/types'
-import { initializeDatabase } from '@/databases/db'
-import agentcoinPlugin from '@/plugins/agentcoin'
-import { AgentcoinService } from '@/services/agentcoinfun'
-import { ConfigService } from '@/services/config'
-import { EventService } from '@/services/event'
-import {
-  IKnowledgeService,
-  IMemoriesService,
-  ITelegramManager,
-  IWalletService
-} from '@/services/interfaces'
-import { KeychainService } from '@/services/keychain'
+import { AuthInfo, AyaOSOptions, CharacterSchema } from '@/common/types'
+import { ITelegramManager } from '@/managers/interfaces'
+import { TelegramManager } from '@/managers/telegram'
+import { ayaPlugin } from '@/plugins/aya'
+import openaiPlugin from '@/plugins/openai'
+import { telegramPlugin } from '@/plugins/telegram'
+import { IKnowledgeService, IWalletService } from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
-import { MemoriesService } from '@/services/memories'
-import { ProcessService } from '@/services/process'
 import { WalletService } from '@/services/wallet'
-import { AGENTCOIN_MESSAGE_HANDLER_TEMPLATE } from '@/templates/message'
 import {
-  CacheManager,
-  DbCacheAdapter,
+  Action,
+  AgentRuntime,
   Evaluator,
+  IAgentRuntime,
+  ModelTypeName,
   Plugin,
+  Provider,
   Service,
+  ServiceTypeName,
   UUID,
   type Character
 } from '@elizaos/core'
-import { bootstrapPlugin } from '@elizaos/plugin-bootstrap'
+import sqlPlugin from '@elizaos/plugin-sql'
 import fs from 'fs'
 import path from 'path'
 
-const reservedAgentDirs = new Set<string | undefined>()
-
 export class Agent implements IAyaAgent {
-  private modelConfig?: ModelConfig
-  private preLLMHandlers: ContextHandler[] = []
-  private postLLMHandlers: ContextHandler[] = []
-  private preActionHandlers: ContextHandler[] = []
-  private postActionHandlers: ContextHandler[] = []
-  private services: Service[] = []
+  private services: (typeof Service)[] = []
   private providers: Provider[] = []
   private actions: Action[] = []
   private plugins: Plugin[] = []
   private evaluators: Evaluator[] = []
-  private runtime_: AyaRuntime | undefined
-  private pathResolver: PathResolver
-  private keychainService: KeychainService
-  public matchThreshold?: number
-  public matchLimit?: number
+  private runtime_: AgentRuntime | undefined
+  private context_?: AgentContext
+  private telegram_?: ITelegramManager
 
-  constructor(options?: AyaOSOptions) {
-    console.log('agent options dataDir', options?.dataDir)
-    this.modelConfig = options?.modelConfig
-    if (reservedAgentDirs.has(options?.dataDir)) {
-      throw new Error('Data directory already used. Please provide a unique data directory.')
-    }
-    reservedAgentDirs.add(options?.dataDir)
-    this.pathResolver = new PathResolver(options?.dataDir)
-    this.keychainService = new KeychainService(this.pathResolver.keypairFile)
-    this.matchThreshold = options?.knowledge?.matchThreshold
-    this.matchLimit = options?.knowledge?.matchLimit
-  }
+  constructor(readonly options?: AyaOSOptions) {}
 
-  get runtime(): AyaRuntime {
+  get runtime(): AgentRuntime {
     if (!this.runtime_) {
       throw new Error('Runtime not initialized. Call start() first.')
     }
     return this.runtime_
+  }
+
+  get context(): AgentContext {
+    if (!this.context_) {
+      throw new Error('Context not initialized. Call start() first.')
+    }
+    return this.context_
   }
 
   get agentId(): UUID {
@@ -84,127 +80,58 @@ export class Agent implements IAyaAgent {
   }
 
   get knowledge(): IKnowledgeService {
-    const service = this.runtime.getService(KnowledgeService)
-    return ensure(service, 'Knowledge base service not found')
-  }
-
-  get memories(): IMemoriesService {
-    const service = this.runtime.getService(MemoriesService)
-    return ensure(service, 'Memories service not found')
+    return ensureRuntimeService<KnowledgeService>(
+      this.runtime,
+      KnowledgeService.serviceType,
+      'Knowledge base service not found'
+    )
   }
 
   get wallet(): IWalletService {
-    const service = this.runtime.getService(WalletService)
-    return ensure(service, 'Wallet service not found')
+    return ensureRuntimeService<WalletService>(
+      this.runtime,
+      WalletService.serviceType,
+      'Wallet service not found'
+    )
   }
 
   get telegram(): ITelegramManager {
-    const client = this.runtime.clients.telegram
-    if (isNull(client) || !(client instanceof TelegramClient)) {
-      throw new Error('Telegram client not found')
+    if (isNull(this.telegram_)) {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      this.telegram_ = new TelegramManager(this.runtime.getService('telegram' as ServiceTypeName))
     }
-    return client
+    return this.telegram_
   }
 
   async start(): Promise<void> {
-    let runtime: AyaRuntime | undefined
+    let runtime: AgentRuntime | undefined
 
     try {
-      ayaLogger.info('Starting agent...')
+      console.log('Starting agent...', AGENTCOIN_FUN_API_URL)
 
       // step 1: provision the hardware if needed.
-      const agentcoinAPI = new AgentcoinAPI()
-      const agentcoinService = new AgentcoinService(
-        this.keychainService,
-        agentcoinAPI,
-        this.pathResolver
-      )
-      await agentcoinService.provisionIfNeeded()
+      const context = await AgentRegistry.setup(this.options)
+      this.context_ = context
+      const { auth, managers } = context
 
-      // eagerly start event service
-      const agentcoinCookie = await agentcoinService.getCookie()
-      const agentcoinIdentity = await agentcoinService.getIdentity()
-      const eventService = new EventService(agentcoinCookie, agentcoinAPI)
-      void eventService.start()
-
-      const processService = new ProcessService()
-      const configService = new ConfigService(eventService, processService, this.pathResolver)
-
-      const characterId = ensureUUID(agentcoinIdentity.substring(6))
-      const characterFile = path.join(CHARACTERS_DIR, `${characterId}.character.json`)
+      const envSettings = this.processSettings()
 
       // step 2: load character and initialize database
-      ayaLogger.info('Loading character...')
-      const [db, charString] = await Promise.all([
-        initializeDatabase(this.pathResolver.dbFile),
-        fs.promises.readFile(characterFile, 'utf8')
-      ])
+      const character = await this.setupCharacter(auth, envSettings)
 
-      const character: Character = this.processCharacterSecrets(JSON.parse(charString))
-      if (isNull(character.id)) {
-        throw new Error('Character id not found')
-      }
+      // step 3: initialize required plugins
+      this.plugins.push(sqlPlugin)
+      this.plugins.push(openaiPlugin)
 
-      const modelConfig = this.modelConfig
-      character.templates = {
-        ...character.templates,
-        messageHandlerTemplate: AGENTCOIN_MESSAGE_HANDLER_TEMPLATE
-      }
-
-      if (modelConfig) {
-        character.modelProvider = modelConfig.provider
-        character.modelEndpointOverride = modelConfig.endpoint
-        character.settings = character.settings ?? {}
-        character.settings.modelConfig = modelConfig
-      }
-
-      // Set elizaLogger to debug mode
-      // ayaLogger.level = 'debug'
-      // ayaLogger.debug('Logger set to debug mode')
-
-      const token = modelConfig?.apiKey ?? getTokenForProvider(character.modelProvider, character)
-      if (isNull(token)) {
-        throw new Error('AI API key not found')
-      }
-      const cache = new CacheManager(new DbCacheAdapter(db, character.id))
-
-      ayaLogger.info('Creating runtime for character', character.name)
-
-      runtime = new AyaRuntime({
-        eliza: {
-          databaseAdapter: db,
-          token,
-          modelProvider: character.modelProvider,
-          evaluators: [...this.evaluators],
-          character,
-          plugins: [bootstrapPlugin, agentcoinPlugin, ...this.plugins],
-          providers: [...this.providers],
-          actions: [...this.actions],
-          services: [agentcoinService, configService, ...this.services],
-          managers: [],
-          cacheManager: cache,
-          agentId: character.id
-        },
-        pathResolver: this.pathResolver,
-        matchThreshold: this.matchThreshold,
-        matchLimit: this.matchLimit
+      // step 4: initialize environment variables and runtime
+      runtime = new AgentRuntime({
+        character,
+        plugins: this.plugins,
+        agentId: character.id,
+        settings: envSettings
       })
-      this.runtime_ = runtime
 
-      const knowledgeService = new KnowledgeService(
-        runtime,
-        agentcoinAPI,
-        agentcoinCookie,
-        agentcoinIdentity
-      )
-      const memoriesService = new MemoriesService(runtime)
-      const walletService = new WalletService(
-        agentcoinCookie,
-        agentcoinIdentity,
-        agentcoinAPI,
-        runtime,
-        this.keychainService.turnkeyApiKeyStamper
-      )
+      this.runtime_ = runtime
 
       // shutdown handler
       let isShuttingDown = false
@@ -215,31 +142,29 @@ export class Agent implements IAyaAgent {
           }
           isShuttingDown = true
 
-          ayaLogger.warn(`Received ${signal} signal. Stopping agent...`)
-          await Promise.all([configService.stop(), eventService.stop(), knowledgeService.stop()])
-          ayaLogger.success('Agent stopped services successfully!')
+          console.warn(`Received ${signal} signal. Stopping agent...`)
 
           if (runtime) {
             try {
               const agentId = runtime.agentId
-              ayaLogger.warn('Stopping agent runtime...', agentId)
+              console.warn('Stopping agent runtime...', agentId)
               await runtime.stop()
+              await AgentRegistry.destroy(this.context.dataDir)
               ayaLogger.success('Agent runtime stopped successfully!', agentId)
             } catch (error) {
-              ayaLogger.error('Error stopping agent:', error)
+              console.error('Error stopping agent:', error)
             }
           }
 
-          ayaLogger.success('The End.')
+          console.log('The End.')
           process.exit(0)
         } catch (error) {
-          ayaLogger.error('Error shutting down:', error)
-          ayaLogger.success('The End.')
+          console.error('Error shutting down:', error)
           process.exit(1)
         }
       }
 
-      processService.setShutdownFunc(shutdown)
+      managers.config.setShutdownFunc(shutdown)
 
       process.once('SIGINT', () => {
         void shutdown('SIGINT')
@@ -249,23 +174,43 @@ export class Agent implements IAyaAgent {
       })
 
       // initialize the runtime
-      await this.runtime.initialize({
-        eventHandler: (event, params) => this.handle(event, params)
-      })
+      await this.runtime.initialize()
 
-      this.runtime.clients = await initializeClients(this.runtime.character, this.runtime)
-      await Promise.all([
-        this.register('service', knowledgeService),
-        this.register('service', memoriesService),
-        this.register('service', walletService)
-      ])
-      // no need to await these. it'll lock up the main process
-      void Promise.all([configService.start(), knowledgeService.start()])
+      // register evaluators
+      this.evaluators.forEach(runtime.registerEvaluator.bind(runtime))
 
-      ayaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
+      // register providers
+      this.providers.forEach(runtime.registerContextProvider.bind(runtime))
+
+      // register actions
+      this.actions.forEach(runtime.registerAction.bind(runtime))
+
+      // register services
+      const ayaServices: (typeof Service)[] = [KnowledgeService, WalletService, ...this.services]
+      for (const service of ayaServices) {
+        await hackRegisterService(service, this.runtime)
+      }
+
+      await hackRegisterPlugin(ayaPlugin, this.runtime)
+      // await hackRegisterPlugin(farcasterPlugin, this.runtime)
+      const TELEGRAM_BOT_TOKEN =
+        this.runtime.getSetting('TELEGRAM_BOT_TOKEN') || process.env.TELEGRAM_BOT_TOKEN
+      if (TELEGRAM_BOT_TOKEN) {
+        await hackRegisterPlugin(telegramPlugin, this.runtime)
+      }
+
+      // start the managers
+      const AGENTCOIN_MONITORING_ENABLED = this.runtime.getSetting('AGENTCOIN_MONITORING_ENABLED')
+
+      if (AGENTCOIN_MONITORING_ENABLED) {
+        console.log('Agentcoin monitoring enabled')
+        await managers.config.start()
+      }
+
+      console.log(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
       console.log('sdk error', error)
-      ayaLogger.error(
+      console.error(
         'Error creating agent:',
         error instanceof Error
           ? {
@@ -279,9 +224,24 @@ export class Agent implements IAyaAgent {
     }
 
     ayaLogger.success('agent runtime started id:', runtime.agentId, 'name', runtime.character.name)
+
+    const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${this.context.auth.identity}`
+    // Calculate box width based on URL length
+    const boxWidth = Math.max(70, agentUrl.length + 6)
+
+    // Print a fancy bordered URL message
+    console.log('\n┌' + '─'.repeat(boxWidth) + '┐')
+    console.log('│' + ' '.repeat(boxWidth) + '│')
+    console.log('│' + '  🚀 Your agent is ready!  '.padEnd(boxWidth, ' ') + '│')
+    console.log('│' + ' '.repeat(boxWidth) + '│')
+    console.log('│' + '  Visit your agent at:'.padEnd(boxWidth, ' ') + '│')
+    console.log('│' + ' '.repeat(boxWidth) + '│')
+    console.log('│' + `  ${agentUrl}`.padEnd(boxWidth, ' ') + '│')
+    console.log('│' + ' '.repeat(boxWidth) + '│')
+    console.log('└' + '─'.repeat(boxWidth) + '┘\n')
   }
 
-  async register(kind: 'service', handler: Service): Promise<void>
+  async register(kind: 'service', handler: typeof Service): Promise<void>
   async register(kind: 'provider', handler: Provider): Promise<void>
   async register(kind: 'action', handler: Action): Promise<void>
   async register(kind: 'plugin', handler: Plugin): Promise<void>
@@ -324,104 +284,210 @@ export class Agent implements IAyaAgent {
     }
   }
 
-  on(event: 'pre:llm', handler: ContextHandler): void
-  on(event: 'post:llm', handler: ContextHandler): void
-  on(event: 'pre:action', handler: ContextHandler): void
-  on(event: 'post:action', handler: ContextHandler): void
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  on(event: string, handler: any): void {
-    switch (event) {
-      case 'pre:llm':
-        this.preLLMHandlers.push(handler)
-        break
-      case 'post:llm':
-        this.postLLMHandlers.push(handler)
-        break
-      case 'pre:action':
-        this.preActionHandlers.push(handler)
-        break
-      case 'post:action':
-        this.postActionHandlers.push(handler)
-        break
-      default:
-        throw new Error(`Unknown event: ${event}`)
-    }
-  }
+  private async setupCharacter(
+    authInfo: AuthInfo,
+    envSettings: Record<string, string>
+  ): Promise<Character> {
+    console.log('Loading character...')
+    const { identity, token } = authInfo
 
-  off(event: 'pre:llm', handler: ContextHandler): void
-  off(event: 'post:llm', handler: ContextHandler): void
-  off(event: 'pre:action', handler: ContextHandler): void
-  off(event: 'post:action', handler: ContextHandler): void
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  off(event: string, handler: any): void {
-    switch (event) {
-      case 'pre:llm':
-        this.preLLMHandlers = this.preLLMHandlers.filter((h) => h !== handler)
-        break
-      case 'post:llm':
-        this.postLLMHandlers = this.postLLMHandlers.filter((h) => h !== handler)
-        break
-      case 'pre:action':
-        this.preActionHandlers = this.preActionHandlers.filter((h) => h !== handler)
-        break
-      case 'post:action':
-        this.postActionHandlers = this.postActionHandlers.filter((h) => h !== handler)
-        break
-      default:
-        throw new Error(`Unknown event: ${event}`)
-    }
-  }
+    const characterId = ensureUUID(identity.substring(6))
+    const characterFile = path.join(CHARACTERS_DIR, `${characterId}.character.json`)
 
-  private async handle(event: SdkEventKind, params: Context): Promise<boolean> {
-    switch (event) {
-      case 'pre:llm': {
-        for (const handler of this.preLLMHandlers) {
-          const shouldContinue = await handler(params)
-          if (!shouldContinue) return false
-        }
-        break
-      }
-
-      case 'post:llm': {
-        for (const handler of this.postLLMHandlers) {
-          const shouldContinue = await handler(params)
-          if (!shouldContinue) return false
-        }
-        break
-      }
-
-      case 'pre:action': {
-        for (const handler of this.preActionHandlers) {
-          const shouldContinue = await handler(params)
-          if (!shouldContinue) return false
-        }
-        break
-      }
-
-      case 'post:action': {
-        for (const handler of this.postActionHandlers) {
-          const shouldContinue = await handler(params)
-          if (!shouldContinue) return false
-        }
-        break
-      }
+    const charString = await fs.promises.readFile(characterFile, 'utf8')
+    const character = CharacterSchema.parse(JSON.parse(charString))
+    if (isNull(character.id)) {
+      throw new Error('Character id not found')
     }
 
-    return true
-  }
+    character.secrets = character.secrets || {}
 
-  private processCharacterSecrets(character: Character): Character {
-    Object.entries(character.settings?.secrets || {}).forEach(([key, value]) => {
-      if (key.startsWith('AGENTCOIN_ENC_') && value) {
-        const decryptedValue = this.keychainService.decrypt(value)
-        const newKey = key.substring(14)
-        ayaLogger.info('Decrypted secret', newKey)
-        if (character.settings && character.settings.secrets) {
-          character.settings.secrets[newKey] = decryptedValue
-        }
-      }
-    })
+    // setup ayaos token
+    character.secrets[AYA_JWT_SETTINGS_KEY] = token
+    character.secrets[AYA_AGENT_IDENTITY_KEY] = identity
+    character.secrets[AYA_AGENT_DATA_DIR_KEY] = this.context.dataDir
+
+    // setup websearch
+    if (isNull(character.secrets.TAVILY_API_URL)) {
+      character.secrets.TAVILY_API_URL = WEBSEARCH_PROXY
+    }
+    if (character.secrets.TAVILY_API_URL === WEBSEARCH_PROXY) {
+      character.secrets.TAVILY_API_KEY = token
+    }
+
+    const openaiApiKey = this.getConfigValue(character, envSettings, OPENAI_API_KEY)
+
+    // setup llm
+    if (isNull(openaiApiKey) || openaiApiKey.trim() === '') {
+      character.secrets.OPENAI_BASE_URL = LLM_PROXY
+      character.secrets.OPENAI_SMALL_MODEL = DEFAULT_SMALL_MODEL
+      character.secrets.OPENAI_LARGE_MODEL = DEFAULT_LARGE_MODEL
+      character.secrets.OPENAI_EMBEDDING_MODEL = DEFAULT_EMBEDDING_MODEL
+      character.secrets.OPENAI_EMBEDDING_DIMENSIONS = DEFAULT_EMBEDDING_DIMENSIONS
+      character.secrets.OPENAI_API_KEY = token
+    }
+
+    const isPgliteDataDirSet = !isNull(this.getConfigValue(character, envSettings, PGLITE_DATA_DIR))
+
+    if (!isPgliteDataDirSet) {
+      character.secrets.PGLITE_DATA_DIR = path.join(this.context.dataDir, 'elizadb')
+    }
+
+    console.log('loaded character', character.name)
 
     return character
   }
+
+  private getConfigValue(
+    character: Character,
+    envSettings: Record<string, string>,
+    key: string
+  ): string | undefined {
+    return (
+      character.secrets?.[key] ||
+      character.settings?.[key] ||
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      character.settings?.secrets?.[key] ||
+      envSettings[key] ||
+      process.env[key]
+    )
+  }
+
+  private processSettings(): Record<string, string> {
+    const env = fs.existsSync(this.context.managers.path.envFile)
+      ? loadEnvFile(this.context.managers.path.envFile)
+      : loadEnvFile(path.join(process.cwd(), '.env'))
+
+    Object.entries(env).forEach(([key, value]) => {
+      if (key.startsWith('AGENTCOIN_ENC_') && isRequiredString(value)) {
+        const decryptedValue = this.context.managers.keychain.decrypt(value)
+        const newKey = key.substring(14)
+        console.log('Decrypted secret:', newKey)
+        env[newKey] = decryptedValue
+        delete env[key]
+      }
+    })
+
+    return env
+  }
+}
+
+// FIXME: hish - delete this function after my fix goes into elizaos/core
+
+async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promise<void> {
+  if (!plugin) {
+    console.error('*** registerPlugin plugin is undefined')
+    throw new Error('*** registerPlugin plugin is undefined')
+  }
+
+  // Add to plugins array if not already present - but only if it was not passed there initially
+  // (otherwise we can't add to readonly array)
+  if (!runtime.plugins.some((p) => p.name === plugin.name)) {
+    // Push to plugins array - this works because we're modifying the array, not reassigning it
+    runtime.plugins.push(plugin)
+    console.log(`Success: Plugin ${plugin.name} registered successfully`)
+  }
+
+  // Initialize the plugin if it has an init function
+  if (plugin.init) {
+    try {
+      await plugin.init(plugin.config || {}, runtime)
+      console.log(`Success: Plugin ${plugin.name} initialized successfully`)
+    } catch (error) {
+      // Check if the error is related to missing API keys
+      const errorMessage = error instanceof Error ? error.message : String(error)
+
+      if (
+        errorMessage.includes('API key') ||
+        errorMessage.includes('environment variables') ||
+        errorMessage.includes('Invalid plugin configuration')
+      ) {
+        // Instead of throwing an error, log a friendly message
+        console.warn(`Plugin ${plugin.name} requires configuration. ${errorMessage}`)
+        console.warn(
+          'Please check your environment variables and ensure all required API keys are set.'
+        )
+        console.warn('You can set these in your .eliza/.env file.')
+
+        // We don't throw here, allowing the application to continue
+        // with reduced functionality
+      } else {
+        // For other types of errors, rethrow
+        throw error
+      }
+    }
+  }
+
+  // Register plugin adapter
+  if (plugin.adapter) {
+    console.log(`Registering database adapter for plugin ${plugin.name}`)
+    runtime.registerDatabaseAdapter(plugin.adapter)
+  }
+
+  // Register plugin actions
+  if (plugin.actions) {
+    for (const action of plugin.actions) {
+      runtime.registerAction(action)
+    }
+  }
+
+  // Register plugin evaluators
+  if (plugin.evaluators) {
+    for (const evaluator of plugin.evaluators) {
+      runtime.registerEvaluator(evaluator)
+    }
+  }
+
+  // Register plugin providers
+  if (plugin.providers) {
+    for (const provider of plugin.providers) {
+      runtime.registerProvider(provider)
+    }
+  }
+
+  // Register plugin models
+  if (plugin.models) {
+    for (const [modelType, handler] of Object.entries(plugin.models)) {
+      // eslint-disable-next-line max-len
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
+      runtime.registerModel(modelType as ModelTypeName, handler as (params: any) => Promise<any>)
+    }
+  }
+
+  // Register plugin routes
+  if (plugin.routes) {
+    for (const route of plugin.routes) {
+      runtime.routes.push(route)
+    }
+  }
+
+  // Register plugin events
+  if (plugin.events) {
+    for (const [eventName, eventHandlers] of Object.entries(plugin.events)) {
+      for (const eventHandler of eventHandlers) {
+        runtime.registerEvent(eventName, eventHandler)
+      }
+    }
+  }
+
+  if (plugin.services) {
+    for (const service of plugin.services) {
+      await hackRegisterService(service, runtime)
+    }
+  }
+}
+
+async function hackRegisterService(service: typeof Service, runtime: IAgentRuntime): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  const serviceType = service.serviceType as ServiceTypeName
+
+  if (runtime.services.has(serviceType)) {
+    console.warn(`(${runtime.agentId}) - Service ${serviceType} is already registered.`)
+    return
+  }
+
+  const serviceInstance = await service.start(runtime)
+  // Add the service to the services map
+  runtime.services.set(serviceType, serviceInstance)
+  console.log(`(${runtime.agentId}) - Service ${serviceType} registered successfully`)
 }

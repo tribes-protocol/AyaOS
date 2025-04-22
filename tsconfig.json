@@ -20,6 +20,7 @@
     "noEmitOnError": false,
     "moduleDetection": "force",
     "allowArbitraryExtensions": true,
+    "types": ["node", "@hapi/shot"],
     "paths": {
       "@/*": ["./src/*"]
     }

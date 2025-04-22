@@ -1,5 +1,4 @@
 import { UUID_PATTERN } from '@/common/constants'
-import { ayaLogger } from '@/common/logger'
 import {
   ChatChannel,
   ChatChannelKind,
@@ -11,9 +10,11 @@ import {
   Identity,
   IdentitySchema
 } from '@/common/types'
-import { KnowledgeItem, Memory, UUID } from '@elizaos/core'
+import { IAgentRuntime, Service, ServiceTypeName, UUID } from '@elizaos/core'
 import crypto, { createHash } from 'crypto'
 import EC from 'elliptic'
+import fs from 'fs'
+import path from 'path'
 
 // eslint-disable-next-line new-cap
 export const ec = new EC.ec('p256')
@@ -132,7 +133,7 @@ export function retry<T>(
         .then(resolve)
         .catch((error) => {
           if (logError) {
-            ayaLogger.error(`Error: ${error}`)
+            console.error(`Error: ${error}`)
           }
           if (retries < maxRetries) {
             retries++
@@ -200,39 +201,8 @@ export function isValidSignature(message: string, publicKey: string, signature: 
   }
 }
 
-export function hasActions(responses: Memory[]): boolean {
-  for (const messageResponse of responses) {
-    const action = messageResponse.content.action
-    if (isNull(action) || action.toUpperCase() === 'NONE') {
-      continue
-    }
-
-    ayaLogger.info(`found action: ${action}`)
-    return true
-  }
-
-  ayaLogger.info('no actions to process, done!')
-  return false
-}
-
 export function calculateChecksum(content: string): string {
   return crypto.createHash('sha256').update(content).digest('hex')
-}
-
-// copied from elizaos
-export function formatKnowledge(knowledge: KnowledgeItem[]): string {
-  // Group related content in a more natural way
-  return knowledge
-    .map((item) => {
-      // Get the main content text
-      const text = item.content.text
-
-      // Clean up formatting but maintain natural text flow
-      const cleanedText = text.trim().replace(/\n{3,}/g, '\n\n') // Replace excessive newlines
-
-      return cleanedText
-    })
-    .join('\n\n') // Separate distinct pieces with double newlines
 }
 
 /**
@@ -255,4 +225,103 @@ export function ensureUUID(input?: string | null | undefined): UUID {
 
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return input as UUID
+}
+
+/**
+ * Reads a .env file and returns a record of all environment variables present.
+ * Only processes files with names starting with ".env" (e.g., .env, .env.production, .env.local).
+ *
+ * @param filePath - The path to the .env file
+ * @returns A record of environment variables as key-value pairs
+ * @throws Error if the file doesn't exist, isn't a .env file, or can't be read
+ */
+export function loadEnvFile(filePath: string): Record<string, string> {
+  if (!fs.existsSync(filePath)) {
+    return {}
+  }
+
+  // Validate that the file name starts with .env
+  const fileName = path.basename(filePath)
+  if (!fileName.startsWith('.env')) {
+    throw new Error(`Invalid env file name: ${fileName}. File name must start with ".env"`)
+  }
+
+  try {
+    // Read the file content
+    const fileContent = fs.readFileSync(filePath, 'utf8')
+
+    // Parse the content line by line
+    const envVars: Record<string, string> = {}
+
+    const lines = fileContent.split('\n')
+    for (const line of lines) {
+      // Skip empty lines and comments
+      const trimmedLine = line.trim()
+      if (isNull(trimmedLine) || trimmedLine.startsWith('#')) {
+        continue
+      }
+
+      // Split by the first equals sign
+      const equalSignIndex = trimmedLine.indexOf('=')
+      if (equalSignIndex !== -1) {
+        const key = trimmedLine.substring(0, equalSignIndex).trim()
+        let value = trimmedLine.substring(equalSignIndex + 1).trim()
+
+        // Remove surrounding quotes if present
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.substring(1, value.length - 1)
+        }
+
+        envVars[key] = value
+      }
+    }
+
+    return envVars
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      throw new Error(`Env file not found: ${filePath}`)
+    }
+    throw new Error(
+      `Error reading env file: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+}
+
+export type ServiceLike = ServiceTypeName | string
+
+export function ensureRuntimeService<T extends Service>(
+  runtime: IAgentRuntime,
+  service: ServiceLike,
+  message?: string
+): T {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  return ensure(runtime.getService(service as ServiceTypeName), message) as T
+}
+
+export function ensureStringSetting(runtime: IAgentRuntime, key: string): string {
+  const value = ensure(runtime.getSetting(key), `${key} not found in settings`)
+  if (!isRequiredString(value)) {
+    throw new Error(`Setting ${key} is not a string`)
+  }
+  return value
+}
+
+export function compactMap<T>(array: (T | null | undefined)[]): T[] {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  return array.filter((item) => !isNull(item)) as T[]
+}
+
+export function toJsonTreeString(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  obj: any,
+  { pretty = false }: { pretty?: boolean } = {}
+): string | null {
+  if (isNull(obj)) {
+    return null
+  }
+
+  return JSON.stringify(toJsonTree(obj), null, pretty ? 2 : undefined)
 }
