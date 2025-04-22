@@ -16,7 +16,12 @@ export { Agent } from '@/agent/agent'
 export type { IAyaAgent } from '@/agent/iagent'
 export { RateLimiter } from '@/agent/ratelimiter'
 export { ensureUUID } from '@/common/functions'
-export { ContextHandler, type RAGKnowledgeItem } from '@/common/types'
+export {
+  CharacterMessageSchema,
+  CharacterSchema,
+  ContextHandler,
+  type RAGKnowledgeItem
+} from '@/common/types'
 export type { IKnowledgeService, IWalletService } from '@/services/interfaces'
 export { KnowledgeService } from '@/services/knowledge'
 export { WalletService } from '@/services/wallet'

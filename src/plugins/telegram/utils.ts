@@ -3,7 +3,7 @@ import { InlineKeyboardButton } from '@telegraf/types'
 import { Markup } from 'telegraf'
 
 // A list of Telegram MarkdownV2 reserved characters that must be escaped
-const TELEGRAM_RESERVED_REGEX = /([_*[\]()~`>#+|{}\\])/g
+const TELEGRAM_RESERVED_REGEX = /([_*[\]~`>#+|{}\\])/g
 
 /**
  * Escapes plain text for Telegram MarkdownV2.
@@ -41,10 +41,10 @@ function escapeCode(text: string): string {
 
 /**
  * Escapes a URL for inline links:
- * inside the URL, only ")" and "\" need to be escaped.
+ * inside the URL, only "\" needs to be escaped.
  */
 function escapeUrl(url: string): string {
-  return url.replace(/([)\\])/g, '\\$1')
+  return url.replace(/([\\])/g, '\\$1')
 }
 
 /**

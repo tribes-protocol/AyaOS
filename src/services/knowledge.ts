@@ -258,7 +258,6 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   private async syncKnowledge(): Promise<void> {
     try {
-      ayaLogger.debug('Getting all knowledges...')
       const knowledges = await this.getAllKnowledge()
       const existingKnowledgeIds = new Set<UUID>()
 
@@ -302,10 +301,12 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         await this.remove(knowledgeId)
       }
 
-      ayaLogger.debug(
-        `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ` +
-          `${knowledgeIdsToRemove.length} items removed`
-      )
+      if (remoteKnowledgeIds.length > 0 || knowledgeIdsToRemove.length > 0) {
+        console.debug(
+          `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ` +
+            `${knowledgeIdsToRemove.length} items removed`
+        )
+      }
     } catch (error) {
       if (error instanceof Error) {
         console.error(`Error processing knowledge files: ${error.message}`)
@@ -387,9 +388,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     const [item] = await this.db.select().from(Knowledges).where(eq(Knowledges.id, id))
 
     if (isNull(item)) {
-      ayaLogger.debug(`[${kind}] knowledge=[${id}] does not exist. creating...`)
+      // console.debug(`[${kind}] knowledge=[${id}] does not exist. creating...`)
     } else if (item?.checksum === checksum) {
-      ayaLogger.debug(`[${kind}] knowledge=[${id}] already exists. skipping...`)
+      // console.debug(`[${kind}] knowledge=[${id}] already exists. skipping...`)
       return
     }
 
@@ -435,6 +436,8 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         await tx.insert(KnowledgeEmbeddings).values(embeddingValues)
       })
     }
+
+    console.debug(`[${kind}] indexed knowledge=[${id}] with ${fragments.length} fragments`)
   }
 
   async list(options?: {
@@ -449,7 +452,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
     const conditions = [
       eq(Knowledges.agentId, this.runtime.agentId),
-      eq(Knowledges.parentId, Knowledges.id)
+      ne(Knowledges.parentId, Knowledges.id)
     ]
 
     if (filters?.kind) {
@@ -464,12 +467,16 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       )
     }
 
-    const results = await this.db
+    const query = this.db
       .select()
       .from(Knowledges)
       .where(and(...conditions))
       .orderBy(sort === 'asc' ? asc(Knowledges.createdAt) : desc(Knowledges.createdAt))
       .limit(limit)
+
+    // console.debug('Knowledge list query:', query.toSQL())
+
+    const results = await query
 
     const items = results.map((item) => ({
       id: item.id,

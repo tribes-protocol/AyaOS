@@ -15,7 +15,6 @@ import {
   serializeChannel,
   serializeIdentity
 } from '@/common/functions'
-import { ayaLogger } from '@/common/logger'
 import {
   AgentIdentitySchema,
   ChatChannel,
@@ -135,7 +134,7 @@ export class AyaClientService extends Service {
             break
           }
           case 'status':
-            ayaLogger.debug('Received status', event.data.status)
+            console.log('Received status', event.data.status)
             break
         }
       } catch (error) {
