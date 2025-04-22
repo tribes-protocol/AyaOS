@@ -2,11 +2,7 @@ import type { FarcasterClient } from '@/plugins/farcaster/client'
 import { AsyncQueue } from '@/plugins/farcaster/common/asyncqueue'
 import { standardCastHandlerCallback } from '@/plugins/farcaster/common/callbacks'
 import { FARCASTER_SOURCE } from '@/plugins/farcaster/common/constants'
-import {
-  formatCast,
-  formatTimeline,
-  shouldRespondTemplate
-} from '@/plugins/farcaster/common/prompts'
+import { formatCast, formatTimeline } from '@/plugins/farcaster/common/prompts'
 import {
   type Cast,
   type FarcasterConfig,
@@ -17,14 +13,11 @@ import {
 import { castUuid, formatCastTimestamp, neynarCastToCast } from '@/plugins/farcaster/common/utils'
 import {
   ChannelType,
-  composePrompt,
   createUniqueUuid,
   EventType,
   type IAgentRuntime,
-  logger,
   type Memory,
   MessagePayload,
-  ModelType,
   UUID
 } from '@elizaos/core'
 import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api'
@@ -276,30 +269,30 @@ export class FarcasterInteractionManager {
       formattedConversation
     }
 
-    // Determine if we should respond to the cast
-    const shouldRespondPrompt = composePrompt({
-      state,
-      template:
-        this.runtime.character.templates?.farcasterShouldRespondTemplate ||
-        this.runtime.character?.templates?.shouldRespondTemplate ||
-        shouldRespondTemplate
-    })
+    // // Determine if we should respond to the cast
+    // const shouldRespondPrompt = composePrompt({
+    //   state,
+    //   template:
+    //     this.runtime.character.templates?.farcasterShouldRespondTemplate ||
+    //     this.runtime.character?.templates?.shouldRespondTemplate ||
+    //     shouldRespondTemplate
+    // })
 
-    const response = await this.runtime.useModel(ModelType.TEXT_SMALL, {
-      prompt: shouldRespondPrompt
-    })
+    // const response = await this.runtime.useModel(ModelType.TEXT_SMALL, {
+    //   prompt: shouldRespondPrompt
+    // })
 
-    const responseActions = (response.match(/(?:RESPOND|IGNORE|STOP)/g) || ['IGNORE'])[0]
-    if (responseActions !== 'RESPOND') {
-      console.log(`Not responding to cast based on shouldRespond decision: ${responseActions}`)
-      try {
-        // save the memory so we don't process it again in mentions
-        await this.runtime.createMemory(memory, 'messages')
-      } catch (error) {
-        console.error('Error creating ignoredmemory', error)
-      }
-      return
-    }
+    // const responseActions = (response.match(/(?:RESPOND|IGNORE|STOP)/g) || ['IGNORE'])[0]
+    // if (responseActions !== 'RESPOND') {
+    //   console.log(`Not responding to cast based on shouldRespond decision: ${responseActions}`)
+    //   try {
+    //     // save the memory so we don't process it again in mentions
+    //     await this.runtime.createMemory(memory, 'messages')
+    //   } catch (error) {
+    //     console.error('Error creating ignoredmemory', error)
+    //   }
+    //   return
+    // }
 
     // setup callback for the response
     const callback = standardCastHandlerCallback({
@@ -329,8 +322,8 @@ export class FarcasterInteractionManager {
       memory,
       cast,
       source: FARCASTER_SOURCE,
-      callback: async (_content, _files) => {
-        console.log('[Farcaster] mention received response:', response)
+      callback: async (content, _files) => {
+        console.log('[Farcaster] mention received response:', content)
         return []
       }
     }
