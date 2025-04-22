@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.4
+
+### Patch Changes
+
+- 4456c63: add commands to telegram
+
 ## 0.1.3
 
 ### Patch Changes
