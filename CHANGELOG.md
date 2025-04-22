@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.1
+
+### Patch Changes
+
+- a150a6b: telegram should only respond to mentions in group
+
 ## 0.1.0
 
 ### Patch Changes
