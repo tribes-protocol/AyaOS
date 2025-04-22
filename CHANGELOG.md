@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.0.63
+
+### Patch Changes
+
+- 7c886bd: fix response validation
+
 ## 0.0.62
 
 ### Patch Changes
