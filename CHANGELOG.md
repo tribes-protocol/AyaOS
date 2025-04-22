@@ -1,5 +1,22 @@
 # @tribesxyz/ayaos
 
+## 0.1.0
+
+### Patch Changes
+
+- ad0891a: fix versioning
+- 2aa7059: fixing types
+- 81c956f: move telegram and farcaster plugin to AyaOS
+- ad0891a: register service
+- e5782ba: fix telegram typing status
+- b618ff2: fix telegram checking
+- cacc564: expose character schema
+- 549ac35: fix register service
+- c115b83: upate capabilities
+- 460e1ab: first eliza v2 beta
+- 9ccbcce: fix process.env in openai
+- 0b18f74: fix telegram client
+
 ## 0.0.63
 
 ### Patch Changes
