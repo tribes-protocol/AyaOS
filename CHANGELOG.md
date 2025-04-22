@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.2
+
+### Patch Changes
+
+- caf94cf: respond to all farcaster mentions
+
 ## 0.1.1
 
 ### Patch Changes
