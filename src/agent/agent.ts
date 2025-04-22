@@ -29,6 +29,7 @@ import { TelegramManager } from '@/managers/telegram'
 import { ayaPlugin } from '@/plugins/aya'
 import openaiPlugin from '@/plugins/openai'
 import { telegramPlugin } from '@/plugins/telegram'
+import { TelegramService } from '@/plugins/telegram/service'
 import { IKnowledgeService, IWalletService } from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
 import { WalletService } from '@/services/wallet'
@@ -97,8 +98,14 @@ export class Agent implements IAyaAgent {
 
   get telegram(): ITelegramManager {
     if (isNull(this.telegram_)) {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      this.telegram_ = new TelegramManager(this.runtime.getService('telegram' as ServiceTypeName))
+      const telegramService = this.runtime.getService<TelegramService>(
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        TelegramService.serviceType as ServiceTypeName
+      )
+      if (!telegramService) {
+        throw new Error('Telegram service not found')
+      }
+      this.telegram_ = new TelegramManager(telegramService)
     }
     return this.telegram_
   }

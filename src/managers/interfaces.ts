@@ -1,4 +1,4 @@
-import { Content } from '@elizaos/core'
+import { TelegramContent } from '@/plugins/telegram/types'
 import { Context } from 'telegraf'
 
 export interface ITelegramManager {
@@ -6,7 +6,7 @@ export interface ITelegramManager {
 
   sendMessage(params: {
     chatId: number | string
-    content: Content
+    content: TelegramContent
     replyToMessageId?: number | undefined
-  }): Promise<void>
+  }): Promise<number | undefined>
 }

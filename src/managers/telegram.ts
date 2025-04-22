@@ -1,13 +1,12 @@
 import { ITelegramManager } from '@/managers/interfaces'
+import { TelegramService } from '@/plugins/telegram/service'
 import { TelegramContent } from '@/plugins/telegram/types'
 import { Context } from 'telegraf'
 
 export class TelegramManager implements ITelegramManager {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  constructor(private readonly telegram: any) {}
+  constructor(private readonly telegram: TelegramService) {}
 
   registerCommand(command: string, handler: (ctx: Context) => Promise<void>): void {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     this.telegram.addCommandHandler(command, handler)
   }
 
@@ -15,9 +14,13 @@ export class TelegramManager implements ITelegramManager {
     chatId: number | string
     content: TelegramContent
     replyToMessageId?: number | undefined
-  }): Promise<void> {
+  }): Promise<number | undefined> {
     const { chatId, content, replyToMessageId } = params
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    await this.telegram.messageManager.sendMessage(chatId, content, replyToMessageId)
+    const [message] = await this.telegram.messageManager.sendMessage(
+      chatId,
+      content,
+      replyToMessageId
+    )
+    return message.message_id ?? undefined
   }
 }
