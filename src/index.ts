@@ -34,3 +34,5 @@ export type { Content, Entity, HandlerCallback, Memory, Participant, Relationshi
 export { ayaLogger } from '@/common/logger'
 
 export { ensureRuntimeService } from '@/common/functions'
+
+export { webSearch } from '@/plugins/aya/actions/websearch'

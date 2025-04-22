@@ -311,6 +311,37 @@ export class MessageManager {
     }
   }
 
+  private isMessageForMe(message: Message): boolean {
+    const botUsername = this.bot.botInfo?.username
+    if (!botUsername) return false
+
+    const messageText =
+      'text' in message ? message.text : 'caption' in message ? message.caption : ''
+    if (!messageText) return false
+
+    const isReplyToBot =
+      'reply_to_message' in message &&
+      message.reply_to_message?.from?.is_bot === true &&
+      message.reply_to_message?.from?.username === botUsername
+    const isMentioned = messageText.includes(`@${botUsername}`)
+
+    return isReplyToBot || isMentioned
+  }
+
+  private shouldRespondToMessage(message: Message): boolean {
+    // Respond to private chats
+    if (message.chat.type === 'private') {
+      return true
+    }
+
+    // For group chats, only respond to direct mentions
+    if (message.chat.type === 'group' || message.chat.type === 'supergroup') {
+      return this.isMessageForMe(message)
+    }
+
+    return false
+  }
+
   // Main handler for incoming messages
   /**
    * Handle incoming messages from Telegram and process them accordingly.
@@ -326,6 +357,8 @@ export class MessageManager {
 
     // Type guard to ensure message exists
     if (!ctx.message || !ctx.from) return
+
+    if (!this.shouldRespondToMessage(ctx.message)) return
 
     const message = ctx.message
 
