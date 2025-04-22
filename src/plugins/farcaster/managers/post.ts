@@ -65,16 +65,16 @@ export class FarcasterPostManager {
           await this.generateNewCast()
         }
 
-        logger.log(`Next cast scheduled in ${randomMinutes} minutes`)
+        console.log(`Next cast scheduled in ${randomMinutes} minutes`)
         await new Promise((resolve) => (this.timeout = setTimeout(resolve, delay)))
       } catch (error) {
-        logger.error('[Farcaster] Error in periodic post:', this.runtime.agentId, error)
+        console.error('[Farcaster] Error in periodic post:', this.runtime.agentId, error)
       }
     }
   }
 
   private async generateNewCast(): Promise<void> {
-    logger.info('Generating new cast')
+    console.log('Generating new cast')
     try {
       const worldId = createUniqueUuid(this.runtime, this.fid.toString())
       const roomId = createUniqueUuid(this.runtime, `${this.fid}-home`)
@@ -103,7 +103,7 @@ export class FarcasterPostManager {
         source: FARCASTER_SOURCE
       })
     } catch (error) {
-      logger.error('Error generating new cast:', error)
+      console.error('Error generating new cast:', error)
     }
   }
 }

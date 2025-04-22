@@ -46,7 +46,7 @@ export class TelegramService extends Service {
    */
   constructor(runtime: IAgentRuntime) {
     super(runtime)
-    logger.log('📱 Constructing new TelegramService...')
+    console.log('📱 Constructing new TelegramService...')
     this.options = {
       telegram: {
         apiRoot:
@@ -58,7 +58,7 @@ export class TelegramService extends Service {
     const botToken = runtime.getSetting('TELEGRAM_BOT_TOKEN')
     this.bot = new Telegraf(botToken, this.options)
     this.messageManager = new MessageManager(this.bot, this.runtime)
-    logger.log('✅ TelegramService constructor completed')
+    console.log('✅ TelegramService constructor completed')
   }
 
   /**
@@ -79,11 +79,11 @@ export class TelegramService extends Service {
       try {
         const service = new TelegramService(runtime)
 
-        logger.success(
+        console.log(
           `✅ Telegram client successfully started for character ${runtime.character.name}`
         )
 
-        logger.log('🚀 Starting Telegram bot...')
+        console.log('🚀 Starting Telegram bot...')
         await service.initializeBot()
 
         // Set up middlewares before message handlers to ensure proper preprocessing
@@ -98,14 +98,14 @@ export class TelegramService extends Service {
         return service
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
-        logger.error(
+        console.error(
           `Telegram initialization attempt ${retryCount + 1} failed: ${lastError.message}`
         )
         retryCount++
 
         if (retryCount < maxRetries) {
           const delay = 2 ** retryCount * 1000 // Exponential backoff
-          logger.info(`Retrying Telegram initialization in ${delay / 1000} seconds...`)
+          console.log(`Retrying Telegram initialization in ${delay / 1000} seconds...`)
           await new Promise((resolve) => setTimeout(resolve, delay))
         }
       }
@@ -149,7 +149,7 @@ export class TelegramService extends Service {
 
     // Get bot info for identification purposes
     const botInfo = await this.bot.telegram.getMe()
-    logger.log(`Bot info: ${JSON.stringify(botInfo)}`)
+    console.log(`Bot info: ${JSON.stringify(botInfo)}`)
 
     // Handle sigint and sigterm signals to gracefully stop the bot
     process.once('SIGINT', () => this.bot.stop('SIGINT'))
@@ -249,7 +249,7 @@ export class TelegramService extends Service {
       try {
         await this.handleForumTopic(ctx)
       } catch (error) {
-        logger.error(`Error handling forum topic: ${error}`)
+        console.error(`Error handling forum topic: ${error}`)
       }
     }
 
@@ -272,7 +272,7 @@ export class TelegramService extends Service {
         // Message handling is now simplified since all preprocessing is done by middleware
         await this.messageManager.handleMessage(ctx)
       } catch (error) {
-        logger.error('Error handling message:', error)
+        console.error('Error handling message:', error)
       }
     })
 
@@ -281,7 +281,7 @@ export class TelegramService extends Service {
       try {
         await this.messageManager.handleReaction(ctx)
       } catch (error) {
-        logger.error('Error handling reaction:', error)
+        console.error('Error handling reaction:', error)
       }
     })
   }
@@ -312,7 +312,7 @@ export class TelegramService extends Service {
       }
       return allowedChatsList.includes(chatId)
     } catch (error) {
-      logger.error('Error parsing TELEGRAM_ALLOWED_CHATS:', error)
+      console.error('Error parsing TELEGRAM_ALLOWED_CHATS:', error)
       return false
     }
   }
@@ -558,7 +558,7 @@ export class TelegramService extends Service {
         owner = admins.find((admin) => admin.status === 'creator')
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error)
-        logger.warn(`Could not get chat administrators: ${errMsg}`)
+        console.warn(`Could not get chat administrators: ${errMsg}`)
       }
     }
 
@@ -720,7 +720,7 @@ export class TelegramService extends Service {
             })
           } catch (err) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            logger.warn(`Failed to sync user ${entity.metadata?.telegram?.username}: ${err}`)
+            console.warn(`Failed to sync user ${entity.metadata?.telegram?.username}: ${err}`)
           }
         })
       )
@@ -836,12 +836,12 @@ export class TelegramService extends Service {
             }
           }
         } catch (error) {
-          logger.warn(`Could not fetch administrators for chat ${chat.id}: ${error}`)
+          console.warn(`Could not fetch administrators for chat ${chat.id}: ${error}`)
         }
       }
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error)
-      logger.error(`Error building standardized entities: ${errMsg}`)
+      console.error(`Error building standardized entities: ${errMsg}`)
     }
 
     return entities
@@ -928,7 +928,7 @@ export class TelegramService extends Service {
 
       return room
     } catch (error) {
-      logger.error(
+      console.error(
         `Error building forum topic room: ${error instanceof Error ? error.message : String(error)}`
       )
       return null

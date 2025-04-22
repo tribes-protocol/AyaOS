@@ -74,7 +74,7 @@ export class MessageManager {
     try {
       let imageUrl: string | null = null
 
-      logger.info(`Telegram Message: ${message}`)
+      console.log(`Telegram Message: ${message}`)
 
       if ('photo' in message && message.photo?.length > 0) {
         const photo = message.photo[message.photo.length - 1]
@@ -229,7 +229,7 @@ export class MessageManager {
         }
       }
     } catch (error) {
-      logger.error(`Failed to send ${type}. Path: ${mediaPath}. Error:`, error)
+      console.error(`Failed to send ${type}. Path: ${mediaPath}. Error:`, error)
       throw error
     }
   }
@@ -376,7 +376,7 @@ export class MessageManager {
 
           return memories
         } catch (error) {
-          logger.error('Error in message callback:', error)
+          console.error('Error in message callback:', error)
           return []
         }
       }
@@ -399,7 +399,7 @@ export class MessageManager {
         originalMessage: message
       })
     } catch (error) {
-      logger.error('Error handling Telegram message:', {
+      console.error('Error handling Telegram message:', {
         error,
         chatId: ctx.chat?.id,
         messageId: ctx.message?.message_id,
@@ -467,7 +467,7 @@ export class MessageManager {
           }
           return [responseMemory]
         } catch (error) {
-          logger.error('Error in reaction callback:', error)
+          console.error('Error in reaction callback:', error)
           return []
         }
       }
@@ -491,7 +491,7 @@ export class MessageManager {
         originalReaction: reaction.new_reaction[0]
       })
     } catch (error) {
-      logger.error('Error handling reaction:', error)
+      console.error('Error handling reaction:', error)
     }
   }
 
@@ -570,7 +570,7 @@ export class MessageManager {
 
       return sentMessages
     } catch (error) {
-      logger.error('Error sending message to Telegram:', error)
+      console.error('Error sending message to Telegram:', error)
       return []
     }
   }

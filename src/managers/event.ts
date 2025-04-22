@@ -1,5 +1,4 @@
 import { AyaAuthAPI } from '@/apis/aya-auth'
-import { ayaLogger } from '@/common/logger'
 
 export class EventManager {
   private readonly agentcoinAPI: AyaAuthAPI
@@ -10,9 +9,9 @@ export class EventManager {
   private heartbeatInterval?: NodeJS.Timeout
 
   async start(): Promise<void> {
-    ayaLogger.info('Starting event service...')
+    console.log('Starting event service...')
     if (this.heartbeatInterval) {
-      ayaLogger.info('Event service already started')
+      console.log('Event service already started')
       return
     }
 
@@ -42,7 +41,7 @@ export class EventManager {
       sentAt: new Date()
     })
 
-    ayaLogger.info('Event service stopped')
+    console.log('Event service stopped')
   }
 
   async publishEnvChangeEvent(envContents: string): Promise<void> {

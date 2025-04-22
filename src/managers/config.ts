@@ -1,6 +1,5 @@
 import { isNull, isRequiredString } from '@/common/functions'
 import { OperationQueue } from '@/common/lang/operation_queue'
-import { ayaLogger } from '@/common/logger'
 import { EventManager } from '@/managers/event'
 import { PathManager } from '@/managers/path'
 import crypto from 'crypto'
@@ -35,10 +34,10 @@ export class ConfigManager {
   }
 
   async start(): Promise<void> {
-    ayaLogger.info('Starting config service...')
+    console.log('Starting config service...')
     // disable in dev mode
     if (process.env.NODE_ENV !== 'production') {
-      ayaLogger.info('Config service disabled in dev mode')
+      console.log('Config service disabled in dev mode')
       return
     }
 
@@ -53,7 +52,7 @@ export class ConfigManager {
 
     app.get('/command/new', async (req, res) => {
       const { kind } = req.query
-      ayaLogger.info(`Received command request: ${kind}`)
+      console.log(`Received command request: ${kind}`)
 
       if (isNull(kind)) {
         res.status(400).json({ error: 'Kind parameter is required' })
@@ -70,7 +69,7 @@ export class ConfigManager {
             res.status(400).json({ error: `Invalid kind parameter: ${kind}` })
         }
       } catch (error) {
-        ayaLogger.error('Error processing command:', error)
+        console.error('Error processing command:', error)
         res.status(500).json({ error: 'Internal server error' })
       }
     })
@@ -97,7 +96,7 @@ export class ConfigManager {
         return
       }
 
-      ayaLogger.info(`New envvars file detected. Restarting agent...`)
+      console.log(`New envvars file detected. Restarting agent...`)
       await this.eventService.publishEnvChangeEvent(envvars)
       this.envvarsChecksum = checksum
 
@@ -115,7 +114,7 @@ export class ConfigManager {
         const remoteUrl = await git.remote(['get-url', 'origin'])
 
         if (!isRequiredString(remoteUrl)) {
-          ayaLogger.error('No remote url found')
+          console.error('No remote url found')
           return
         }
 
@@ -123,7 +122,7 @@ export class ConfigManager {
           this.gitCommitHash = commitHash
         } else {
           // kill the process and docker container should restart it
-          ayaLogger.info(
+          console.log(
             `New code detected current=${this.gitCommitHash} new=${commitHash}. Restarting agent...`
           )
           this.gitCommitHash = commitHash
@@ -137,9 +136,9 @@ export class ConfigManager {
           e instanceof Error &&
           e.message.includes('Cannot use simple-git on a directory that does not exist')
         ) {
-          ayaLogger.info('Git directory not initiated yet')
+          console.log('Git directory not initiated yet')
         } else {
-          ayaLogger.error('Error checking git status:', e)
+          console.error('Error checking git status:', e)
         }
       }
     })
@@ -156,6 +155,6 @@ export class ConfigManager {
       }
       this.server = undefined
     }
-    ayaLogger.info('Stopping config service...')
+    console.log('Stopping config service...')
   }
 }

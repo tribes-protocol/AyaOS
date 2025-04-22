@@ -108,7 +108,7 @@ export class Agent implements IAyaAgent {
     let runtime: AgentRuntime | undefined
 
     try {
-      logger.info('Starting agent...', AGENTCOIN_FUN_API_URL)
+      console.log('Starting agent...', AGENTCOIN_FUN_API_URL)
 
       // step 1: provision the hardware if needed.
       const context = await AgentRegistry.setup(this.options)
@@ -143,24 +143,24 @@ export class Agent implements IAyaAgent {
           }
           isShuttingDown = true
 
-          ayaLogger.warn(`Received ${signal} signal. Stopping agent...`)
+          console.warn(`Received ${signal} signal. Stopping agent...`)
 
           if (runtime) {
             try {
               const agentId = runtime.agentId
-              ayaLogger.warn('Stopping agent runtime...', agentId)
+              console.warn('Stopping agent runtime...', agentId)
               await runtime.stop()
               await AgentRegistry.destroy(this.context.dataDir)
               ayaLogger.success('Agent runtime stopped successfully!', agentId)
             } catch (error) {
-              ayaLogger.error('Error stopping agent:', error)
+              console.error('Error stopping agent:', error)
             }
           }
 
-          logger.info('The End.')
+          console.log('The End.')
           process.exit(0)
         } catch (error) {
-          logger.error('Error shutting down:', error)
+          console.error('Error shutting down:', error)
           process.exit(1)
         }
       }
@@ -204,14 +204,14 @@ export class Agent implements IAyaAgent {
       const AGENTCOIN_MONITORING_ENABLED = this.runtime.getSetting('AGENTCOIN_MONITORING_ENABLED')
 
       if (AGENTCOIN_MONITORING_ENABLED) {
-        ayaLogger.info('Agentcoin monitoring enabled')
+        console.log('Agentcoin monitoring enabled')
         await managers.config.start()
       }
 
-      ayaLogger.info(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
+      console.log(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
       console.log('sdk error', error)
-      ayaLogger.error(
+      console.error(
         'Error creating agent:',
         error instanceof Error
           ? {
@@ -289,7 +289,7 @@ export class Agent implements IAyaAgent {
     authInfo: AuthInfo,
     envSettings: Record<string, string>
   ): Promise<Character> {
-    logger.info('Loading character...')
+    console.log('Loading character...')
     const { identity, token } = authInfo
 
     const characterId = ensureUUID(identity.substring(6))
@@ -334,7 +334,7 @@ export class Agent implements IAyaAgent {
       character.secrets.PGLITE_DATA_DIR = path.join(this.context.dataDir, 'elizadb')
     }
 
-    logger.info('loaded character', character.name)
+    console.log('loaded character', character.name)
 
     return character
   }
@@ -363,7 +363,7 @@ export class Agent implements IAyaAgent {
       if (key.startsWith('AGENTCOIN_ENC_') && isRequiredString(value)) {
         const decryptedValue = this.context.managers.keychain.decrypt(value)
         const newKey = key.substring(14)
-        ayaLogger.info('Decrypted secret:', newKey)
+        console.log('Decrypted secret:', newKey)
         env[newKey] = decryptedValue
         delete env[key]
       }
@@ -386,14 +386,14 @@ async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promi
   if (!runtime.plugins.some((p) => p.name === plugin.name)) {
     // Push to plugins array - this works because we're modifying the array, not reassigning it
     runtime.plugins.push(plugin)
-    logger.info(`Success: Plugin ${plugin.name} registered successfully`)
+    console.log(`Success: Plugin ${plugin.name} registered successfully`)
   }
 
   // Initialize the plugin if it has an init function
   if (plugin.init) {
     try {
       await plugin.init(plugin.config || {}, runtime)
-      logger.info(`Success: Plugin ${plugin.name} initialized successfully`)
+      console.log(`Success: Plugin ${plugin.name} initialized successfully`)
     } catch (error) {
       // Check if the error is related to missing API keys
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -404,11 +404,11 @@ async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promi
         errorMessage.includes('Invalid plugin configuration')
       ) {
         // Instead of throwing an error, log a friendly message
-        logger.warn(`Plugin ${plugin.name} requires configuration. ${errorMessage}`)
-        logger.warn(
+        console.warn(`Plugin ${plugin.name} requires configuration. ${errorMessage}`)
+        console.warn(
           'Please check your environment variables and ensure all required API keys are set.'
         )
-        logger.warn('You can set these in your .eliza/.env file.')
+        console.warn('You can set these in your .eliza/.env file.')
 
         // We don't throw here, allowing the application to continue
         // with reduced functionality
@@ -421,7 +421,7 @@ async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promi
 
   // Register plugin adapter
   if (plugin.adapter) {
-    logger.info(`Registering database adapter for plugin ${plugin.name}`)
+    console.log(`Registering database adapter for plugin ${plugin.name}`)
     runtime.registerDatabaseAdapter(plugin.adapter)
   }
 
@@ -481,17 +481,14 @@ async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promi
 async function hackRegisterService(service: typeof Service, runtime: IAgentRuntime): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   const serviceType = service.serviceType as ServiceTypeName
-  if (!serviceType) {
-    return
-  }
 
   if (runtime.services.has(serviceType)) {
-    logger.warn(`(${runtime.agentId}) - Service ${serviceType} is already registered.`)
+    console.warn(`(${runtime.agentId}) - Service ${serviceType} is already registered.`)
     return
   }
 
   const serviceInstance = await service.start(runtime)
   // Add the service to the services map
   runtime.services.set(serviceType, serviceInstance)
-  logger.info(`(${runtime.agentId}) - Service ${serviceType} registered successfully`)
+  console.log(`(${runtime.agentId}) - Service ${serviceType} registered successfully`)
 }

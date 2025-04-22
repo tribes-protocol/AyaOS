@@ -1,6 +1,5 @@
 import { isNull } from '@/common/functions'
 import { Queue } from '@/common/lang/queue'
-import { ayaLogger } from '@/common/logger'
 
 export class OperationQueue {
   readonly name: string
@@ -24,7 +23,7 @@ export class OperationQueue {
           const startTime: number | undefined = this.logTime ? performance.now() : undefined
           resolve(await work())
           if (startTime) {
-            ayaLogger.info(`Operation [${this.name}] took ${performance.now() - startTime} ms`)
+            console.log(`Operation [${this.name}] took ${performance.now() - startTime} ms`)
           }
         } catch (err) {
           reject(err)
@@ -49,7 +48,7 @@ export class OperationQueue {
     try {
       await work()
     } catch (err) {
-      ayaLogger.error('Exception in work(), this should never happen', err)
+      console.error('Exception in work(), this should never happen', err)
     } finally {
       this.running--
       void this.doNextWork()

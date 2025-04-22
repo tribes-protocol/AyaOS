@@ -49,12 +49,12 @@ export class LoginManager {
     name?: string | undefined,
     purpose?: string | undefined
   ): Promise<AuthInfo> {
-    ayaLogger.info('Checking if agent coin is provisioned...')
+    console.log('Checking if agent coin is provisioned...')
     if (await this.isProvisioned()) {
       return this.getAuthInfo()
     }
 
-    ayaLogger.info('Provisioning agent...')
+    console.log('Provisioning agent...')
 
     const regPath = this.pathResolver.registrationFile
 
@@ -198,7 +198,7 @@ export class LoginManager {
           }
         } catch (error) {
           clearInterval(waitingInterval)
-          ayaLogger.error('Error polling for CLI auth token', error)
+          console.error('Error polling for CLI auth token', error)
           throw new Error('Failed to authenticate via CLI')
         }
       }
@@ -221,7 +221,7 @@ export class LoginManager {
       await this.getIdentity()
       return true
     } catch {
-      ayaLogger.info('Provision file not found, assuming agent is not provisioned')
+      console.log('Provision file not found, assuming agent is not provisioned')
       return false
     }
   }

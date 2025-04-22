@@ -194,9 +194,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         await this.syncKnowledge()
       } catch (error) {
         if (error instanceof Error) {
-          ayaLogger.error('⚠️ Error in sync job:', error.message)
+          console.error('⚠️ Error in sync job:', error.message)
         } else {
-          ayaLogger.error('⚠️ Error in sync job:', error)
+          console.error('⚠️ Error in sync job:', error)
         }
       }
       // Wait for 1 minute before the next run
@@ -207,7 +207,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   async stop(): Promise<void> {
     this.isRunning = false
-    ayaLogger.info('Knowledge sync service stopped')
+    console.log('Knowledge sync service stopped')
   }
 
   static async start(runtime: IAgentRuntime): Promise<Service> {
@@ -288,7 +288,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         remoteKnowledgeIds.push(itemId)
 
         if (!existingKnowledgeIds.has(itemId)) {
-          ayaLogger.info(`Processing new knowledge: ${knowledge.name}`)
+          console.log(`Processing new knowledge: ${knowledge.name}`)
           await this.processFileKnowledge(knowledge, itemId)
         }
       }
@@ -298,7 +298,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       )
 
       for (const knowledgeId of knowledgeIdsToRemove) {
-        ayaLogger.info(`Removing knowledge: ${knowledgeId}`)
+        console.log(`Removing knowledge: ${knowledgeId}`)
         await this.remove(knowledgeId)
       }
 
@@ -308,9 +308,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       )
     } catch (error) {
       if (error instanceof Error) {
-        ayaLogger.error(`Error processing knowledge files: ${error.message}`)
+        console.error(`Error processing knowledge files: ${error.message}`)
       } else {
-        ayaLogger.error(`Error processing knowledge files: ${error}`)
+        console.error(`Error processing knowledge files: ${error}`)
       }
       throw error
     }
@@ -327,7 +327,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         kind: KNOWLEDGE_KIND
       })
     } catch (error) {
-      ayaLogger.error(`Error processing file metadata for ${data.name}: ${error}`)
+      console.error(`Error processing file metadata for ${data.name}: ${error}`)
     }
   }
 
@@ -357,7 +357,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
       const fileExtension = path.extname(file.name).toLowerCase()
       if (!isValidFileExtension(fileExtension)) {
-        ayaLogger.error(`Unsupported file type: ${fileExtension}`)
+        console.error(`Unsupported file type: ${fileExtension}`)
         throw new Error(`Unsupported file type: ${fileExtension}`)
       }
 
@@ -367,14 +367,14 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         const loader = new LoaderClass(outputPath)
         const docs = await loader.load()
         const content = docs.map((doc) => doc.pageContent).join('\n')
-        ayaLogger.info(`Successfully processed file: ${file.name}`)
+        console.log(`Successfully processed file: ${file.name}`)
         return content
       } catch (error) {
-        ayaLogger.error(`Error parsing ${fileExtension} file: ${file.name}`, error)
+        console.error(`Error parsing ${fileExtension} file: ${file.name}`, error)
         return ''
       }
     } catch (error) {
-      ayaLogger.error(`Error processing file from ${file.metadata.url}:`, error)
+      console.error(`Error processing file from ${file.metadata.url}:`, error)
       throw error
     }
   }
@@ -576,7 +576,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
       await fs.unlink(path.join(this.pathResolver.knowledgeRoot, knowledge.source))
     } catch (error) {
-      ayaLogger.error(`Error removing knowledge: ${error}`)
+      console.error(`Error removing knowledge: ${error}`)
     }
   }
 }

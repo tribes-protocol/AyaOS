@@ -140,7 +140,7 @@ async function generateObjectByModelType(
   try {
     if (params.schema) {
       // Skip zod validation and just use the generateObject without schema
-      logger.info(`Using ${modelType} without schema validation`)
+      console.log(`Using ${modelType} without schema validation`)
     }
 
     const { object } = await generateObject({
@@ -152,7 +152,7 @@ async function generateObjectByModelType(
     })
     return object
   } catch (error) {
-    logger.error(`Error generating object with ${modelType}:`, error)
+    console.error(`Error generating object with ${modelType}:`, error)
     throw error
   }
 }
@@ -173,7 +173,7 @@ function getJsonRepairFunction(): (params: {
         return cleanedText || null
       }
     } catch (jsonError) {
-      logger.warn('Failed to repair JSON text:', jsonError)
+      console.warn('Failed to repair JSON text:', jsonError)
       return null
     }
 
@@ -246,7 +246,7 @@ export const openaiPlugin: Plugin = {
 
       // If API key is not set, we'll show a warning but continue
       if (!getApiKey(runtime)) {
-        logger.warn(
+        console.warn(
           'OPENAI_API_KEY is not set in environment - OpenAI functionality will be limited'
         )
         // Return early without throwing an error
@@ -261,20 +261,20 @@ export const openaiPlugin: Plugin = {
         })
 
         if (!response.ok) {
-          logger.warn(`OpenAI API key validation failed: ${response.statusText}`)
-          logger.warn('OpenAI functionality will be limited until a valid API key is provided')
+          console.warn(`OpenAI API key validation failed: ${response.statusText}`)
+          console.warn('OpenAI functionality will be limited until a valid API key is provided')
           // Continue execution instead of throwing
         } else {
-          // logger.log("OpenAI API key validated successfully");
+          // console.log("OpenAI API key validated successfully");
         }
       } catch (fetchError) {
-        logger.warn(`Error validating OpenAI API key: ${fetchError}`)
-        logger.warn('OpenAI functionality will be limited until a valid API key is provided')
+        console.warn(`Error validating OpenAI API key: ${fetchError}`)
+        console.warn('OpenAI functionality will be limited until a valid API key is provided')
         // Continue execution instead of throwing
       }
     } catch (error) {
       // Convert to warning instead of error
-      logger.warn(
+      console.warn(
         `OpenAI plugin configuration issue: ${error} ` +
           `- You need to configure the OPENAI_API_KEY in your environment variables`
       )
@@ -292,7 +292,7 @@ export const openaiPlugin: Plugin = {
 
       // Validate embedding dimension
       if (!Object.values(VECTOR_DIMS).includes(embeddingDimension)) {
-        logger.error(
+        console.error(
           `Invalid embedding dimension: ${embeddingDimension}. Must be one of: ${Object.values(VECTOR_DIMS).join(', ')}`
         )
         throw new Error(
@@ -316,7 +316,7 @@ export const openaiPlugin: Plugin = {
       } else if (typeof params === 'object' && params.text) {
         text = params.text // Object with text property
       } else {
-        logger.warn('Invalid input format for embedding')
+        console.warn('Invalid input format for embedding')
         // Return a fallback for invalid input
         const fallbackVector = Array(embeddingDimension).fill(0)
         fallbackVector[0] = 0.2 // Different value for tracking
@@ -325,7 +325,7 @@ export const openaiPlugin: Plugin = {
 
       // Skip API call for empty text
       if (!text.trim()) {
-        logger.warn('Empty text for embedding')
+        console.warn('Empty text for embedding')
         const emptyVector = Array(embeddingDimension).fill(0)
         emptyVector[0] = 0.3 // Different value for tracking
         return emptyVector
@@ -348,7 +348,7 @@ export const openaiPlugin: Plugin = {
         })
 
         if (!response.ok) {
-          logger.error(`OpenAI API error: ${response.status} - ${response.statusText}`)
+          console.error(`OpenAI API error: ${response.status} - ${response.statusText}`)
           const errorVector = Array(embeddingDimension).fill(0)
           errorVector[0] = 0.4 // Different value for tracking
           return errorVector
@@ -360,17 +360,17 @@ export const openaiPlugin: Plugin = {
         }
 
         if (!data?.data?.[0]?.embedding) {
-          logger.error('API returned invalid structure')
+          console.error('API returned invalid structure')
           const errorVector = Array(embeddingDimension).fill(0)
           errorVector[0] = 0.5 // Different value for tracking
           return errorVector
         }
 
         const embedding = data.data[0].embedding
-        logger.log(`Got valid embedding with length ${embedding.length}`)
+        console.log(`Got valid embedding with length ${embedding.length}`)
         return embedding
       } catch (error) {
-        logger.error('Error generating embedding:', error)
+        console.error('Error generating embedding:', error)
         const errorVector = Array(embeddingDimension).fill(0)
         errorVector[0] = 0.6 // Different value for tracking
         return errorVector
@@ -400,8 +400,8 @@ export const openaiPlugin: Plugin = {
       const openai = createOpenAIClient(runtime)
       const model = getSmallModel(runtime)
 
-      logger.log('generating text')
-      logger.log(prompt)
+      console.log('generating text')
+      console.log(prompt)
 
       const { text: openaiResponse } = await generateText({
         model: openai.languageModel(model),
@@ -491,7 +491,7 @@ export const openaiPlugin: Plugin = {
         const apiKey = getApiKey(runtime)
 
         if (!apiKey) {
-          logger.error('OpenAI API key not set')
+          console.error('OpenAI API key not set')
           return {
             title: 'Failed to analyze image',
             description: 'API key not configured'
@@ -552,7 +552,7 @@ export const openaiPlugin: Plugin = {
 
         return { title, description }
       } catch (error) {
-        logger.error('Error analyzing image:', error)
+        console.error('Error analyzing image:', error)
         return {
           title: 'Failed to analyze image',
           description: `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -560,7 +560,7 @@ export const openaiPlugin: Plugin = {
       }
     },
     [ModelType.TRANSCRIPTION]: async (runtime, audioBuffer: Buffer) => {
-      logger.log('audioBuffer', audioBuffer)
+      console.log('audioBuffer', audioBuffer)
       const baseURL = getBaseURL(runtime)
 
       const formData = new FormData()
@@ -575,7 +575,7 @@ export const openaiPlugin: Plugin = {
         body: formData
       })
 
-      logger.log('response', response)
+      console.log('response', response)
       if (!response.ok) {
         throw new Error(`Failed to transcribe audio: ${response.statusText}`)
       }
@@ -611,7 +611,7 @@ export const openaiPlugin: Plugin = {
             const data = await response.json()
             // eslint-disable-next-line max-len
             // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-            logger.log('Models Available:', (data as any)?.data.length)
+            console.log('Models Available:', (data as any)?.data.length)
             if (!response.ok) {
               throw new Error(`Failed to validate OpenAI API key: ${response.statusText}`)
             }
@@ -624,9 +624,9 @@ export const openaiPlugin: Plugin = {
               const embedding = await runtime.useModel(ModelType.TEXT_EMBEDDING, {
                 text: 'Hello, world!'
               })
-              logger.log('embedding', embedding)
+              console.log('embedding', embedding)
             } catch (error) {
-              logger.error('Error in test_text_embedding:', error)
+              console.error('Error in test_text_embedding:', error)
               throw error
             }
           }
@@ -641,9 +641,9 @@ export const openaiPlugin: Plugin = {
               if (text.length === 0) {
                 throw new Error('Failed to generate text')
               }
-              logger.log('generated with test_text_large:', text)
+              console.log('generated with test_text_large:', text)
             } catch (error) {
-              logger.error('Error in test_text_large:', error)
+              console.error('Error in test_text_large:', error)
               throw error
             }
           }
@@ -658,9 +658,9 @@ export const openaiPlugin: Plugin = {
               if (text.length === 0) {
                 throw new Error('Failed to generate text')
               }
-              logger.log('generated with test_text_small:', text)
+              console.log('generated with test_text_small:', text)
             } catch (error) {
-              logger.error('Error in test_text_small:', error)
+              console.error('Error in test_text_small:', error)
               throw error
             }
           }
@@ -668,16 +668,16 @@ export const openaiPlugin: Plugin = {
         {
           name: 'openai_test_image_generation',
           fn: async (runtime) => {
-            logger.log('openai_test_image_generation')
+            console.log('openai_test_image_generation')
             try {
               const image = await runtime.useModel(ModelType.IMAGE, {
                 prompt: 'A beautiful sunset over a calm ocean',
                 n: 1,
                 size: '1024x1024'
               })
-              logger.log('generated with test_image_generation:', image)
+              console.log('generated with test_image_generation:', image)
             } catch (error) {
-              logger.error('Error in test_image_generation:', error)
+              console.error('Error in test_image_generation:', error)
               throw error
             }
           }
@@ -686,7 +686,7 @@ export const openaiPlugin: Plugin = {
           name: 'image-description',
           fn: async (runtime) => {
             try {
-              logger.log('openai_test_image_description')
+              console.log('openai_test_image_description')
               try {
                 const result = await runtime.useModel(
                   ModelType.IMAGE_DESCRIPTION,
@@ -700,22 +700,22 @@ export const openaiPlugin: Plugin = {
                   'title' in result &&
                   'description' in result
                 ) {
-                  logger.log('Image description:', result)
+                  console.log('Image description:', result)
                 } else {
-                  logger.error('Invalid image description result format:', result)
+                  console.error('Invalid image description result format:', result)
                 }
               } catch (e) {
-                logger.error('Error in image description test:', e)
+                console.error('Error in image description test:', e)
               }
             } catch (e) {
-              logger.error('Error in openai_test_image_description:', e)
+              console.error('Error in openai_test_image_description:', e)
             }
           }
         },
         {
           name: 'openai_test_transcription',
           fn: async (runtime) => {
-            logger.log('openai_test_transcription')
+            console.log('openai_test_transcription')
             try {
               const response = await fetch(
                 'https://upload.wikimedia.org/wikipedia/en/4/40/Chris_Benoit_Voice_Message.ogg'
@@ -725,9 +725,9 @@ export const openaiPlugin: Plugin = {
                 ModelType.TRANSCRIPTION,
                 Buffer.from(new Uint8Array(arrayBuffer))
               )
-              logger.log('generated with test_transcription:', transcription)
+              console.log('generated with test_transcription:', transcription)
             } catch (error) {
-              logger.error('Error in test_transcription:', error)
+              console.error('Error in test_transcription:', error)
               throw error
             }
           }
@@ -740,7 +740,7 @@ export const openaiPlugin: Plugin = {
             if (!Array.isArray(tokens) || tokens.length === 0) {
               throw new Error('Failed to tokenize text: expected non-empty array of tokens')
             }
-            logger.log('Tokenized output:', tokens)
+            console.log('Tokenized output:', tokens)
           }
         },
         {
@@ -756,7 +756,7 @@ export const openaiPlugin: Plugin = {
                 `Decoded text does not match original. Expected "${prompt}", got "${decodedText}"`
               )
             }
-            logger.log('Decoded text:', decodedText)
+            console.log('Decoded text:', decodedText)
           }
         },
         {
@@ -768,9 +768,9 @@ export const openaiPlugin: Plugin = {
               if (!response) {
                 throw new Error('Failed to generate speech')
               }
-              logger.log('Generated speech successfully')
+              console.log('Generated speech successfully')
             } catch (error) {
-              logger.error('Error in openai_test_text_to_speech:', error)
+              console.error('Error in openai_test_text_to_speech:', error)
               throw error
             }
           }

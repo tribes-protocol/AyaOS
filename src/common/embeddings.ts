@@ -1,4 +1,3 @@
-import { ayaLogger } from '@/common/logger'
 import { EmbeddingsConfig } from '@/common/types'
 
 /**
@@ -28,8 +27,8 @@ export async function embed(text: string, config: EmbeddingsConfig): Promise<num
 
     if (!response.ok) {
       const errorText = await response.text()
-      ayaLogger.error('Request URL:', fullUrl)
-      ayaLogger.error(
+      console.error('Request URL:', fullUrl)
+      console.error(
         'Request body:',
         JSON.stringify(
           {
@@ -40,7 +39,7 @@ export async function embed(text: string, config: EmbeddingsConfig): Promise<num
           2
         )
       )
-      ayaLogger.error('API Response:', errorText)
+      console.error('API Response:', errorText)
       throw new Error(
         `Embedding API Error: ${response.status} ${response.statusText}\n${errorText}`
       )
@@ -53,7 +52,7 @@ export async function embed(text: string, config: EmbeddingsConfig): Promise<num
     const data: EmbeddingResponse = await response.json()
     return data?.data?.[0].embedding
   } catch (e) {
-    ayaLogger.error('Embedding error:', e)
+    console.error('Embedding error:', e)
     throw e
   }
 }

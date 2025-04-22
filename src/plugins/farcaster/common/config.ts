@@ -100,20 +100,22 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
 
     // Log configuration on initialization
 
-    logger.log('Farcaster Client Configuration:')
-    logger.log(`- FID: ${config.FARCASTER_FID}`)
-    logger.log(`- Dry Run Mode: ${isDryRun ? 'enabled' : 'disabled'}`)
-    logger.log(`- Enable Post: ${config.ENABLE_POST ? 'enabled' : 'disabled'}`)
+    console.log('Farcaster Client Configuration:')
+    console.log(`- FID: ${config.FARCASTER_FID}`)
+    console.log(`- Dry Run Mode: ${isDryRun ? 'enabled' : 'disabled'}`)
+    console.log(`- Enable Post: ${config.ENABLE_POST ? 'enabled' : 'disabled'}`)
 
     if (config.ENABLE_POST) {
-      logger.log(`- Post Interval: ${config.POST_INTERVAL_MIN}-${config.POST_INTERVAL_MAX} minutes`)
-      logger.log(`- Post Immediately: ${config.POST_IMMEDIATELY ? 'enabled' : 'disabled'}`)
+      console.log(
+        `- Post Interval: ${config.POST_INTERVAL_MIN}-${config.POST_INTERVAL_MAX} minutes`
+      )
+      console.log(`- Post Immediately: ${config.POST_IMMEDIATELY ? 'enabled' : 'disabled'}`)
     }
-    logger.log(`- Action Processing: ${config.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'}`)
-    logger.log(`- Action Interval: ${config.ACTION_INTERVAL} minutes`)
+    console.log(`- Action Processing: ${config.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'}`)
+    console.log(`- Action Interval: ${config.ACTION_INTERVAL} minutes`)
 
     if (isDryRun) {
-      logger.log('Farcaster client initialized in dry run mode - no actual casts should be posted')
+      console.log('Farcaster client initialized in dry run mode - no actual casts should be posted')
     }
 
     return config

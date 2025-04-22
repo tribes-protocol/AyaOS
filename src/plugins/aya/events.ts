@@ -132,7 +132,7 @@ export const messageReceivedHandler = async ({
       if (rateLimiter) {
         const canProcess = await rateLimiter.canProcess(message)
         if (!canProcess) {
-          logger.warn('Rate limit exceeded, skipping message from user:', message.entityId)
+          console.warn('Rate limit exceeded, skipping message from user:', message.entityId)
           return
         }
       }
@@ -220,7 +220,7 @@ export const messageReceivedHandler = async ({
 
           retries++
           if (!responseContent?.thought && !responseContent?.actions) {
-            logger.warn('*** Missing required fields, retrying... ***')
+            console.warn('*** Missing required fields, retrying... ***')
           }
         }
 
@@ -312,10 +312,10 @@ export const reactionReceivedHandler = async ({
     await runtime.createMemory(message, 'messages')
   } catch (error) {
     if (error instanceof Error && error.message === '23505') {
-      logger.warn('Duplicate reaction memory, skipping')
+      console.warn('Duplicate reaction memory, skipping')
       return
     }
-    logger.error('Error in reaction handler:', error)
+    console.error('Error in reaction handler:', error)
   }
 }
 
@@ -327,7 +327,7 @@ export const postGeneratedHandler = async ({
   roomId,
   source
 }: InvokePayload): Promise<void> => {
-  logger.info('Generating new post...')
+  console.log('Generating new post...')
   // Ensure world exists first
   await runtime.ensureWorldExists({
     id: worldId,
@@ -409,7 +409,7 @@ export const postGeneratedHandler = async ({
   // 		const fetchedMedia = await fetchMediaData(imagePromptMedia);
   // 		mediaData.push(...fetchedMedia);
   // 	} catch (error) {
-  // 		logger.error("Error fetching media for tweet:", error);
+  // 		console.error("Error fetching media for tweet:", error);
   // 	}
   // }
 

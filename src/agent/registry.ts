@@ -73,7 +73,7 @@ export const AgentRegistry = {
   async destroy(dataDir: string): Promise<void> {
     const context = this.instances.get(dataDir)
     if (isNull(context)) {
-      logger.warn('Agent not registered: ' + dataDir)
+      console.warn('Agent not registered: ' + dataDir)
       return
     }
 

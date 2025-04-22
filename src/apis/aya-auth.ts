@@ -69,7 +69,7 @@ export class AyaAuthAPI {
         throw new Error(ErrorResponseSchema.parse(error).error)
       }
     } catch (error) {
-      logger.error('Failed to publish event', body, error)
+      console.error('Failed to publish event', body, error)
     }
   }
 

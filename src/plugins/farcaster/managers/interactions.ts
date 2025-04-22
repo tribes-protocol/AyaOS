@@ -51,7 +51,7 @@ export class FarcasterInteractionManager {
   }
 
   public async start(): Promise<void> {
-    logger.info('Starting Farcaster interactions')
+    console.log('Starting Farcaster interactions')
     if (this.isRunning) {
       return
     }
@@ -76,7 +76,7 @@ export class FarcasterInteractionManager {
         const delay = this.config.FARCASTER_POLL_INTERVAL * 1000
         await new Promise((resolve) => (this.timeout = setTimeout(resolve, delay)))
       } catch (error) {
-        logger.error('[Farcaster] Error in periodic interactions:', this.runtime.agentId, error)
+        console.error('[Farcaster] Error in periodic interactions:', this.runtime.agentId, error)
       }
     }
   }
@@ -171,7 +171,7 @@ export class FarcasterInteractionManager {
         continue
       }
 
-      logger.info('New Cast found', mention.hash)
+      console.log('New Cast found', mention.hash)
 
       // filter out the agent mentions
       if (mention.authorFid === agentFid) {
@@ -206,7 +206,7 @@ export class FarcasterInteractionManager {
       const memory = await runtime.getMemoryById(memoryId)
 
       if (!memory) {
-        logger.info('Creating memory for cast', currentCast.hash)
+        console.log('Creating memory for cast', currentCast.hash)
         const memory = await self.ensureCastConnection(currentCast)
         await runtime.createMemory(memory, 'messages')
         await runtime.emitEvent(FarcasterEventTypes.THREAD_CAST_CREATED, {
@@ -239,7 +239,7 @@ export class FarcasterInteractionManager {
     mention: Cast
   }): Promise<void> {
     if (mention.profile.fid === agent.fid) {
-      logger.info('skipping cast from bot itself', mention.hash)
+      console.log('skipping cast from bot itself', mention.hash)
       return
     }
 
@@ -251,7 +251,7 @@ export class FarcasterInteractionManager {
     )
 
     if (!memory.content.text || memory.content.text.trim() === '') {
-      logger.info('skipping cast with no text', mention.hash)
+      console.log('skipping cast with no text', mention.hash)
       return
     }
 
@@ -291,12 +291,12 @@ export class FarcasterInteractionManager {
 
     const responseActions = (response.match(/(?:RESPOND|IGNORE|STOP)/g) || ['IGNORE'])[0]
     if (responseActions !== 'RESPOND') {
-      logger.info(`Not responding to cast based on shouldRespond decision: ${responseActions}`)
+      console.log(`Not responding to cast based on shouldRespond decision: ${responseActions}`)
       try {
         // save the memory so we don't process it again in mentions
         await this.runtime.createMemory(memory, 'messages')
       } catch (error) {
-        logger.error('Error creating ignoredmemory', error)
+        console.error('Error creating ignoredmemory', error)
       }
       return
     }
@@ -330,7 +330,7 @@ export class FarcasterInteractionManager {
       cast,
       source: FARCASTER_SOURCE,
       callback: async (_content, _files) => {
-        logger.info('[Farcaster] mention received response:', response)
+        console.log('[Farcaster] mention received response:', response)
         return []
       }
     }

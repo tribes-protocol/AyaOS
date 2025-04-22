@@ -6,5 +6,8 @@ export const telegramPlugin: Plugin = {
   name: TELEGRAM_SERVICE_NAME,
   description: 'Telegram client plugin',
   services: [TelegramService],
-  tests: []
+  tests: [],
+  init: async (_config, runtime) => {
+    console.log('telegramPlugin init for agentId', runtime.agentId)
+  }
 }

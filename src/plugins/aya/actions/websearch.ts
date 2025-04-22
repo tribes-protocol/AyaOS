@@ -1,5 +1,4 @@
 import { ensureRuntimeService, isNull } from '@/common/functions'
-import { ayaLogger } from '@/common/logger'
 import { WebSearchService } from '@/plugins/aya/services/websearch'
 import type { SearchResult } from '@/plugins/aya/types'
 import {
@@ -39,20 +38,20 @@ export const webSearch: Action = {
     },
     callback?: HandlerCallback
   ) => {
-    ayaLogger.log('Composing state for message:', message)
+    console.log('Composing state for message:', message)
     state = await runtime.composeState(message)
     const userId = runtime.agentId
-    ayaLogger.log('User ID:', userId)
+    console.log('User ID:', userId)
 
     const webSearchPrompt = message.content.text
-    ayaLogger.log('web search prompt received:', webSearchPrompt)
+    console.log('web search prompt received:', webSearchPrompt)
 
     const webSearchService = ensureRuntimeService<WebSearchService>(
       runtime,
       WebSearchService.serviceType
     )
     if (isNull(webSearchPrompt)) {
-      ayaLogger.error('web search prompt is empty')
+      console.error('web search prompt is empty')
       return
     }
 
@@ -96,7 +95,7 @@ export const webSearch: Action = {
         text: summary
       })
     } else {
-      ayaLogger.error('search failed or returned no data.')
+      console.error('search failed or returned no data.')
       console.log('search failed or returned no data.')
     }
   },

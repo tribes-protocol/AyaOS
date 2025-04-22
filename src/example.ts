@@ -1,5 +1,4 @@
 import { Agent } from '@/agent/agent'
-import { ayaLogger } from '@/common/logger'
 
 async function main(): Promise<void> {
   try {
@@ -12,4 +11,4 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(ayaLogger.error)
+main().catch(console.error)

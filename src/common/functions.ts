@@ -1,5 +1,4 @@
 import { UUID_PATTERN } from '@/common/constants'
-import { ayaLogger } from '@/common/logger'
 import {
   ChatChannel,
   ChatChannelKind,
@@ -134,7 +133,7 @@ export function retry<T>(
         .then(resolve)
         .catch((error) => {
           if (logError) {
-            ayaLogger.error(`Error: ${error}`)
+            console.error(`Error: ${error}`)
           }
           if (retries < maxRetries) {
             retries++

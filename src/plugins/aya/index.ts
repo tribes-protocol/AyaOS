@@ -121,9 +121,9 @@ const events = {
           }
           await payload.runtime.updateEntity(entity)
         }
-        logger.info(`User ${payload.entityId} left world ${payload.worldId}`)
+        console.log(`User ${payload.entityId} left world ${payload.worldId}`)
       } catch (error) {
-        logger.error(
+        console.error(
           `Error handling user left: ${error instanceof Error ? error.message : String(error)}`
         )
       }

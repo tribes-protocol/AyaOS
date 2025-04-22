@@ -24,14 +24,14 @@ export function standardCastHandlerCallback({
   const callback: HandlerCallback = async (content, _files) => {
     try {
       if (config.FARCASTER_DRY_RUN) {
-        logger.info(`[Farcaster] Dry run: would have cast: ${content.text}`)
+        console.log(`[Farcaster] Dry run: would have cast: ${content.text}`)
         return []
       }
 
       const casts = await client.sendCast({ content, inReplyTo })
 
       if (casts.length === 0) {
-        logger.warn('[Farcaster] No casts posted')
+        console.warn('[Farcaster] No casts posted')
         return []
       }
 
@@ -62,7 +62,7 @@ export function standardCastHandlerCallback({
 
       return memories
     } catch (error) {
-      logger.error('[Farcaster] Error posting cast:', error)
+      console.error('[Farcaster] Error posting cast:', error)
 
       if (onError) {
         await onError(error)
