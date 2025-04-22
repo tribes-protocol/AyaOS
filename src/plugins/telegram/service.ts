@@ -68,7 +68,12 @@ export class TelegramService extends Service {
    * @returns {Promise<TelegramService>} A promise that resolves with the initialized
    * TelegramService.
    */
-  static async start(runtime: IAgentRuntime): Promise<TelegramService> {
+  static async start(runtime: IAgentRuntime): Promise<Service> {
+    const tgClient = runtime.getService(TELEGRAM_SERVICE_NAME)
+    if (tgClient) {
+      return tgClient
+    }
+
     await validateTelegramConfig(runtime)
 
     const maxRetries = 5
@@ -142,7 +147,7 @@ export class TelegramService extends Service {
    * @returns {Promise<void>} A Promise that resolves when the initialization is complete.
    */
   private async initializeBot(): Promise<void> {
-    await this.bot.launch({
+    void this.bot.launch({
       dropPendingUpdates: true,
       allowedUpdates: ['message', 'message_reaction']
     })
