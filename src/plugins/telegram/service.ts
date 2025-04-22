@@ -35,7 +35,6 @@ export class TelegramService extends Service {
   capabilityDescription = 'The agent is able to send and receive messages on telegram'
   private bot: Telegraf<Context>
   public messageManager: MessageManager
-  private options
   private knownChats: Set<string> = new Set<string>()
 
   private syncedEntityIds: Set<string> = new Set<string>()
@@ -47,16 +46,8 @@ export class TelegramService extends Service {
   constructor(runtime: IAgentRuntime) {
     super(runtime)
     console.log('📱 Constructing new TelegramService...')
-    this.options = {
-      telegram: {
-        apiRoot:
-          runtime.getSetting('TELEGRAM_API_ROOT') ||
-          process.env.TELEGRAM_API_ROOT ||
-          'https://api.telegram.org'
-      }
-    }
-    const botToken = runtime.getSetting('TELEGRAM_BOT_TOKEN')
-    this.bot = new Telegraf(botToken, this.options)
+    const botToken = runtime.getSetting('TELEGRAM_BOT_TOKEN') || process.env.TELEGRAM_BOT_TOKEN
+    this.bot = new Telegraf(botToken)
     this.messageManager = new MessageManager(this.bot, this.runtime)
     console.log('✅ TelegramService constructor completed')
   }
@@ -96,9 +87,6 @@ export class TelegramService extends Service {
 
         // Set up message handlers after middlewares
         service.setupMessageHandlers()
-
-        // Wait for bot to be ready by testing getMe()
-        await service.bot.telegram.getMe()
 
         return service
       } catch (error) {
