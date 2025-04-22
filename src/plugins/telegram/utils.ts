@@ -3,7 +3,7 @@ import { InlineKeyboardButton } from '@telegraf/types'
 import { Markup } from 'telegraf'
 
 // A list of Telegram MarkdownV2 reserved characters that must be escaped
-const TELEGRAM_RESERVED_REGEX = /([_*[\]()~`>#+\-=|{}.!\\])/g
+const TELEGRAM_RESERVED_REGEX = /([_*[\]()~`>#+|{}\\])/g
 
 /**
  * Escapes plain text for Telegram MarkdownV2.
@@ -57,6 +57,12 @@ function escapeUrl(url: string): string {
  * It makes assumptions about non–nested formatting and does not cover every edge case.
  */
 export function convertMarkdownToTelegram(markdown: string): string {
+  // Convert asterisk bullet points to indented dot/bullet (•) characters
+  markdown = markdown.replace(/^(\s*)\*\s+/gm, '$1• ')
+
+  // Convert dash bullet points (keep the dash, but ensure it's not escaped)
+  markdown = markdown.replace(/^(\s*)-\s+/gm, '$1- ')
+
   // We will temporarily replace recognized markdown tokens with placeholders.
   // Each placeholder is a string like "\u0000{index}\u0000".
   const replacements: string[] = []
@@ -84,16 +90,13 @@ export function convertMarkdownToTelegram(markdown: string): string {
   })
 
   // 3. Links: [link text](url)
-  converted = converted.replace(
-    /$begin:math:display$([^$end:math:display$]+)]$begin:math:text$([^)]+)$end:math:text$/g,
-    (match, text, url) => {
-      // For link text we escape as plain text.
-      const formattedText = escapePlainText(text)
-      const escapedURL = escapeUrl(url)
-      const formatted = `[${formattedText}](${escapedURL})`
-      return storeReplacement(formatted)
-    }
-  )
+  converted = converted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+    // For link text we escape as plain text.
+    const formattedText = escapePlainText(text)
+    const escapedURL = escapeUrl(url)
+    const formatted = `[${formattedText}](${escapedURL})`
+    return storeReplacement(formatted)
+  })
 
   // 4. Bold text: standard markdown bold **text**
   //    Telegram bold is delimited by single asterisks: *text*

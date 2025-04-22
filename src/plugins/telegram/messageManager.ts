@@ -14,7 +14,7 @@ import type { Message, Update } from '@telegraf/types'
 import type { Context, NarrowedContext, Telegraf } from 'telegraf'
 import { Markup } from 'telegraf'
 
-import { isNull, isRequiredString } from '@/common/functions'
+import { isNull, isRequiredString, toJsonTreeString } from '@/common/functions'
 import fs from 'node:fs'
 
 /**
@@ -73,7 +73,7 @@ export class MessageManager {
     try {
       let imageUrl: string | null = null
 
-      console.log(`Telegram Message: ${message}`)
+      console.debug(`Telegram Message: ${toJsonTreeString(message, { pretty: true })}`)
 
       if ('photo' in message && message.photo?.length > 0) {
         const photo = message.photo[message.photo.length - 1]

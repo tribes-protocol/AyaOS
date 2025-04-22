@@ -367,7 +367,6 @@ export const openaiPlugin: Plugin = {
         }
 
         const embedding = data.data[0].embedding
-        console.log(`Got valid embedding with length ${embedding.length}`)
         return embedding
       } catch (error) {
         console.error('Error generating embedding:', error)
@@ -399,9 +398,6 @@ export const openaiPlugin: Plugin = {
 
       const openai = createOpenAIClient(runtime)
       const model = getSmallModel(runtime)
-
-      console.log('generating text')
-      console.log(prompt)
 
       const { text: openaiResponse } = await generateText({
         model: openai.languageModel(model),

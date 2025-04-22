@@ -38,20 +38,15 @@ export const webSearch: Action = {
     },
     callback?: HandlerCallback
   ) => {
-    console.log('Composing state for message:', message)
     state = await runtime.composeState(message)
-    const userId = runtime.agentId
-    console.log('User ID:', userId)
 
     const webSearchPrompt = message.content.text
-    console.log('web search prompt received:', webSearchPrompt)
 
     const webSearchService = ensureRuntimeService<WebSearchService>(
       runtime,
       WebSearchService.serviceType
     )
     if (isNull(webSearchPrompt)) {
-      console.error('web search prompt is empty')
       return
     }
 
