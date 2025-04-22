@@ -1,9 +1,15 @@
 import { ITelegramManager } from '@/managers/interfaces'
 import { Content } from '@elizaos/core'
+import { Context } from 'telegraf'
 
 export class TelegramManager implements ITelegramManager {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(private readonly telegram: any) {}
+
+  registerCommand(command: string, handler: (ctx: Context) => Promise<void>): void {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    this.telegram.addCommandHandler(command, handler)
+  }
 
   async sendMessage(params: {
     chatId: number | string
