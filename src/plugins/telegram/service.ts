@@ -37,10 +37,7 @@ export class TelegramService extends Service {
   public messageManager: MessageManager
   private knownChats: Set<string> = new Set<string>()
 
-  private commandHandlers: Map<string, (ctx: Context) => Promise<void>> = new Map<
-    string,
-    (ctx: Context) => Promise<void>
-  >()
+  private commandHandlers = new Map<string, (ctx: Context) => Promise<void>>()
 
   private syncedEntityIds: Set<string> = new Set<string>()
 
