@@ -101,7 +101,7 @@ async function tokenizeText(model: ModelTypeName, prompt: string): Promise<numbe
   const modelName =
     model === ModelType.TEXT_SMALL
       ? (process.env.OPENAI_SMALL_MODEL ?? process.env.SMALL_MODEL ?? 'gpt-4o-mini')
-      : (process.env.LARGE_MODEL ?? 'gpt-4o')
+      : (process.env.OPENAI_LARGE_MODEL ?? process.env.LARGE_MODEL ?? 'gpt-4o')
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   const encoding = encodingForModel(modelName as TiktokenModel)
   const tokens = encoding.encode(prompt)
