@@ -37,7 +37,6 @@ import {
   AgentRuntime,
   Evaluator,
   IAgentRuntime,
-  logger,
   ModelTypeName,
   Plugin,
   Provider,

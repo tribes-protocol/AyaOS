@@ -8,8 +8,7 @@ import {
   type IAgentRuntime,
   type Memory,
   ModelType,
-  createUniqueUuid,
-  logger
+  createUniqueUuid
 } from '@elizaos/core'
 import type { Message, Update } from '@telegraf/types'
 import type { Context, NarrowedContext, Telegraf } from 'telegraf'

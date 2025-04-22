@@ -13,7 +13,6 @@ import {
   HydratedMessageSchema,
   Identity
 } from '@/common/types'
-import { logger } from '@elizaos/core'
 
 export class AyaAuthAPI {
   private readonly cookie_: string

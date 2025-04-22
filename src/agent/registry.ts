@@ -6,7 +6,6 @@ import { ConfigManager } from '@/managers/config'
 import { EventManager } from '@/managers/event'
 import { KeychainManager } from '@/managers/keychain'
 import { PathManager } from '@/managers/path'
-import { logger } from '@elizaos/core'
 
 export interface AgentContext {
   auth: AuthInfo
