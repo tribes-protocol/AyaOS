@@ -241,6 +241,13 @@ export const messageReceivedHandler = async ({
             responseContent = validation
           }
 
+          // make sure if content.actions has a REPLY action, it's the first action
+          const actions = responseContent.actions || []
+          if (actions.includes('REPLY')) {
+            responseContent.actions = actions.filter((action) => action !== 'REPLY')
+            responseContent.actions.unshift('REPLY')
+          }
+
           responseMessages = [
             {
               id: asUUID(v4()),
