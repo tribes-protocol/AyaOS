@@ -37,6 +37,8 @@ export class TelegramService extends Service {
   public messageManager: MessageManager
   private knownChats: Set<string> = new Set<string>()
 
+  private commandHandlers = new Map<string, (ctx: Context) => Promise<void>>()
+
   private syncedEntityIds: Set<string> = new Set<string>()
 
   /**
@@ -172,6 +174,9 @@ export class TelegramService extends Service {
     // Register the authorization middleware
     this.bot.use(this.authorizationMiddleware.bind(this))
 
+    // Register the command middleware
+    this.bot.use(this.commandMiddleware.bind(this))
+
     // Register the chat and entity management middleware
     this.bot.use(this.chatAndEntityMiddleware.bind(this))
   }
@@ -192,6 +197,29 @@ export class TelegramService extends Service {
       return
     }
     await next()
+  }
+
+  /**
+   * Command middleware - handles Telegram bot commands that start with '/'.
+   * This middleware checks if an incoming message is a command and executes the corresponding
+   * registered command handler if one exists.
+   *
+   * @param {Context} ctx - The context of the incoming update
+   * @param {Function} next - The function to call to proceed to the next middleware
+   * @returns {Promise<void>}
+   * @private
+   */
+  private async commandMiddleware(ctx: Context, next: () => Promise<void>): Promise<void> {
+    const text = ctx.text?.trim()
+    if (isNull(text) || text.length === 0 || !text.startsWith('/')) return next()
+
+    const command = text.split(' ')[0].slice(1)
+    if (command.length === 0) return next()
+
+    const commandHandler = this.commandHandlers.get(command)
+    if (isNull(commandHandler)) return next()
+
+    await commandHandler(ctx)
   }
 
   /**
@@ -277,6 +305,16 @@ export class TelegramService extends Service {
         console.error('Error handling reaction:', error)
       }
     })
+  }
+
+  /**
+   * Sets up a command handler for the bot.
+   * @param {string} command - The command to register.
+   * @param {Function} callback - The callback function to execute when the command is received.
+   * @returns {void}
+   */
+  public addCommandHandler(command: string, handler: (ctx: Context) => Promise<void>): void {
+    this.commandHandlers.set(command, handler)
   }
 
   /**

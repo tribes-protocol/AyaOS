@@ -1,9 +1,12 @@
-import { Content } from '@elizaos/core'
+import { TelegramContent } from '@/plugins/telegram/types'
+import { Context } from 'telegraf'
 
 export interface ITelegramManager {
+  registerCommand(command: string, handler: (ctx: Context) => Promise<void>): void
+
   sendMessage(params: {
     chatId: number | string
-    content: Content
+    content: TelegramContent
     replyToMessageId?: number | undefined
-  }): Promise<number>
+  }): Promise<number | undefined>
 }

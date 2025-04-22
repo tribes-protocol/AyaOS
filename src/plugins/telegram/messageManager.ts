@@ -601,7 +601,7 @@ export class MessageManager {
    */
   public async sendMessage(
     chatId: number | string,
-    content: Content,
+    content: TelegramContent,
     replyToMessageId?: number
   ): Promise<Message.CommonMessage[]> {
     try {
