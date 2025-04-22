@@ -31,6 +31,8 @@ export enum MediaType {
 }
 
 const MAX_MESSAGE_LENGTH = 4096 // Telegram's max message length
+const TYPING_INTERVAL_MS = 5000 // 5 seconds between typing indicators
+const MAX_TYPING_DURATION_MS = 60000 // 60 seconds maximum
 
 const getChannelType = (chatType: string): ChannelType => {
   if (chatType === 'private') return ChannelType.DM
@@ -48,6 +50,7 @@ const getChannelType = (chatType: string): ChannelType => {
 export class MessageManager {
   public bot: Telegraf<Context>
   protected runtime: IAgentRuntime
+  private typingIntervals: Map<string, { interval: NodeJS.Timeout; startTime: number }> = new Map()
 
   /**
    * Constructor for creating a new instance of a BotAgent.
@@ -151,8 +154,6 @@ export class MessageManager {
       const sentMessages: Message.TextMessage[] = []
 
       const telegramButtons = convertToTelegramButtons(content.buttons ?? [])
-
-      await ctx.telegram.sendChatAction(chatId, 'typing')
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = convertMarkdownToTelegram(chunks[i])
@@ -259,6 +260,57 @@ export class MessageManager {
     return chunks
   }
 
+  /**
+   * Starts a typing indicator that repeats at intervals for a specific chat
+   * @param chatId The chat ID to show typing indicator in
+   * @private
+   */
+  private startTypingIndicator(chatId: number | string): void {
+    const chatIdStr = chatId.toString()
+
+    // Clear any existing interval for this chat
+    this.clearTypingIndicator(chatIdStr)
+
+    const startTime = Date.now()
+
+    // Send initial typing indicator immediately
+    void this.bot.telegram.sendChatAction(chatId, 'typing').catch((error) => {
+      console.error('Failed to send initial typing action:', error)
+    })
+
+    // Create interval for repeating typing indicators
+    const interval = setInterval(() => {
+      try {
+        // Check if we've been typing too long
+        if (Date.now() - startTime > MAX_TYPING_DURATION_MS) {
+          this.clearTypingIndicator(chatIdStr)
+          return
+        }
+
+        void this.bot.telegram.sendChatAction(chatId, 'typing')
+      } catch (error) {
+        this.clearTypingIndicator(chatIdStr)
+        console.error('Failed to send typing action:', error)
+      }
+    }, TYPING_INTERVAL_MS)
+
+    // Store the interval and start time
+    this.typingIntervals.set(chatIdStr, { interval, startTime })
+  }
+
+  /**
+   * Clears typing indicator interval for a specific chat
+   * @param chatId The chat ID to clear typing indicator for
+   * @private
+   */
+  private clearTypingIndicator(chatId: string): void {
+    const typing = this.typingIntervals.get(chatId)
+    if (typing) {
+      clearInterval(typing.interval)
+      this.typingIntervals.delete(chatId)
+    }
+  }
+
   // Main handler for incoming messages
   /**
    * Handle incoming messages from Telegram and process them accordingly.
@@ -335,6 +387,9 @@ export class MessageManager {
       // Create callback for handling responses
       const callback: HandlerCallback = async (content: Content, _files?: string[]) => {
         try {
+          // Clear typing indicator before sending response
+          this.clearTypingIndicator(chatId.toString())
+
           // If response is from reasoning do not send it.
           if (!content.text) return []
 
@@ -375,10 +430,15 @@ export class MessageManager {
 
           return memories
         } catch (error) {
+          // Clear typing indicator in case of error too
+          this.clearTypingIndicator(chatId.toString())
           console.error('Error in message callback:', error)
           return []
         }
       }
+
+      // Start typing indicator
+      this.startTypingIndicator(chatId)
 
       // Let the bootstrap plugin handle the message
       await this.runtime.emitEvent(EventType.MESSAGE_RECEIVED, {
@@ -398,6 +458,11 @@ export class MessageManager {
         originalMessage: message
       })
     } catch (error) {
+      // Clear typing indicator in case of error
+      if (chatId) {
+        this.clearTypingIndicator(chatId.toString())
+      }
+
       console.error('Error handling Telegram message:', {
         error,
         chatId: ctx.chat?.id,
@@ -499,7 +564,7 @@ export class MessageManager {
    * @param {number | string} chatId - The Telegram chat ID to send the message to
    * @param {Content} content - The content to send
    * @param {number} [replyToMessageId] - Optional message ID to reply to
-   * @returns {Promise<Message.TextMessage[]>} The sent messages
+   * @returns {Promise<Message.CommonMessage[]>} The sent messages
    */
   public async sendMessage(
     chatId: number | string,
@@ -507,6 +572,9 @@ export class MessageManager {
     replyToMessageId?: number
   ): Promise<Message.CommonMessage[]> {
     try {
+      // Clear typing indicator before sending direct message
+      this.clearTypingIndicator(chatId.toString())
+
       // Create a context-like object for sending
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const ctx = {
@@ -569,6 +637,8 @@ export class MessageManager {
 
       return sentMessages
     } catch (error) {
+      // Clear typing indicator in case of error
+      this.clearTypingIndicator(chatId.toString())
       console.error('Error sending message to Telegram:', error)
       return []
     }

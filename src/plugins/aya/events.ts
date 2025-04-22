@@ -41,8 +41,10 @@ the conversation after responding
 "message" should be the next message for {{agentName}} which they will send to the conversation.
 These are the available valid actions: {{actionNames}}
 
-IMPORTANT: The order of actions matters. Actions are executed in the sequence they are listed 
+IMPORTANT: 
+- The order of actions matters. Actions are executed in the sequence they are listed 
 in your response. Ensure your actions are ordered logically to accomplish the task effectively. 
+- If you need to use the REPLY action, put that first under the "actions" property.
 
 Response format should be formatted in a valid JSON block like this:
 \`\`\`json
