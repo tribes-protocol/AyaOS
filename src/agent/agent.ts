@@ -30,8 +30,9 @@ import { ayaPlugin } from '@/plugins/aya'
 import openaiPlugin from '@/plugins/openai'
 import { telegramPlugin } from '@/plugins/telegram'
 import { TelegramService } from '@/plugins/telegram/service'
-import { IKnowledgeService, IWalletService } from '@/services/interfaces'
+import { IKnowledgeService, ILLMService, IWalletService } from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
+import { LLMService } from '@/services/llm'
 import { WalletService } from '@/services/wallet'
 import {
   Action,
@@ -93,6 +94,14 @@ export class Agent implements IAyaAgent {
       this.runtime,
       WalletService.serviceType,
       'Wallet service not found'
+    )
+  }
+
+  get llm(): ILLMService {
+    return ensureRuntimeService<LLMService>(
+      this.runtime,
+      LLMService.serviceType,
+      'LLM service not found'
     )
   }
 
@@ -193,7 +202,12 @@ export class Agent implements IAyaAgent {
       this.actions.forEach(runtime.registerAction.bind(runtime))
 
       // register services
-      const ayaServices: (typeof Service)[] = [KnowledgeService, WalletService, ...this.services]
+      const ayaServices: (typeof Service)[] = [
+        KnowledgeService,
+        WalletService,
+        LLMService,
+        ...this.services
+      ]
       for (const service of ayaServices) {
         await hackRegisterService(service, this.runtime)
       }
