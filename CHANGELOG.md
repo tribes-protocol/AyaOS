@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.7
+
+### Patch Changes
+
+- 4347433: fix schema
+
 ## 0.1.6
 
 ### Patch Changes
