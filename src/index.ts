@@ -35,5 +35,4 @@ export { ayaLogger } from '@/common/logger'
 
 export { ensureRuntimeService } from '@/common/functions'
 
-export type { ObjectGenerationOptions } from '@/common/types'
 export { webSearch } from '@/plugins/aya/actions/websearch'

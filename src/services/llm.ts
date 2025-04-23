@@ -1,8 +1,6 @@
 import { isNull } from '@/common/functions'
-import { ObjectGenerationOptions } from '@/common/types'
 import { ILLMService } from '@/services/interfaces'
 import { IAgentRuntime, ModelType, Service, TextGenerationParams, UUID } from '@elizaos/core'
-import { z } from 'zod'
 
 export class LLMService extends Service implements ILLMService {
   static readonly instances = new Map<UUID, LLMService>()
@@ -38,21 +36,7 @@ export class LLMService extends Service implements ILLMService {
     return text
   }
 
-  async generateObject<T extends z.ZodSchema>(
-    options: ObjectGenerationOptions<T>
-  ): Promise<z.infer<T>> {
-    for (let i = 0; i < 3; i++) {
-      try {
-        const object = await this.runtime.useModel(ModelType.OBJECT_LARGE, options)
-        return options.schema.parse(object)
-      } catch (error) {
-        if (i === 2) throw error
-        console.warn(`Attempt ${i + 1} failed, retrying...`, error)
-      }
-    }
-  }
-
-  async createEmbedding(text: string): Promise<number[]> {
+  async generateEmbedding(text: string): Promise<number[]> {
     const embedding = await this.runtime.useModel(ModelType.TEXT_EMBEDDING, { text })
     return embedding
   }
