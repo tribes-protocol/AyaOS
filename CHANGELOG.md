@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.10
+
+### Patch Changes
+
+- cc8b7bf: fix tg exports
+
 ## 0.1.9
 
 ### Patch Changes
