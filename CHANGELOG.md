@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.8
+
+### Patch Changes
+
+- 7e3e51d: bye bye generateObject
+
 ## 0.1.7
 
 ### Patch Changes
