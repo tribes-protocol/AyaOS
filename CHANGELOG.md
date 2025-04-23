@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.11
+
+### Patch Changes
+
+- ed2f18d: add generateobject again
+
 ## 0.1.10
 
 ### Patch Changes
