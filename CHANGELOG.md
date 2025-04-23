@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.9
+
+### Patch Changes
+
+- 99f5b83: export telegram types needed for using the telegram manager
+
 ## 0.1.8
 
 ### Patch Changes
