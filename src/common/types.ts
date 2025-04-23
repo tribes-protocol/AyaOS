@@ -529,7 +529,7 @@ export interface AuthInfo {
   token: string
 }
 
-export interface ObjectGenerationOptions<T extends z.ZodSchema> {
+export interface ObjectGenerationOptions<T> {
   schema: T
   prompt: string
   temperature?: number
