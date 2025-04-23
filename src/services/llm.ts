@@ -1,6 +1,8 @@
 import { isNull } from '@/common/functions'
+import { ObjectGenerationOptions } from '@/common/types'
 import { ILLMService } from '@/services/interfaces'
 import { IAgentRuntime, ModelType, Service, TextGenerationParams, UUID } from '@elizaos/core'
+import { z } from 'zod'
 
 export class LLMService extends Service implements ILLMService {
   static readonly instances = new Map<UUID, LLMService>()
@@ -34,6 +36,16 @@ export class LLMService extends Service implements ILLMService {
   async generateText(options: Omit<TextGenerationParams, 'runtime' | 'model'>): Promise<string> {
     const text = await this.runtime.useModel(ModelType.TEXT_LARGE, options)
     return text
+  }
+
+  async generateObject<T extends z.ZodSchema>(
+    options: ObjectGenerationOptions<T>
+  ): Promise<z.infer<T>> {
+    const object = await this.runtime.useModel(ModelType.OBJECT_LARGE, {
+      prompt: options.prompt,
+      temperature: options.temperature
+    })
+    return options.schema.parse(object)
   }
 
   async generateEmbedding(text: string): Promise<number[]> {

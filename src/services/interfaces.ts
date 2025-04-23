@@ -2,12 +2,14 @@ import {
   AgentWallet,
   AgentWalletKind,
   HexString,
+  ObjectGenerationOptions,
   RAGKnowledgeItem,
   RagKnowledgeItemContent,
   Transaction
 } from '@/common/types'
 import { TextGenerationParams, UUID } from '@elizaos/core'
 import { WalletClient } from 'viem'
+import { z } from 'zod'
 
 export interface IWalletService {
   signPersonalMessage(wallet: AgentWallet, message: string): Promise<string>
@@ -40,4 +42,5 @@ export interface IKnowledgeService {
 export interface ILLMService {
   generateText(options: Omit<TextGenerationParams, 'runtime' | 'model'>): Promise<string>
   generateEmbedding(text: string): Promise<number[]>
+  generateObject<T extends z.ZodSchema>(options: ObjectGenerationOptions<T>): Promise<z.infer<T>>
 }

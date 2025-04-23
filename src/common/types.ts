@@ -528,3 +528,9 @@ export interface AuthInfo {
   identity: Identity
   token: string
 }
+
+export interface ObjectGenerationOptions<T> {
+  schema: T
+  prompt: string
+  temperature?: number
+}
