@@ -37,4 +37,4 @@ export { ensureRuntimeService } from '@/common/functions'
 
 export { webSearch } from '@/plugins/aya/actions/websearch'
 
-export type { Button, ButtonKind, TelegramContent } from '@/plugins/telegram/types'
+export { Button, ButtonKind, TelegramContent } from '@/plugins/telegram/types'
