@@ -40,8 +40,9 @@ export interface IKnowledgeService {
 }
 
 export interface ILLMService {
-  generateText(options: TextGenerationParams): Promise<string>
+  generateText(options: Omit<TextGenerationParams, 'runtime' | 'model'>): Promise<string>
   generateObject<T extends z.ZodSchema>(
-    options: Omit<ObjectGenerationParamsWithSchema, 'schema'> & { schema: T }
+    options: ObjectGenerationParamsWithSchema & { schema: T }
   ): Promise<z.infer<T>>
+  createEmbedding(text: string): Promise<number[]>
 }

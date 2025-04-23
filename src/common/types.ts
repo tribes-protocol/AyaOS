@@ -529,6 +529,7 @@ export interface AuthInfo {
   token: string
 }
 
-export interface ObjectGenerationParamsWithSchema extends Omit<ObjectGenerationParams, 'schema'> {
+export interface ObjectGenerationParamsWithSchema
+  extends Omit<ObjectGenerationParams, 'schema' | 'model' | 'runtime'> {
   schema: z.ZodSchema
 }

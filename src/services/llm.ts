@@ -33,13 +33,13 @@ export class LLMService extends Service implements ILLMService {
     // nothing to do
   }
 
-  async generateText(options: TextGenerationParams): Promise<string> {
+  async generateText(options: Omit<TextGenerationParams, 'runtime' | 'model'>): Promise<string> {
     const text = await this.runtime.useModel(ModelType.TEXT_LARGE, options)
     return text
   }
 
   async generateObject<T extends z.ZodSchema>(
-    options: Omit<ObjectGenerationParamsWithSchema, 'schema'> & { schema: T }
+    options: ObjectGenerationParamsWithSchema & { schema: T }
   ): Promise<z.infer<T>> {
     for (let i = 0; i < 3; i++) {
       try {
@@ -50,5 +50,10 @@ export class LLMService extends Service implements ILLMService {
         console.warn(`Attempt ${i + 1} failed, retrying...`, error)
       }
     }
+  }
+
+  async createEmbedding(text: string): Promise<number[]> {
+    const embedding = await this.runtime.useModel(ModelType.TEXT_EMBEDDING, { text })
+    return embedding
   }
 }
