@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.5
+
+### Patch Changes
+
+- c54f8d8: expose LLM service
+
 ## 0.1.4
 
 ### Patch Changes
