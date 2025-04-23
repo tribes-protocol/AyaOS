@@ -1,7 +1,7 @@
 import RateLimiter from '@/agent/ratelimiter'
 import { UUID_PATTERN } from '@/common/constants'
 import { isRequiredString, sortIdentities } from '@/common/functions'
-import { Content, Memory, ObjectGenerationParams, State, UUID } from '@elizaos/core'
+import { Content, Memory, State, UUID } from '@elizaos/core'
 import { isAddress } from 'viem'
 import { z } from 'zod'
 
@@ -529,7 +529,8 @@ export interface AuthInfo {
   token: string
 }
 
-export interface ObjectGenerationParamsWithSchema
-  extends Omit<ObjectGenerationParams, 'schema' | 'model' | 'runtime'> {
-  schema: z.ZodSchema
+export interface ObjectGenerationOptions<T extends z.ZodSchema> {
+  schema: T
+  prompt: string
+  temperature?: number
 }

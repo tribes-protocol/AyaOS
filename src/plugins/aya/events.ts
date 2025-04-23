@@ -1,7 +1,7 @@
 import { AgentRegistry } from '@/agent/registry'
 import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
 import { ensureStringSetting, isNull, toJsonTreeString } from '@/common/functions'
-import { validateResponse } from '@/common/llms/response-validator'
+import { validateResponse } from '@/llms/response-validator'
 import {
   asUUID,
   ChannelType,

@@ -347,13 +347,15 @@ export const openaiPlugin: Plugin = {
     },
     [ModelType.TEXT_SMALL]: async (
       runtime: IAgentRuntime,
-      { prompt, stopSequences = [] }: GenerateTextParams
+      {
+        prompt,
+        stopSequences = [],
+        temperature = 0.7,
+        frequencyPenalty = 0.7,
+        presencePenalty = 0.7,
+        maxTokens = 8192
+      }: GenerateTextParams
     ) => {
-      const temperature = 0.7
-      const frequency_penalty = 0.7
-      const presence_penalty = 0.7
-      const max_response_length = 8192
-
       const openai = createOpenAIClient(runtime)
       const model = getSmallModel(runtime)
 
@@ -362,9 +364,9 @@ export const openaiPlugin: Plugin = {
         prompt,
         system: runtime.character.system ?? undefined,
         temperature,
-        maxTokens: max_response_length,
-        frequencyPenalty: frequency_penalty,
-        presencePenalty: presence_penalty,
+        maxTokens,
+        frequencyPenalty,
+        presencePenalty,
         stopSequences
       })
 

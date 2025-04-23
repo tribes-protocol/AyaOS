@@ -2,7 +2,7 @@ import {
   AgentWallet,
   AgentWalletKind,
   HexString,
-  ObjectGenerationParamsWithSchema,
+  ObjectGenerationOptions,
   RAGKnowledgeItem,
   RagKnowledgeItemContent,
   Transaction
@@ -41,8 +41,6 @@ export interface IKnowledgeService {
 
 export interface ILLMService {
   generateText(options: Omit<TextGenerationParams, 'runtime' | 'model'>): Promise<string>
-  generateObject<T extends z.ZodSchema>(
-    options: ObjectGenerationParamsWithSchema & { schema: T }
-  ): Promise<z.infer<T>>
+  generateObject<T extends z.ZodSchema>(options: ObjectGenerationOptions<T>): Promise<z.infer<T>>
   createEmbedding(text: string): Promise<number[]>
 }

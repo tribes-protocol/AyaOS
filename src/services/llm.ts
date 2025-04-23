@@ -1,5 +1,5 @@
 import { isNull } from '@/common/functions'
-import { ObjectGenerationParamsWithSchema } from '@/common/types'
+import { ObjectGenerationOptions } from '@/common/types'
 import { ILLMService } from '@/services/interfaces'
 import { IAgentRuntime, ModelType, Service, TextGenerationParams, UUID } from '@elizaos/core'
 import { z } from 'zod'
@@ -39,7 +39,7 @@ export class LLMService extends Service implements ILLMService {
   }
 
   async generateObject<T extends z.ZodSchema>(
-    options: ObjectGenerationParamsWithSchema & { schema: T }
+    options: ObjectGenerationOptions<T>
   ): Promise<z.infer<T>> {
     for (let i = 0; i < 3; i++) {
       try {
