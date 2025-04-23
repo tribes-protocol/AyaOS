@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.6
+
+### Patch Changes
+
+- 0d2bbb8: fix llm schema opts
+
 ## 0.1.5
 
 ### Patch Changes
