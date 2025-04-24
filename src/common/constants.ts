@@ -23,11 +23,11 @@ export const LLM_PROXY = `${BASE_PROXY_URL}/v1/tools/llm`
 
 export const WEBSEARCH_PROXY = `${BASE_PROXY_URL}/v1/tools/search`
 
-export const DEFAULT_SMALL_MODEL = 'meta/llama-3.3-70b-instruct-fp8'
+export const DEFAULT_SMALL_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast'
 
-export const DEFAULT_LARGE_MODEL = 'meta/llama-3.3-70b-instruct-fp8'
+export const DEFAULT_LARGE_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast'
 
-export const DEFAULT_EMBEDDING_MODEL = 'baai/bge-large-en-v1.5'
+export const DEFAULT_EMBEDDING_MODEL = '@cf/baai/bge-large-en-v1.5'
 
 export const DEFAULT_EMBEDDING_DIMENSIONS = '1024'
 
