@@ -11,6 +11,7 @@ import {
   DEFAULT_SMALL_MODEL,
   LLM_PROXY,
   OPENAI_API_KEY,
+  OPENAI_BASE_URL,
   PGLITE_DATA_DIR,
   WEBSEARCH_PROXY
 } from '@/common/constants'
@@ -345,6 +346,11 @@ export class Agent implements IAyaAgent {
       character.secrets.OPENAI_LARGE_MODEL = DEFAULT_LARGE_MODEL
       character.secrets.OPENAI_EMBEDDING_MODEL = DEFAULT_EMBEDDING_MODEL
       character.secrets.OPENAI_EMBEDDING_DIMENSIONS = DEFAULT_EMBEDDING_DIMENSIONS
+    }
+
+    const openaiBaseUrl = this.getConfigValue(character, envSettings, OPENAI_BASE_URL)
+
+    if (openaiBaseUrl === LLM_PROXY) {
       character.secrets.OPENAI_API_KEY = token
     }
 

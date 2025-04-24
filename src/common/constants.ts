@@ -41,6 +41,7 @@ export const AYA_AGENT_DATA_DIR_KEY = 'AYA_AGENT_DATA_DIR_KEY'
 
 export const OPENAI_API_KEY = 'OPENAI_API_KEY'
 
+export const OPENAI_BASE_URL = 'OPENAI_BASE_URL'
 export const PGLITE_DATA_DIR = 'PGLITE_DATA_DIR'
 
 export const CHARACTERS_DIR = path.join(process.cwd(), 'src', 'characters')
