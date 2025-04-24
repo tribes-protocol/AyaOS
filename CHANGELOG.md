@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.12
+
+### Patch Changes
+
+- b247911: switch to cloudflare ai
+
 ## 0.1.11
 
 ### Patch Changes
