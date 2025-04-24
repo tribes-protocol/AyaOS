@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.14
+
+### Patch Changes
+
+- fee174a: always update OPENAI_API_KEY to token if base url matches
+
 ## 0.1.13
 
 ### Patch Changes
