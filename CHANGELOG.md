@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.13
+
+### Patch Changes
+
+- e2c3413: revert back to function.network
+
 ## 0.1.12
 
 ### Patch Changes
