@@ -412,7 +412,9 @@ export class MessageManager {
           inReplyTo:
             'reply_to_message' in message && message.reply_to_message
               ? createUniqueUuid(this.runtime, message.reply_to_message.message_id.toString())
-              : undefined
+              : undefined,
+          chatId: message.chat.id,
+          messageId: message.message_id
         },
         createdAt: message.date * 1000
       }

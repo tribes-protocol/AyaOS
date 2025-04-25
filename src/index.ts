@@ -22,6 +22,7 @@ export {
   ContextHandler,
   type RAGKnowledgeItem
 } from '@/common/types'
+export { TelegramService } from '@/plugins/telegram/service'
 export type { IKnowledgeService, IWalletService } from '@/services/interfaces'
 export { KnowledgeService } from '@/services/knowledge'
 export { WalletService } from '@/services/wallet'
