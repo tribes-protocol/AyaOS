@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.15
+
+### Patch Changes
+
+- 5fd64e4: export telegram service
+
 ## 0.1.14
 
 ### Patch Changes
