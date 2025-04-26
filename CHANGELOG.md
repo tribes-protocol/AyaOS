@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.20
+
+### Patch Changes
+
+- e6acacb: missed on logger
+
 ## 0.1.19
 
 ### Patch Changes
