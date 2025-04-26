@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.19
+
+### Patch Changes
+
+- 6453003: removing debug logging in openai plugin
+
 ## 0.1.18
 
 ### Patch Changes
