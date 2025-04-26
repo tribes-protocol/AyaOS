@@ -162,17 +162,17 @@ function getJsonRepairFunction(): (params: {
 }) => Promise<string | null> {
   return async ({ text, error }: { text: string; error: unknown }) => {
     try {
-      console.log('attempting to repair JSON text: [', text, '] error:', error)
+      // console.log('attempting to repair JSON text: [', text, '] error:', error)
       const parsed = parseJSONObjectFromText(text)
-      console.log('parsed: [', parsed, ']')
+      // console.log('parsed: [', parsed, ']')
       if (isNull(parsed)) {
         return null
       }
       const cleanedText = JSON.stringify(parsed)
-      console.log('cleanedText: [', cleanedText, ']')
+      // console.log('cleanedText: [', cleanedText, ']')
       return cleanedText || null
-    } catch (jsonError) {
-      console.warn('Failed to repair JSON text: [', text, '] error:', jsonError)
+    } catch (jsonErr) {
+      console.warn('Failed to repair JSON text: [', text, '] jsonErr:', jsonErr, 'vs error:', error)
       return null
     }
   }
