@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.17
+
+### Patch Changes
+
+- 3c570b5: revert
+
 ## 0.1.16
 
 ### Patch Changes
