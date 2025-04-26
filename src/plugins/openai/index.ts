@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-import { isRequiredString } from '@/common/functions'
+import { isNull, isRequiredString } from '@/common/functions'
 import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai'
 import {
   type DetokenizeTextParams,
@@ -12,11 +12,12 @@ import {
   ModelType,
   ModelTypeName,
   ObjectGenerationParams,
+  parseJSONObjectFromText,
   Plugin,
   TextEmbeddingParams,
   VECTOR_DIMS
 } from '@elizaos/core'
-import { generateObject, generateText, JSONParseError, JSONValue } from 'ai'
+import { generateObject, generateText, JSONValue } from 'ai'
 import { type TiktokenModel, encodingForModel } from 'js-tiktoken'
 
 /**
@@ -161,18 +162,19 @@ function getJsonRepairFunction(): (params: {
 }) => Promise<string | null> {
   return async ({ text, error }: { text: string; error: unknown }) => {
     try {
-      if (error instanceof JSONParseError) {
-        const cleanedText = text.replace(/```json\n|\n```|```/g, '')
-
-        JSON.parse(cleanedText)
-        return cleanedText || null
+      console.log('attempting to repair JSON text: [', text, '] error:', error)
+      const parsed = parseJSONObjectFromText(text)
+      console.log('parsed: [', parsed, ']')
+      if (isNull(parsed)) {
+        return null
       }
+      const cleanedText = JSON.stringify(parsed)
+      console.log('cleanedText: [', cleanedText, ']')
+      return cleanedText || null
     } catch (jsonError) {
       console.warn('Failed to repair JSON text: [', text, '] error:', jsonError)
       return null
     }
-
-    return null
   }
 }
 
