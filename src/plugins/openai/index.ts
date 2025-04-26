@@ -12,11 +12,12 @@ import {
   ModelType,
   ModelTypeName,
   ObjectGenerationParams,
+  parseJSONObjectFromText,
   Plugin,
   TextEmbeddingParams,
   VECTOR_DIMS
 } from '@elizaos/core'
-import { generateObject, generateText, JSONParseError, JSONValue } from 'ai'
+import { generateText, JSONValue } from 'ai'
 import { type TiktokenModel, encodingForModel } from 'js-tiktoken'
 
 /**
@@ -143,43 +144,53 @@ async function generateObjectByModelType(
       console.log(`Using ${modelType} without schema validation`)
     }
 
-    const { object } = await generateObject({
+    const { prompt, temperature, stopSequences } = params
+
+    const { text } = await generateText({
       model: openai.languageModel(model),
-      output: 'no-schema',
-      prompt: params.prompt,
-      temperature: params.temperature,
-      experimental_repairText: getJsonRepairFunction()
+      prompt,
+      temperature,
+      stopSequences
     })
-    return object
+    return parseJSONObjectFromText(text)
+
+    // const { object } = await generateObject({
+    //   model: openai.languageModel(model),
+    //   output: 'no-schema',
+    //   prompt: params.prompt,
+    //   temperature: params.temperature,
+    //   experimental_repairText: getJsonRepairFunction()
+    // })
+    // return object
   } catch (error) {
     console.error(`Error generating object with ${modelType}:`, error)
     throw error
   }
 }
 
-/**
- * Returns a function to repair JSON text
- */
-function getJsonRepairFunction(): (params: {
-  text: string
-  error: unknown
-}) => Promise<string | null> {
-  return async ({ text, error }: { text: string; error: unknown }) => {
-    try {
-      if (error instanceof JSONParseError) {
-        const cleanedText = text.replace(/```json\n|\n```|```/g, '')
+// /**
+//  * Returns a function to repair JSON text
+//  */
+// function getJsonRepairFunction(): (params: {
+//   text: string
+//   error: unknown
+// }) => Promise<string | null> {
+//   return async ({ text, error }: { text: string; error: unknown }) => {
+//     try {
+//       if (error instanceof JSONParseError) {
+//         const cleanedText = text.replace(/```json\n|\n```|```/g, '')
 
-        JSON.parse(cleanedText)
-        return cleanedText || null
-      }
-    } catch (jsonError) {
-      console.warn('Failed to repair JSON text:', jsonError)
-      return null
-    }
+//         JSON.parse(cleanedText)
+//         return cleanedText || null
+//       }
+//     } catch (jsonError) {
+//       console.warn('Failed to repair JSON text:', text, 'error:', jsonError)
+//       return null
+//     }
 
-    return null
-  }
-}
+//     return null
+//   }
+// }
 
 /**
  * function for text-to-speech
