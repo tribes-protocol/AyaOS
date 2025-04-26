@@ -162,10 +162,10 @@ function getJsonRepairFunction(): (params: {
 }) => Promise<string | null> {
   return async ({ text, error }: { text: string; error: unknown }) => {
     try {
-      // console.log('attempting to repair JSON text: [', text, '] error:', error)
       const parsed = parseJSONObjectFromText(text)
       // console.log('parsed: [', parsed, ']')
       if (isNull(parsed)) {
+        console.error('attempted to repair JSON text: [', text, '] with no luck')
         return null
       }
       const cleanedText = JSON.stringify(parsed)
