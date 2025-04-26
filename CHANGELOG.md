@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.16
+
+### Patch Changes
+
+- a7db629: improve object parsing
+
 ## 0.1.15
 
 ### Patch Changes
