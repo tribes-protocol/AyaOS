@@ -1,5 +1,12 @@
 # @tribesxyz/ayaos
 
+## 0.1.18
+
+### Patch Changes
+
+- e3490ea: fix json parsing
+- e3490ea: improve generateOBject
+
 ## 0.1.17
 
 ### Patch Changes
