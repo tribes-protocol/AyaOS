@@ -19,6 +19,7 @@ import {
   AgentIdentitySchema,
   ChatChannel,
   ChatChannelKind,
+  EthAddressSchema,
   HydratedMessageSchema,
   Identity,
   Message,
@@ -286,7 +287,10 @@ export class AyaClientService extends Service {
         content: {
           text: message.text,
           source: AYA_SOURCE,
-          ayaMessageId: message.id
+          ayaMessageId: message.id,
+          walletAddress: EthAddressSchema.safeParse(user.identity).success
+            ? user.identity
+            : undefined
         },
         createdAt: message.createdAt.getTime(),
         unique: true
