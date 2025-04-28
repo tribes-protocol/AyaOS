@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.21
+
+### Patch Changes
+
+- 51a27d8: send wallet address from aya
+
 ## 0.1.20
 
 ### Patch Changes
