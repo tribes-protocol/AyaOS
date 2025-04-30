@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.22
+
+### Patch Changes
+
+- 213e9f3: expose character
+
 ## 0.1.21
 
 ### Patch Changes
