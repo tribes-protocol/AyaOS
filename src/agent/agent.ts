@@ -61,6 +61,7 @@ export class Agent implements IAyaAgent {
   private runtime_: AgentRuntime | undefined
   private context_?: AgentContext
   private telegram_?: ITelegramManager
+  private character_?: Character | undefined
 
   constructor(readonly options?: AyaOSOptions) {}
 
@@ -106,6 +107,13 @@ export class Agent implements IAyaAgent {
     )
   }
 
+  get character(): Character {
+    if (isNull(this.character_)) {
+      throw new Error('Character not initialized. Call start() first.')
+    }
+    return this.character_
+  }
+
   get telegram(): ITelegramManager {
     if (isNull(this.telegram_)) {
       const telegramService = this.runtime.getService<TelegramService>(
@@ -134,7 +142,7 @@ export class Agent implements IAyaAgent {
       const envSettings = this.processSettings()
 
       // step 2: load character and initialize database
-      const character = await this.setupCharacter(auth, envSettings)
+      this.character_ = await this.setupCharacter(auth, envSettings)
 
       // step 3: initialize required plugins
       this.plugins.push(sqlPlugin)
@@ -142,9 +150,9 @@ export class Agent implements IAyaAgent {
 
       // step 4: initialize environment variables and runtime
       runtime = new AgentRuntime({
-        character,
+        character: this.character_,
         plugins: this.plugins,
-        agentId: character.id,
+        agentId: this.character_.id,
         settings: envSettings
       })
 
