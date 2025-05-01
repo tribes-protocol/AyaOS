@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.23
+
+### Patch Changes
+
+- 60529f4: if no capabilities found, say you don't have capabilities
+
 ## 0.1.22
 
 ### Patch Changes
