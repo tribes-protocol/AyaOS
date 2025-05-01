@@ -4,7 +4,7 @@ import {
 } from '@/plugins/farcaster/common/constants'
 import type { Cast, CastId, FidRequest, Profile } from '@/plugins/farcaster/common/types'
 import { neynarCastToCast, splitPostContent } from '@/plugins/farcaster/common/utils'
-import { Content, elizaLogger } from '@elizaos/core'
+import { Content } from '@elizaos/core'
 import { type NeynarAPIClient, isApiErrorResponse } from '@neynar/nodejs-sdk'
 import { CastParamType } from '@neynar/nodejs-sdk/build/api/models/cast-param-type'
 import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api/models/cast-with-interactions'

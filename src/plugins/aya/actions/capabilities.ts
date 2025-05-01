@@ -1,3 +1,4 @@
+import { isNull } from '@/common/functions'
 import {
   Action,
   IAgentRuntime,
@@ -45,6 +46,14 @@ export const capabilitiesAction: Action = {
         return `- ${action.description}`
       })
       .join('\n')
+
+    // If no actions are available, return a simple message
+    if (isNull(actionDescriptions) || actionDescriptions.length === 0) {
+      await callback?.({
+        text: "I currently don't have any capabilities"
+      })
+      return
+    }
 
     // Generate a user-friendly summary through LLM
     const summary = await runtime.useModel(ModelType.TEXT_LARGE, {
