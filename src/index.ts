@@ -11,7 +11,6 @@ import {
   stringToUuid,
   UUID
 } from '@elizaos/core'
-
 export { Agent } from '@/agent/agent'
 export type { IAyaAgent } from '@/agent/iagent'
 export { RateLimiter } from '@/agent/ratelimiter'
@@ -22,6 +21,7 @@ export {
   ContextHandler,
   type RAGKnowledgeItem
 } from '@/common/types'
+export { WebSearchService } from '@/plugins/aya/services/websearch'
 export { TelegramService } from '@/plugins/telegram/service'
 export type { IKnowledgeService, IWalletService } from '@/services/interfaces'
 export { KnowledgeService } from '@/services/knowledge'
