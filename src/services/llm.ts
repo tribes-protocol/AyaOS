@@ -1,5 +1,6 @@
 import { isNull } from '@/common/functions'
 import { ObjectGenerationOptions } from '@/common/types'
+import { generateObjectByModelType } from '@/plugins/openai'
 import { ILLMService } from '@/services/interfaces'
 import { IAgentRuntime, ModelType, Service, TextGenerationParams, UUID } from '@elizaos/core'
 import { z } from 'zod'
@@ -10,18 +11,18 @@ export class LLMService extends Service implements ILLMService {
   static readonly serviceType = 'aya-os-llm-service'
   readonly capabilityDescription = ''
 
-  static async start(_runtime: IAgentRuntime): Promise<Service> {
-    let instance = LLMService.instances.get(_runtime.agentId)
+  static async start(runtime: IAgentRuntime): Promise<Service> {
+    let instance = LLMService.instances.get(runtime.agentId)
     if (instance) {
       return instance
     }
-    instance = new LLMService(_runtime)
-    LLMService.instances.set(_runtime.agentId, instance)
+    instance = new LLMService(runtime)
+    LLMService.instances.set(runtime.agentId, instance)
     return instance
   }
 
-  static async stop(_runtime: IAgentRuntime): Promise<unknown> {
-    const instance = LLMService.instances.get(_runtime.agentId)
+  static async stop(runtime: IAgentRuntime): Promise<unknown> {
+    const instance = LLMService.instances.get(runtime.agentId)
     if (isNull(instance)) {
       return undefined
     }
@@ -41,11 +42,27 @@ export class LLMService extends Service implements ILLMService {
   async generateObject<T extends z.ZodSchema>(
     options: ObjectGenerationOptions<T>
   ): Promise<z.infer<T>> {
-    const object = await this.runtime.useModel(ModelType.OBJECT_LARGE, {
-      prompt: options.prompt,
-      temperature: options.temperature
-    })
-    return options.schema.parse(object)
+    const model = options.model
+
+    if (isNull(model)) {
+      const object = await this.runtime.useModel(ModelType.OBJECT_LARGE, {
+        prompt: options.prompt,
+        temperature: options.temperature
+      })
+      return options.schema.parse(object)
+    }
+
+    const result = await generateObjectByModelType(
+      this.runtime,
+      {
+        ...options,
+        schema: undefined,
+        runtime: this.runtime
+      },
+      ModelType.OBJECT_LARGE,
+      () => model
+    )
+    return options.schema.parse(result)
   }
 
   async generateEmbedding(text: string): Promise<number[]> {

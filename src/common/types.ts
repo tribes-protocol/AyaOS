@@ -533,4 +533,8 @@ export interface ObjectGenerationOptions<T> {
   schema: T
   prompt: string
   temperature?: number
+  /**
+   * Custom openrouter model name to use for the object generation.
+   */
+  model?: string
 }

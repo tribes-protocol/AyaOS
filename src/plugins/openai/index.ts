@@ -129,11 +129,11 @@ async function detokenizeText(model: ModelTypeName, tokens: number[]): Promise<s
 /**
  * Helper function to generate objects using specified model type
  */
-async function generateObjectByModelType(
-  runtime: AgentRuntime,
+export async function generateObjectByModelType(
+  runtime: IAgentRuntime,
   params: ObjectGenerationParams,
   modelType: string,
-  getModelFn: (runtime: AgentRuntime) => string
+  getModelFn: (runtime: IAgentRuntime) => string
 ): Promise<JSONValue> {
   const openai = createOpenAIClient(runtime)
   const model = getModelFn(runtime)
