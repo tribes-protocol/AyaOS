@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.25
+
+### Patch Changes
+
+- 7af71e4: export web search
+
 ## 0.1.24
 
 ### Patch Changes
