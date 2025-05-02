@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.24
+
+### Patch Changes
+
+- 33ccaae: custom model to generateObject
+
 ## 0.1.23
 
 ### Patch Changes
