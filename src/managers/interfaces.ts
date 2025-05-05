@@ -1,4 +1,5 @@
 import { TelegramContent } from '@/plugins/telegram/types'
+import { CastId } from '@neynar/nodejs-sdk/build/api'
 import { Context } from 'telegraf'
 
 export interface ITelegramManager {
@@ -9,4 +10,8 @@ export interface ITelegramManager {
     content: TelegramContent
     replyToMessageId?: number | undefined
   }): Promise<number | undefined>
+}
+
+export interface IFarcasterManager {
+  sendCast(params: { content: string; inReplyTo?: CastId }): Promise<void>
 }

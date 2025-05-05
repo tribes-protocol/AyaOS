@@ -1,3 +1,4 @@
+import { IFarcasterManager, ITelegramManager } from '@/managers/interfaces'
 import { IKnowledgeService, ILLMService, IWalletService } from '@/services/interfaces'
 import { Action, AgentRuntime, Character, Plugin, Provider, Service, UUID } from '@elizaos/core'
 
@@ -8,6 +9,8 @@ export interface IAyaAgent {
   readonly wallet: IWalletService
   readonly llm: ILLMService
   readonly character: Character
+  readonly telegram: ITelegramManager
+  readonly farcaster: IFarcasterManager
 
   start(): Promise<void>
 
