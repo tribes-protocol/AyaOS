@@ -25,9 +25,11 @@ import {
 } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { AuthInfo, AyaOSOptions, CharacterSchema } from '@/common/types'
-import { ITelegramManager } from '@/managers/interfaces'
+import { FarcasterManager } from '@/managers/farcaster'
+import { IFarcasterManager, ITelegramManager } from '@/managers/interfaces'
 import { TelegramManager } from '@/managers/telegram'
 import { ayaPlugin } from '@/plugins/aya'
+import { FarcasterService } from '@/plugins/farcaster/service'
 import openaiPlugin from '@/plugins/openai'
 import { telegramPlugin } from '@/plugins/telegram'
 import { TelegramService } from '@/plugins/telegram/service'
@@ -61,6 +63,7 @@ export class Agent implements IAyaAgent {
   private runtime_: AgentRuntime | undefined
   private context_?: AgentContext
   private telegram_?: ITelegramManager
+  private farcaster_?: IFarcasterManager
   private character_?: Character | undefined
 
   constructor(readonly options?: AyaOSOptions) {}
@@ -120,12 +123,25 @@ export class Agent implements IAyaAgent {
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         TelegramService.serviceType as ServiceTypeName
       )
-      if (!telegramService) {
+      if (isNull(telegramService)) {
         throw new Error('Telegram service not found')
       }
       this.telegram_ = new TelegramManager(telegramService)
     }
     return this.telegram_
+  }
+
+  get farcaster(): IFarcasterManager {
+    const farcasterService = ensureRuntimeService<FarcasterService>(
+      this.runtime,
+      FarcasterService.serviceType,
+      'Farcaster service not found'
+    )
+    if (isNull(farcasterService)) {
+      throw new Error('Farcaster service not found')
+    }
+    this.farcaster_ = new FarcasterManager(farcasterService, this.runtime)
+    return this.farcaster_
   }
 
   async start(): Promise<void> {

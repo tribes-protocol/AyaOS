@@ -57,6 +57,10 @@ export class FarcasterService extends Service {
       }
     }
   }
+
+  getManager(agentId: UUID): FarcasterAgentManager | undefined {
+    return this.managers.get(agentId)
+  }
 }
 
 const instance = new FarcasterService()
