@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.27
+
+### Patch Changes
+
+- 5e1aced: expose farcaster
+
 ## 0.1.26
 
 ### Patch Changes
