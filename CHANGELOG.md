@@ -1,5 +1,17 @@
 # @tribesxyz/ayaos
 
+## 0.1.26
+
+### Patch Changes
+
+- 416cd75: export model type
+
+## 0.1.25
+
+### Patch Changes
+
+- 7af71e4: export web search
+
 ## 0.1.24
 
 ### Patch Changes
