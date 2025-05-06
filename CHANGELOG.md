@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.30
+
+### Patch Changes
+
+- af85c29: save complete social entity
+
 ## 0.1.29
 
 ### Patch Changes
