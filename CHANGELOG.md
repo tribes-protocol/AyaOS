@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.31
+
+### Patch Changes
+
+- 49cb1d4: fix aya logger
+
 ## 0.1.30
 
 ### Patch Changes
