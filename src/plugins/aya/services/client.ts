@@ -13,8 +13,7 @@ import {
   isRequiredString,
   isValidSignature,
   serializeChannel,
-  serializeIdentity,
-  updateEntity
+  serializeIdentity
 } from '@/common/functions'
 import {
   AgentIdentitySchema,
@@ -29,6 +28,7 @@ import {
   SentinelCommand,
   SentinelCommandSchema
 } from '@/common/types'
+import { updateEntity } from '@/helpers/updateEntity'
 import {
   ChannelType,
   Content,

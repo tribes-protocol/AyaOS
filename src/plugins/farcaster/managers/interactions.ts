@@ -1,4 +1,4 @@
-import { updateEntity } from '@/common/functions'
+import { updateEntity } from '@/helpers/updateEntity'
 import type { FarcasterClient } from '@/plugins/farcaster/client'
 import { AsyncQueue } from '@/plugins/farcaster/common/asyncqueue'
 import { standardCastHandlerCallback } from '@/plugins/farcaster/common/callbacks'
