@@ -21,7 +21,7 @@ You can initialize a new project directly using bunx (or npx):
 # Install bun if needed
 curl -fsSL https://bun.sh/install | bash
 
-# Using the `init` function requires bun to be installed 
+# Using the `init` function requires bun to be installed
 bunx @tribesxyz/ayaos init
 
 # OR install as global package
@@ -73,17 +73,10 @@ async function main() {
     dataDir: './agent-data'
   })
 
-  // Pre-LLM handler - executed before sending context to the LLM
-  agent.on('pre:llm', async (context) => {
-    console.log('Processing before LLM:', context.memory?.content)
-    // Return true to continue execution, false to stop
-    return true
-  })
-
   // Start the agent
   await agent.start()
 
-  console.log('Agent started with ID:', agent.agentId)
+  ayaLogger.info('Agent started with ID:', agent.agentId)
 }
 
 main().catch(console.error)
@@ -328,7 +321,7 @@ async function main() {
   const weatherService = agent.runtime.getService(WeatherService)
   if (weatherService) {
     const weather = await weatherService.getWeather('New York')
-    console.log('Weather:', weather)
+    ayaLogger.info('Weather:', weather)
   }
 }
 ```
@@ -547,7 +540,7 @@ async function main() {
     limit: 3
   })
 
-  console.log('Knowledge search results:', results)
+  ayaLogger.info('Knowledge search results:', results)
 }
 ```
 
@@ -598,7 +591,7 @@ async function main() {
 
   agent.on('post:action', async (context) => {
     // Log action results
-    console.log('Action completed:', context.memory?.content)
+    ayaLogger.info('Action completed:', context.memory?.content)
     return true
   })
 
