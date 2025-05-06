@@ -1,3 +1,4 @@
+import { updateEntity } from '@/helpers/updateEntity'
 import type { FarcasterClient } from '@/plugins/farcaster/client'
 import { AsyncQueue } from '@/plugins/farcaster/common/asyncqueue'
 import { standardCastHandlerCallback } from '@/plugins/farcaster/common/callbacks'
@@ -110,6 +111,13 @@ export class FarcasterInteractionManager {
       })
 
       if (entityId !== this.runtime.agentId) {
+        await updateEntity(this.runtime, entityId, {
+          id: cast.authorFid.toString(),
+          username: cast.profile.username,
+          name: cast.profile.name,
+          imageUrl: cast.profile.pfp
+        })
+
         await this.runtime.ensureConnection({
           entityId,
           roomId,

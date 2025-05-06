@@ -28,6 +28,7 @@ import {
   SentinelCommand,
   SentinelCommandSchema
 } from '@/common/types'
+import { updateEntity } from '@/helpers/updateEntity'
 import {
   ChannelType,
   Content,
@@ -258,6 +259,13 @@ export class AyaClientService extends Service {
       const channelId = serializeChannel(channel)
       const roomId = stringToUuid(channelId)
       const entityId = stringToUuid(serializeIdentity(message.sender))
+
+      await updateEntity(this.runtime, entityId, {
+        id: message.sender,
+        username: user.username,
+        name: user.username,
+        imageUrl: user.image ?? undefined
+      })
 
       await this.runtime.ensureConnection({
         entityId,
