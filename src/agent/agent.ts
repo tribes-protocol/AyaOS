@@ -239,13 +239,7 @@ export class Agent implements IAyaAgent {
       }
 
       await hackRegisterPlugin(ayaPlugin, this.runtime)
-      const FARCASER_FID = this.runtime.getSetting('FARCASTER_FID') || process.env.FARCASTER_FID
-      const FARCASTER_NEYNAR_SIGNER_UUID =
-        this.runtime.getSetting('FARCASTER_NEYNAR_SIGNER_UUID') ||
-        process.env.FARCASTER_NEYNAR_SIGNER_UUID
-      if (FARCASER_FID && FARCASTER_NEYNAR_SIGNER_UUID) {
-        await hackRegisterPlugin(farcasterPlugin, this.runtime)
-      }
+      await hackRegisterPlugin(farcasterPlugin, this.runtime)
 
       const TELEGRAM_BOT_TOKEN =
         this.runtime.getSetting('TELEGRAM_BOT_TOKEN') || process.env.TELEGRAM_BOT_TOKEN

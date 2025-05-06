@@ -5,7 +5,7 @@ import {
   DEFAULT_POST_INTERVAL_MIN
 } from '@/plugins/farcaster/common/constants'
 import { FarcasterConfig, FarcasterConfigSchema } from '@/plugins/farcaster/common/types'
-import { logger, parseBooleanFromText, type IAgentRuntime } from '@elizaos/core'
+import { parseBooleanFromText, type IAgentRuntime } from '@elizaos/core'
 import { ZodError } from 'zod'
 
 function safeParseInt(value: string | undefined | null, defaultValue: number): number {
