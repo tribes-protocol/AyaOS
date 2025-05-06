@@ -29,6 +29,7 @@ import { FarcasterManager } from '@/managers/farcaster'
 import { IFarcasterManager, ITelegramManager } from '@/managers/interfaces'
 import { TelegramManager } from '@/managers/telegram'
 import { ayaPlugin } from '@/plugins/aya'
+import farcasterPlugin from '@/plugins/farcaster'
 import { FarcasterService } from '@/plugins/farcaster/service'
 import openaiPlugin from '@/plugins/openai'
 import { telegramPlugin } from '@/plugins/telegram'
@@ -238,7 +239,14 @@ export class Agent implements IAyaAgent {
       }
 
       await hackRegisterPlugin(ayaPlugin, this.runtime)
-      // await hackRegisterPlugin(farcasterPlugin, this.runtime)
+      const FARCASER_FID = this.runtime.getSetting('FARCASTER_FID') || process.env.FARCASTER_FID
+      const FARCASTER_NEYNAR_SIGNER_UUID =
+        this.runtime.getSetting('FARCASTER_NEYNAR_SIGNER_UUID') ||
+        process.env.FARCASTER_NEYNAR_SIGNER_UUID
+      if (FARCASER_FID && FARCASTER_NEYNAR_SIGNER_UUID) {
+        await hackRegisterPlugin(farcasterPlugin, this.runtime)
+      }
+
       const TELEGRAM_BOT_TOKEN =
         this.runtime.getSetting('TELEGRAM_BOT_TOKEN') || process.env.TELEGRAM_BOT_TOKEN
       if (TELEGRAM_BOT_TOKEN) {
