@@ -29,19 +29,10 @@ export { KnowledgeService } from '@/services/knowledge'
 export { WalletService } from '@/services/wallet'
 export type { Action, ActionExample, IAgentRuntime, Plugin, Provider } from '@elizaos/core'
 // Export values (classes, enums, functions)
-export { Service, ServiceType, stringToUuid }
+
+export { ModelType, Service, ServiceType, stringToUuid }
 // Export types (interfaces, type aliases)
-export type {
-  Content,
-  Entity,
-  HandlerCallback,
-  Memory,
-  ModelType,
-  Participant,
-  Relationship,
-  State,
-  UUID
-}
+export type { Content, Entity, HandlerCallback, Memory, Participant, Relationship, State, UUID }
 
 export { ayaLogger } from '@/common/logger'
 

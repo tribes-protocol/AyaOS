@@ -1,5 +1,17 @@
 # @tribesxyz/ayaos
 
+## 0.1.29
+
+### Patch Changes
+
+- 9c3a4ad: fix exports
+
+## 0.1.28
+
+### Patch Changes
+
+- 511d05d: register farcaster plugin
+
 ## 0.1.27
 
 ### Patch Changes

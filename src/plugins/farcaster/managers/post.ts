@@ -3,7 +3,7 @@ import { standardCastHandlerCallback } from '@/plugins/farcaster/common/callback
 import { FARCASTER_SOURCE } from '@/plugins/farcaster/common/constants'
 import { FarcasterConfig, FarcasterEventTypes, LastCast } from '@/plugins/farcaster/common/types'
 import { lastCastCacheKey } from '@/plugins/farcaster/common/utils'
-import { createUniqueUuid, EventType, type IAgentRuntime, logger } from '@elizaos/core'
+import { createUniqueUuid, EventType, type IAgentRuntime } from '@elizaos/core'
 
 interface FarcasterPostParams {
   client: FarcasterClient
