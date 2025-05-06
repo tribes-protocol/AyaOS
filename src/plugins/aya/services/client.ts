@@ -13,7 +13,8 @@ import {
   isRequiredString,
   isValidSignature,
   serializeChannel,
-  serializeIdentity
+  serializeIdentity,
+  updateEntity
 } from '@/common/functions'
 import {
   AgentIdentitySchema,
@@ -259,22 +260,12 @@ export class AyaClientService extends Service {
       const roomId = stringToUuid(channelId)
       const entityId = stringToUuid(serializeIdentity(message.sender))
 
-      const entity = await this.runtime.getEntityById(entityId)
-      if (isNull(entity)) {
-        await this.runtime.createEntity({
-          id: entityId,
-          agentId: this.runtime.agentId,
-          names: [user.username],
-          metadata: {
-            aya: {
-              id: user.identity,
-              username: user.username,
-              name: user.username,
-              imageUrl: user.image
-            }
-          }
-        })
-      }
+      await updateEntity(this.runtime, entityId, {
+        id: message.sender,
+        username: user.username,
+        name: user.username,
+        imageUrl: user.image ?? undefined
+      })
 
       await this.runtime.ensureConnection({
         entityId,

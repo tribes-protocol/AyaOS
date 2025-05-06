@@ -1,4 +1,4 @@
-import { isNull } from '@/common/functions'
+import { updateEntity } from '@/common/functions'
 import type { FarcasterClient } from '@/plugins/farcaster/client'
 import { AsyncQueue } from '@/plugins/farcaster/common/asyncqueue'
 import { standardCastHandlerCallback } from '@/plugins/farcaster/common/callbacks'
@@ -111,23 +111,12 @@ export class FarcasterInteractionManager {
       })
 
       if (entityId !== this.runtime.agentId) {
-        const entity = await this.runtime.getEntityById(entityId)
-
-        if (isNull(entity)) {
-          await this.runtime.createEntity({
-            id: entityId,
-            agentId: this.runtime.agentId,
-            names: [cast.profile.name || cast.profile.username],
-            metadata: {
-              farcaster: {
-                id: cast.authorFid.toString(),
-                username: cast.profile.username,
-                name: cast.profile.name,
-                imageUrl: cast.profile.pfp
-              }
-            }
-          })
-        }
+        await updateEntity(this.runtime, entityId, {
+          id: cast.authorFid.toString(),
+          username: cast.profile.username,
+          name: cast.profile.name,
+          imageUrl: cast.profile.pfp
+        })
 
         await this.runtime.ensureConnection({
           entityId,
