@@ -400,6 +400,13 @@ export class TelegramService extends Service {
       const telegramId = ctx.from.id.toString()
       const entityId = createUniqueUuid(this.runtime, telegramId)
 
+      await this.storeEntity({
+        entityId,
+        telegramId: ctx.from.id,
+        username: ctx.from.username,
+        firstName: ctx.from.first_name
+      })
+
       await this.runtime.ensureConnection({
         entityId,
         roomId,
@@ -448,6 +455,13 @@ export class TelegramService extends Service {
 
       // Skip if we've already synced this entity
       if (this.syncedEntityIds.has(telegramId)) return
+
+      await this.storeEntity({
+        entityId,
+        telegramId: newMember.id,
+        username: newMember.username,
+        firstName: newMember.first_name
+      })
 
       // We call ensure connection here for this user.
       await this.runtime.ensureConnection({
@@ -823,6 +837,12 @@ export class TelegramService extends Service {
       // For private chats, add the user
       if (chat.type === 'private' && chat.id) {
         const userId = createUniqueUuid(this.runtime, chat.id.toString())
+        await this.storeEntity({
+          entityId: userId,
+          telegramId: chat.id,
+          username: chat.username,
+          firstName: chat.first_name
+        })
         entities.push({
           id: userId,
           names: [chat.first_name || 'Unknown User'],
@@ -846,6 +866,12 @@ export class TelegramService extends Service {
           if (admins && admins.length > 0) {
             for (const admin of admins) {
               const userId = createUniqueUuid(this.runtime, admin.user.id.toString())
+              await this.storeEntity({
+                entityId: userId,
+                telegramId: admin.user.id,
+                username: admin.user.username,
+                firstName: admin.user.first_name
+              })
               entities.push({
                 id: userId,
                 names: [admin.user.first_name || admin.user.username || 'Unknown Admin'],
@@ -964,5 +990,49 @@ export class TelegramService extends Service {
       )
       return null
     }
+  }
+
+  private async storeEntity({
+    entityId,
+    telegramId,
+    username,
+    firstName
+  }: {
+    entityId: UUID
+    telegramId: number
+    username?: string
+    firstName?: string
+  }): Promise<void> {
+    const entity = await this.runtime.getEntityById(entityId)
+    if (entity) {
+      return
+    }
+
+    let imageUrl: string | undefined
+    try {
+      const photos = await this.bot.telegram.getUserProfilePhotos(telegramId, 0, 1)
+      if (photos && photos.total_count > 0 && photos.photos.length > 0) {
+        const photoSize = photos.photos[0][photos.photos[0].length - 1]
+        const fileId = photoSize.file_id
+        const fileLink = await this.bot.telegram.getFileLink(fileId)
+        imageUrl = fileLink.toString()
+      }
+    } catch (error) {
+      console.warn(`Failed to get profile photo for user ${telegramId}: ${error}`)
+    }
+
+    await this.runtime.createEntity({
+      id: entityId,
+      agentId: this.runtime.agentId,
+      names: [firstName || username || 'Unknown User'],
+      metadata: {
+        telegram: {
+          id: telegramId.toString(),
+          username,
+          name: firstName || username || 'Unknown User',
+          imageUrl
+        }
+      }
+    })
   }
 }

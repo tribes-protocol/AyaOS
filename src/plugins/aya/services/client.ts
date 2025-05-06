@@ -259,6 +259,23 @@ export class AyaClientService extends Service {
       const roomId = stringToUuid(channelId)
       const entityId = stringToUuid(serializeIdentity(message.sender))
 
+      const entity = await this.runtime.getEntityById(entityId)
+      if (isNull(entity)) {
+        await this.runtime.createEntity({
+          id: entityId,
+          agentId: this.runtime.agentId,
+          names: [user.username],
+          metadata: {
+            aya: {
+              id: user.identity,
+              username: user.username,
+              name: user.username,
+              imageUrl: user.image
+            }
+          }
+        })
+      }
+
       await this.runtime.ensureConnection({
         entityId,
         roomId,
