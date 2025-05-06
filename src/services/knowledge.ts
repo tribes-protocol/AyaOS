@@ -113,7 +113,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         const { Pool } = pgModule.default || pgModule
         const pool = new Pool({ connectionString: postgresUrl })
         this.db = drizzlePg(pool)
-        ayaLogger.success('Connected to PostgreSQL database')
+        ayaLogger.info('Connected to PostgreSQL database')
       } else {
         const { PGlite } = await import('@electric-sql/pglite')
         const { vector } = await import('@electric-sql/pglite/vector')
@@ -121,7 +121,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         const pglite = new PGlite({ dataDir: pgliteDataDir, extensions: { vector, fuzzystrmatch } })
 
         this.db = drizzle(pglite)
-        ayaLogger.success('Connected to PGlite database')
+        ayaLogger.info('Connected to PGlite database')
 
         await this.db.execute('CREATE EXTENSION IF NOT EXISTS vector;')
         await this.db.execute('CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;')
@@ -170,7 +170,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         );
       `)
 
-      ayaLogger.success('Database tables initialized successfully')
+      ayaLogger.info('Database tables initialized successfully')
     } catch (error) {
       console.error('Failed to initialize database tables:', error)
       throw new Error(
@@ -202,7 +202,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       // Wait for 1 minute before the next run
       await new Promise((resolve) => setTimeout(resolve, 60_000))
     }
-    ayaLogger.success('Sync job stopped gracefully.')
+    ayaLogger.info('Sync job stopped gracefully.')
   }
 
   async stop(): Promise<void> {

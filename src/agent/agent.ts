@@ -192,7 +192,7 @@ export class Agent implements IAyaAgent {
               console.warn('Stopping agent runtime...', agentId)
               await runtime.stop()
               await AgentRegistry.destroy(this.context.dataDir)
-              ayaLogger.success('Agent runtime stopped successfully!', agentId)
+              ayaLogger.info('Agent runtime stopped successfully!', agentId)
             } catch (error) {
               console.error('Error stopping agent:', error)
             }
@@ -271,7 +271,7 @@ export class Agent implements IAyaAgent {
       throw error
     }
 
-    ayaLogger.success('agent runtime started id:', runtime.agentId, 'name', runtime.character.name)
+    ayaLogger.info('agent runtime started id:', runtime.agentId, 'name', runtime.character.name)
 
     const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${this.context.auth.identity}`
     // Calculate box width based on URL length

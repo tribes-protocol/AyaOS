@@ -41,7 +41,7 @@ export class LoginManager {
 
     const cookie = await this.api.login({ identity, message, signature })
 
-    ayaLogger.success('Agent coin logged in successfully', identity)
+    ayaLogger.info('Agent coin logged in successfully', identity)
     return cookie
   }
 
@@ -60,7 +60,7 @@ export class LoginManager {
 
     if (!fs.existsSync(regPath)) {
       const agentId = await this.provisionPureAgent(name, purpose)
-      ayaLogger.success('Agent coin provisioned successfully', agentId)
+      ayaLogger.info('Agent coin provisioned successfully', agentId)
       return this.getAuthInfo()
     }
 
@@ -193,7 +193,7 @@ export class LoginManager {
               JSON.stringify({ token, createdAt: new Date().toISOString() }, null, 2)
             )
 
-            ayaLogger.success('Credentials saved to', USER_CREDENTIALS_FILE)
+            ayaLogger.info('Credentials saved to', USER_CREDENTIALS_FILE)
             return token
           }
         } catch (error) {
@@ -241,6 +241,6 @@ export class LoginManager {
       JSON.stringify(toJsonTree({ id: agent.id }), null, 2)
     )
 
-    ayaLogger.success('Agent coin provisioned successfully', characterId)
+    ayaLogger.info('Agent coin provisioned successfully', characterId)
   }
 }
