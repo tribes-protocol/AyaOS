@@ -23,6 +23,7 @@ export {
   type RAGKnowledgeItem
 } from '@/common/types'
 export { WebSearchService } from '@/plugins/aya/services/websearch'
+export { FarcasterService } from '@/plugins/farcaster/service'
 export { TelegramService } from '@/plugins/telegram/service'
 export type { IKnowledgeService, IWalletService } from '@/services/interfaces'
 export { KnowledgeService } from '@/services/knowledge'
