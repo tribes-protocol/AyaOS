@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.33
+
+### Patch Changes
+
+- e546827: export farcaster service
+
 ## 0.1.32
 
 ### Patch Changes
