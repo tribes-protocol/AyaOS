@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.32
+
+### Patch Changes
+
+- 07dfacf: expose farcaster getCast
+
 ## 0.1.31
 
 ### Patch Changes
