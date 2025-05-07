@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.36
+
+### Patch Changes
+
+- 033e8b6: use ayaLogger in aya client
+
 ## 0.1.35
 
 ### Patch Changes
