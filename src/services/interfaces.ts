@@ -1,23 +1,18 @@
 import {
   AgentWallet,
   AgentWalletKind,
-  HexString,
   ObjectGenerationOptions,
   RAGKnowledgeItem,
-  RagKnowledgeItemContent,
-  Transaction
+  RagKnowledgeItemContent
 } from '@/common/types'
 import { TextGenerationParams, UUID } from '@elizaos/core'
-import { WalletClient } from 'viem'
+import { Account } from 'viem'
 import { z } from 'zod'
 
 export interface IWalletService {
   signPersonalMessage(wallet: AgentWallet, message: string): Promise<string>
-  signAndSubmitTransaction(params: {
-    client: WalletClient
-    transaction: Transaction
-  }): Promise<HexString>
   getDefaultWallet(kind: AgentWalletKind): Promise<AgentWallet>
+  getAccount(wallet: AgentWallet): Account
 }
 
 export interface IKnowledgeService {

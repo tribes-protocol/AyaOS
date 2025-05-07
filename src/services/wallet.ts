@@ -6,20 +6,12 @@ import {
   AYA_JWT_SETTINGS_KEY
 } from '@/common/constants'
 import { ensureStringSetting, isNull } from '@/common/functions'
-import {
-  AgentIdentitySchema,
-  AgentWallet,
-  AgentWalletKind,
-  HexString,
-  Identity,
-  Transaction
-} from '@/common/types'
+import { AgentIdentitySchema, AgentWallet, AgentWalletKind, Identity } from '@/common/types'
 import { IWalletService } from '@/services/interfaces'
 import { IAgentRuntime, Service, UUID } from '@elizaos/core'
 import { TurnkeyClient } from '@turnkey/http'
 import { createAccountWithAddress } from '@turnkey/viem'
-import { Account, getAddress, WalletClient } from 'viem'
-import { base } from 'viem/chains'
+import { Account, getAddress } from 'viem'
 
 export class WalletService extends Service implements IWalletService {
   static readonly instances = new Map<UUID, WalletService>()
@@ -86,33 +78,7 @@ export class WalletService extends Service implements IWalletService {
     return account.signMessage({ message })
   }
 
-  async signAndSubmitTransaction(params: {
-    client: WalletClient
-    transaction: Transaction
-  }): Promise<HexString> {
-    const { client, transaction } = params
-    if (!isNull(transaction.chainId) && transaction.chainId !== base.id) {
-      throw new Error(`Unsupported chainId: ${transaction.chainId}`)
-    }
-
-    if (isNull(client.account)) {
-      throw new Error('Failed to get account')
-    }
-
-    const txHash = await client.sendTransaction({
-      to: transaction.to,
-      value: transaction.value,
-      data: transaction.data,
-      account: client.account,
-      chain: base,
-      // FIXME: hish - tackle kzg
-      kzg: undefined
-    })
-
-    return txHash
-  }
-
-  private getAccount(wallet: AgentWallet): Account {
+  getAccount(wallet: AgentWallet): Account {
     const address = getAddress(wallet.address)
     const account = createAccountWithAddress({
       client: this.turnkey,
