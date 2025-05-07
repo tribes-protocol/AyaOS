@@ -271,7 +271,10 @@ export class Agent implements IAyaAgent {
       throw error
     }
 
-    ayaLogger.info('agent runtime started id:', runtime.agentId, 'name', runtime.character.name)
+    ayaLogger.info('agent runtime started', {
+      id: runtime.agentId,
+      name: runtime.character.name
+    })
 
     const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${this.context.auth.identity}`
     // Calculate box width based on URL length
