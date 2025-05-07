@@ -1,13 +1,17 @@
 import { Agent } from '@/agent/agent'
+
 import { ayaLogger } from '@/common/logger'
+
 async function main(): Promise<void> {
   try {
-    ayaLogger.info({ dataDir: process.env.DATA_DIR }, 'hello, agent')
+    ayaLogger.info('hello, agent', { dataDir: process.env.DATA_DIR })
     const agent = new Agent({ dataDir: process.env.DATA_DIR })
 
     await agent.start()
+
+    throw new Error('test error')
   } catch (error) {
-    ayaLogger.error({ err: error }, 'An error occurred')
+    ayaLogger.error('An error occurred', { error })
 
     process.exit(1)
   }
