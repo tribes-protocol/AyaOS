@@ -15,6 +15,7 @@ import {
   serializeChannel,
   serializeIdentity
 } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import {
   AgentIdentitySchema,
   ChatChannel,
@@ -80,7 +81,7 @@ export class AyaClientService extends Service {
       console.warn(`Aya client already started for ${this.runtime.agentId}`)
       return
     }
-    console.log(`Starting Aya client for ${this.runtime.agentId}`)
+    ayaLogger.info(`Starting Aya client for ${this.runtime.agentId}`)
 
     const socket = io(AGENTCOIN_FUN_API_URL, {
       reconnection: true,
@@ -108,7 +109,7 @@ export class AyaClientService extends Service {
     this.socket = socket
 
     const eventName = `user:${serializeIdentity(this.identity)}`
-    console.log(
+    ayaLogger.info(
       `[aya] AyaOS (${process.env.npm_package_version}) client listening for event: ${eventName}`
     )
 
@@ -119,13 +120,13 @@ export class AyaClientService extends Service {
         const channel = event.channel
 
         if (channel.kind !== ChatChannelKind.DM) {
-          console.log('Agentcoin client received msg for unknown channel', channel)
+          ayaLogger.info('Agentcoin client received msg for unknown channel', channel)
           return
         }
 
         // validate channel
         if (channel.firstIdentity !== this.identity && channel.secondIdentity !== this.identity) {
-          console.log('Agentcoin client received msg for unknown channel', channel)
+          ayaLogger.info('Agentcoin client received msg for unknown channel', channel)
           return
         }
 
@@ -136,7 +137,7 @@ export class AyaClientService extends Service {
             break
           }
           case 'status':
-            console.log('Received status', event.data.status)
+            ayaLogger.info('Received status', event.data.status)
             break
         }
       } catch (error) {
@@ -170,15 +171,15 @@ export class AyaClientService extends Service {
     }
 
     this.socket.on('connect', () => {
-      console.log('Connected to Agentcoin API')
+      ayaLogger.info('Connected to Agentcoin API')
     })
     this.socket.on('disconnect', () => {
-      console.log('Disconnected from Agentcoin API')
+      ayaLogger.info('Disconnected from Agentcoin API')
     })
   }
 
   static async start(runtime: IAgentRuntime): Promise<Service> {
-    console.log(`Starting Aya Client Service for ${runtime.agentId}`)
+    ayaLogger.info(`Starting Aya Client Service for ${runtime.agentId}`)
     const cachedInstance = AyaClientService.instances.get(runtime.agentId)
     if (cachedInstance) {
       return cachedInstance
@@ -200,13 +201,13 @@ export class AyaClientService extends Service {
   }
 
   private async handleAdminCommand(command: SentinelCommand): Promise<void> {
-    console.log('Handling admin command', command.kind)
+    ayaLogger.info('Handling admin command', command.kind)
     switch (command.kind) {
       case 'set_git':
-        console.log('Ignoring set_git. sentinel service is handling this', command)
+        ayaLogger.info('Ignoring set_git. sentinel service is handling this', command)
         break
       case 'set_env_vars':
-        console.log('Setting env vars', command)
+        ayaLogger.info('Setting env vars', command)
         await this.handleSetEnvvars(command.envVars)
         break
       default:
@@ -243,7 +244,7 @@ export class AyaClientService extends Service {
     const { message, user } = messages[0]
 
     if (isNull(message)) {
-      console.log('AgentcoinClient received empty message')
+      ayaLogger.info('AgentcoinClient received empty message')
       return
     }
 
@@ -251,7 +252,7 @@ export class AyaClientService extends Service {
       return
     }
 
-    console.log('Agentcoin client received event', data)
+    ayaLogger.info('Agentcoin client received event', data)
 
     const stopStatusInterval = await this.sendStatusOnInterval(channel, 'thinking')
 
@@ -352,7 +353,7 @@ export class AyaClientService extends Service {
     const messageText = imageUrl ? text + ` ${imageUrl}` : text
 
     if (isNull(messageText) || messageText.trim().length === 0) {
-      console.log('AgentcoinClient received message with no text. skipping')
+      ayaLogger.info('AgentcoinClient received message with no text. skipping')
       return undefined
     }
 
