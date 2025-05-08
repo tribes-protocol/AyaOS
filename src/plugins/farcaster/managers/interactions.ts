@@ -115,7 +115,8 @@ export class FarcasterInteractionManager {
           id: cast.authorFid.toString(),
           username: cast.profile.username,
           name: cast.profile.name,
-          imageUrl: cast.profile.pfp
+          imageUrl: cast.profile.pfp,
+          source: FARCASTER_SOURCE
         })
 
         await this.runtime.ensureConnection({

@@ -9,6 +9,7 @@ export async function updateEntity(
     username: string
     name?: string
     imageUrl?: string
+    source: string
   }
 ): Promise<void> {
   const existingEntity = await runtime.getEntityById(entityId)
@@ -18,7 +19,7 @@ export async function updateEntity(
       agentId: runtime.agentId,
       names: [source.username],
       metadata: {
-        aya: {
+        [source.source]: {
           id: source.id,
           username: source.username,
           name: source.username,
@@ -32,7 +33,7 @@ export async function updateEntity(
       agentId: runtime.agentId,
       names: [source.username],
       metadata: {
-        aya: {
+        [source.source]: {
           id: source.id,
           username: source.username,
           name: source.username,

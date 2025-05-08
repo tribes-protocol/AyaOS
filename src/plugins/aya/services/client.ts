@@ -265,7 +265,8 @@ export class AyaClientService extends Service {
         id: message.sender,
         username: user.username,
         name: user.username,
-        imageUrl: user.image ?? undefined
+        imageUrl: user.image ?? undefined,
+        source: AYA_SOURCE
       })
 
       await this.runtime.ensureConnection({
