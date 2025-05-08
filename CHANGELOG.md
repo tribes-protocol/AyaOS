@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.40
+
+### Patch Changes
+
+- 67f5afe: fix postgres_url not being loaded
+
 ## 0.1.39
 
 ### Patch Changes
