@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.39
+
+### Patch Changes
+
+- f319d04: post farcaster embeds
+
 ## 0.1.38
 
 ### Patch Changes
