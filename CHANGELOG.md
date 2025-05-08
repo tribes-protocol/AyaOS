@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.38
+
+### Patch Changes
+
+- 291f4cb: entity store bugfix
+
 ## 0.1.37
 
 ### Patch Changes
