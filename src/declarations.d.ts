@@ -5,4 +5,12 @@ declare module '@elizaos/plugin-sql' {
   import { Plugin } from '@elizaos/core'
   const sqlPlugin: Plugin
   export default sqlPlugin
+
+  export function createDatabaseAdapter(
+    config: {
+      dataDir?: string
+      postgresUrl?: string
+    },
+    agentId: UUID
+  ): IDatabaseAdapter
 }

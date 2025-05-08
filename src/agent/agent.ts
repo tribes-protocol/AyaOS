@@ -32,6 +32,7 @@ import { ayaPlugin } from '@/plugins/aya'
 import farcasterPlugin from '@/plugins/farcaster'
 import { FarcasterService } from '@/plugins/farcaster/service'
 import openaiPlugin from '@/plugins/openai'
+import sqlPlugin from '@/plugins/sql'
 import { telegramPlugin } from '@/plugins/telegram'
 import { TelegramService } from '@/plugins/telegram/service'
 import { IKnowledgeService, ILLMService, IWalletService } from '@/services/interfaces'
@@ -51,7 +52,6 @@ import {
   UUID,
   type Character
 } from '@elizaos/core'
-import sqlPlugin from '@elizaos/plugin-sql'
 import fs from 'fs'
 import path from 'path'
 
