@@ -192,7 +192,7 @@ export const messageReceivedHandler = async ({
 
       console.log('responseObject', responseObject)
 
-      const shouldRespond = responseObject?.action && responseObject.action === 'RESPOND'
+      const shouldRespond = responseObject?.action && responseObject.action !== 'IGNORE'
       logger.debug('*** Should Respond ***', shouldRespond)
 
       state = await runtime.composeState(message, undefined, providers)

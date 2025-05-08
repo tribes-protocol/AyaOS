@@ -8,8 +8,6 @@ async function main(): Promise<void> {
     const agent = new Agent({ dataDir: process.env.DATA_DIR })
 
     await agent.start()
-
-    throw new Error('test error')
   } catch (error) {
     ayaLogger.error('An error occurred', { error })
 

@@ -1,3 +1,4 @@
+import { ayaLogger } from '@/common/logger'
 import {
   DEFAULT_MAX_CAST_LENGTH,
   DEFAULT_POLL_INTERVAL,
@@ -100,22 +101,26 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
 
     // Log configuration on initialization
 
-    console.log('Farcaster Client Configuration:')
-    console.log(`- FID: ${config.FARCASTER_FID}`)
-    console.log(`- Dry Run Mode: ${isDryRun ? 'enabled' : 'disabled'}`)
-    console.log(`- Enable Post: ${config.ENABLE_POST ? 'enabled' : 'disabled'}`)
+    ayaLogger.info('Farcaster Client Configuration:')
+    ayaLogger.info(`- FID: ${config.FARCASTER_FID}`)
+    ayaLogger.info(`- Dry Run Mode: ${isDryRun ? 'enabled' : 'disabled'}`)
+    ayaLogger.info(`- Enable Post: ${config.ENABLE_POST ? 'enabled' : 'disabled'}`)
 
     if (config.ENABLE_POST) {
-      console.log(
+      ayaLogger.info(
         `- Post Interval: ${config.POST_INTERVAL_MIN}-${config.POST_INTERVAL_MAX} minutes`
       )
-      console.log(`- Post Immediately: ${config.POST_IMMEDIATELY ? 'enabled' : 'disabled'}`)
+      ayaLogger.info(`- Post Immediately: ${config.POST_IMMEDIATELY ? 'enabled' : 'disabled'}`)
     }
-    console.log(`- Action Processing: ${config.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'}`)
-    console.log(`- Action Interval: ${config.ACTION_INTERVAL} minutes`)
+    ayaLogger.info(
+      `- Action Processing: ${config.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'}`
+    )
+    ayaLogger.info(`- Action Interval: ${config.ACTION_INTERVAL} minutes`)
 
     if (isDryRun) {
-      console.log('Farcaster client initialized in dry run mode - no actual casts should be posted')
+      ayaLogger.info(
+        'Farcaster client initialized in dry run mode - no actual casts should be posted'
+      )
     }
 
     return config
