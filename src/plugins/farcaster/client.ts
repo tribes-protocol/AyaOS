@@ -45,19 +45,28 @@ export class FarcasterClient {
     const chunks = splitPostContent(text)
     const sent: CastWithInteractions[] = []
 
-    for (const chunk of chunks) {
-      const result = await this.publishCast(chunk, inReplyTo)
+    for (const [index, chunk] of chunks.entries()) {
+      const result = await this.publishCast(chunk, inReplyTo, index === 0 ? content.url : undefined)
       sent.push(result)
     }
     return sent
   }
 
-  private async publishCast(cast: string, parentCastId?: CastId): Promise<CastWithInteractions> {
+  private async publishCast(
+    cast: string,
+    parentCastId?: CastId,
+    url?: string
+  ): Promise<CastWithInteractions> {
     try {
       const result = await this.neynar.publishCast({
         signerUuid: this.signerUuid,
         text: cast,
-        parent: parentCastId?.hash
+        parent: parentCastId?.hash,
+        embeds: [
+          {
+            url
+          }
+        ]
       })
       if (result.success) {
         return this.getCast(result.cast.hash)

@@ -18,12 +18,13 @@ export class FarcasterManager implements IFarcasterManager {
     this.farcasterAgentManager = manager
   }
 
-  async sendCast(params: { content: string; inReplyTo?: CastId }): Promise<void> {
-    const { content, inReplyTo } = params
+  async sendCast(params: { text: string; url?: string; inReplyTo?: CastId }): Promise<void> {
+    const { text, url, inReplyTo } = params
 
     await this.farcasterAgentManager.client.sendCast({
       content: {
-        text: content
+        text,
+        url
       },
       inReplyTo
     })
