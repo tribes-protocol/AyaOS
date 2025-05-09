@@ -1,6 +1,6 @@
 import { isNull } from '@/common/functions'
 import { ObjectGenerationOptions } from '@/common/types'
-import { generateObjectByModelType } from '@/plugins/openai'
+import { generateObjectByModelType, getLargeModel } from '@/plugins/openai'
 import { ILLMService } from '@/services/interfaces'
 import { IAgentRuntime, ModelType, Service, TextGenerationParams, UUID } from '@elizaos/core'
 import { z } from 'zod'
@@ -43,15 +43,6 @@ export class LLMService extends Service implements ILLMService {
     options: ObjectGenerationOptions<T>
   ): Promise<z.infer<T>> {
     const model = options.model
-
-    if (isNull(model)) {
-      const object = await this.runtime.useModel(ModelType.OBJECT_LARGE, {
-        prompt: options.prompt,
-        temperature: options.temperature
-      })
-      return options.schema.parse(object)
-    }
-
     const result = await generateObjectByModelType(
       this.runtime,
       {
@@ -60,7 +51,7 @@ export class LLMService extends Service implements ILLMService {
         runtime: this.runtime
       },
       ModelType.OBJECT_LARGE,
-      () => model
+      (runtime: IAgentRuntime) => (isNull(model) ? getLargeModel(runtime) : model)
     )
     return options.schema.parse(result)
   }

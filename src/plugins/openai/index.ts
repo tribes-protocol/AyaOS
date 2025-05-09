@@ -75,7 +75,7 @@ function getSmallModel(runtime: IAgentRuntime): string {
  * @param runtime The runtime context
  * @returns The configured large model name
  */
-function getLargeModel(runtime: IAgentRuntime): string {
+export function getLargeModel(runtime: IAgentRuntime): string {
   return getSetting(runtime, 'OPENAI_LARGE_MODEL') ?? getSetting(runtime, 'LARGE_MODEL') ?? 'gpt-4o'
 }
 
@@ -141,23 +141,35 @@ export async function generateObjectByModelType(
 
   let responseText: string | undefined
   try {
-    // const result = await generateObject({
-    //   model: openai.languageModel(model),
-    //   output: 'no-schema',
-    //   prompt: params.prompt,
-    //   temperature: params.temperature,
-    //   experimental_repairText: getJsonRepairFunction()
-    // })
-    // return result?.object
-
     const { text: openaiResponse } = await generateText({
       model: openai.languageModel(model),
       prompt: params.prompt,
       temperature: params.temperature
     })
 
-    responseText = openaiResponse
+    // console.log('openaiResponse', openaiResponse)
 
+    // // Write the OpenAI response to a file for debugging/logging purposes
+    // try {
+    //   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    //   const fs = await import('fs')
+    //   const path = await import('path')
+
+    //   // Ensure the directory exists
+    //   const dirPath = '/tmp/lucy'
+    //   if (!fs.existsSync(dirPath)) {
+    //     fs.mkdirSync(dirPath, { recursive: true })
+    //   }
+
+    //   const filePath = path.join(dirPath, `${timestamp}.json`)
+    //   fs.writeFileSync(filePath, openaiResponse, 'utf8')
+    //   console.log(`OpenAI response written to ${filePath}`)
+    // } catch (writeError) {
+    //   console.error('Error writing OpenAI response to file:', writeError)
+    //   // Continue execution even if writing to file fails
+    // }
+
+    responseText = openaiResponse
     return parseJSONObjectFromText(openaiResponse)
   } catch (error) {
     ayaLogger.error(`Error generating object:`, {
