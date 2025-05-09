@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.41
+
+### Patch Changes
+
+- f90e56d: farcaster send cast return cast
+
 ## 0.1.40
 
 ### Patch Changes
