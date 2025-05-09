@@ -1,5 +1,6 @@
 /* eslint-disable camelcase */
-import { isNull, isRequiredString } from '@/common/functions'
+import { isRequiredString } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai'
 import {
   type DetokenizeTextParams,
@@ -17,7 +18,7 @@ import {
   TextEmbeddingParams,
   VECTOR_DIMS
 } from '@elizaos/core'
-import { generateObject, generateText, JSONValue } from 'ai'
+import { generateText, JSONValue } from 'ai'
 import { type TiktokenModel, encodingForModel } from 'js-tiktoken'
 
 /**
@@ -138,43 +139,33 @@ export async function generateObjectByModelType(
   const openai = createOpenAIClient(runtime)
   const model = getModelFn(runtime)
 
+  let responseText: string | undefined
   try {
-    const result = await generateObject({
-      model: openai.languageModel(model),
-      output: 'no-schema',
-      prompt: params.prompt,
-      temperature: params.temperature,
-      experimental_repairText: getJsonRepairFunction()
-    })
-    return result?.object
-  } catch (error) {
-    console.error(`Error generating object with ${modelType}:`, error)
-    throw error
-  }
-}
+    // const result = await generateObject({
+    //   model: openai.languageModel(model),
+    //   output: 'no-schema',
+    //   prompt: params.prompt,
+    //   temperature: params.temperature,
+    //   experimental_repairText: getJsonRepairFunction()
+    // })
+    // return result?.object
 
-/**
- * Returns a function to repair JSON text
- */
-function getJsonRepairFunction(): (params: {
-  text: string
-  error: unknown
-}) => Promise<string | null> {
-  return async ({ text, error }: { text: string; error: unknown }) => {
-    try {
-      const parsed = parseJSONObjectFromText(text)
-      // console.log('parsed: [', parsed, ']')
-      if (isNull(parsed)) {
-        console.error('attempted to repair JSON text: [', text, '] with no luck')
-        return null
-      }
-      const cleanedText = JSON.stringify(parsed)
-      // console.log('cleanedText: [', cleanedText, ']')
-      return cleanedText || null
-    } catch (jsonErr) {
-      console.warn('Failed to repair JSON text: [', text, '] jsonErr:', jsonErr, 'vs error:', error)
-      return null
-    }
+    const { text: openaiResponse } = await generateText({
+      model: openai.languageModel(model),
+      prompt: params.prompt,
+      temperature: params.temperature
+    })
+
+    responseText = openaiResponse
+
+    return parseJSONObjectFromText(openaiResponse)
+  } catch (error) {
+    ayaLogger.error(`Error generating object:`, {
+      error,
+      modelType,
+      text: responseText
+    })
+    throw error
   }
 }
 
