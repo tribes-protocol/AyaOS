@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.42
+
+### Patch Changes
+
+- 438c677: use generateText then safe parse object.
+
 ## 0.1.41
 
 ### Patch Changes
