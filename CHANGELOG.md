@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.43
+
+### Patch Changes
+
+- 677ef3c: fix gneerateObject
+
 ## 0.1.42
 
 ### Patch Changes
