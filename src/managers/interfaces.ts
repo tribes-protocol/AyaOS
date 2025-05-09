@@ -13,6 +13,10 @@ export interface ITelegramManager {
 }
 
 export interface IFarcasterManager {
-  sendCast(params: { text: string; url?: string; inReplyTo?: CastId }): Promise<void>
+  sendCast(params: {
+    text: string
+    url?: string
+    inReplyTo?: CastId
+  }): Promise<CastWithInteractions[]>
   getCast(params: { hash: string }): Promise<CastWithInteractions>
 }
