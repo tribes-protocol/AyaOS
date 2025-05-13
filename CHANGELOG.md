@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.44
+
+### Patch Changes
+
+- 873f7f3: throw an exception if we can't parse the object
+
 ## 0.1.43
 
 ### Patch Changes
