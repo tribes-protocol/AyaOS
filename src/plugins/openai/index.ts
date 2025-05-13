@@ -170,7 +170,17 @@ export async function generateObjectByModelType(
     // }
 
     responseText = openaiResponse
-    return parseJSONObjectFromText(openaiResponse)
+    const jsonObject = parseJSONObjectFromText(openaiResponse)
+    if (jsonObject) {
+      return jsonObject
+    }
+
+    ayaLogger.error('Failed to parse OpenAI response as JSON', {
+      responseText,
+      model
+    })
+
+    throw new Error('Failed to parse OpenAI response as JSON')
   } catch (error) {
     ayaLogger.error(`Error generating object:`, {
       error,
