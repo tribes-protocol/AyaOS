@@ -62,11 +62,7 @@ export class FarcasterClient {
         signerUuid: this.signerUuid,
         text: cast,
         parent: parentCastId?.hash,
-        embeds: [
-          {
-            url
-          }
-        ]
+        embeds: url ? [{ url }] : []
       })
       if (result.success) {
         return this.getCast(result.cast.hash)
