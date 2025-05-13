@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.45
+
+### Patch Changes
+
+- 741f7f2: minor farcaster bug fix
+
 ## 0.1.44
 
 ### Patch Changes
