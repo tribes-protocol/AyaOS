@@ -104,20 +104,25 @@ export const messageReceivedHandler = async ({
 
   const timeoutPromise = new Promise<never>((_resolve, reject) => {
     timeoutId = setTimeout(async () => {
-      await runtime.emitEvent(EventType.RUN_TIMEOUT, {
-        runtime,
-        runId,
-        messageId: message.id,
-        roomId: message.roomId,
-        entityId: message.entityId,
-        startTime,
-        status: 'timeout',
-        endTime: Date.now(),
-        duration: Date.now() - startTime,
-        error: 'Run exceeded 60 minute timeout',
-        source: 'messageHandler'
-      })
-      reject(new Error('Run exceeded 60 minute timeout'))
+      try {
+        await runtime.emitEvent(EventType.RUN_TIMEOUT, {
+          runtime,
+          runId,
+          messageId: message.id,
+          roomId: message.roomId,
+          entityId: message.entityId,
+          startTime,
+          status: 'timeout',
+          endTime: Date.now(),
+          duration: Date.now() - startTime,
+          error: 'Run exceeded 60 minute timeout',
+          source: 'messageHandler'
+        })
+        reject(new Error('Run exceeded 60 minute timeout'))
+      } catch (error) {
+        console.error('Failed to emit timeout event:', error)
+        reject(error)
+      }
     }, timeoutDuration)
   })
 

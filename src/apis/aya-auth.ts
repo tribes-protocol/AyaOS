@@ -42,21 +42,25 @@ export class AyaAuthAPI {
   }
 
   async sendStatus(newMessage: ChatStatusBody): Promise<void> {
-    const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/chat/status`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: this.cookie },
-      body: JSON.stringify(toJsonTree(newMessage))
-    })
-    if (response.status !== 200) {
-      const error = await response.json()
-      const parsed = ErrorResponseSchema.parse(error)
-      throw new Error(parsed.error)
+    try {
+      const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/chat/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: this.cookie },
+        body: JSON.stringify(toJsonTree(newMessage))
+      })
+      if (response.status !== 200) {
+        const error = await response.json()
+        const parsed = ErrorResponseSchema.parse(error)
+        throw new Error(parsed.error)
+      }
+    } catch (error) {
+      console.error('Failed to send status', newMessage, `because of`, error)
     }
   }
 
   async publishEvent(event: AgentEventData): Promise<void> {
-    const body = JSON.stringify(toJsonTree(event))
     try {
+      const body = JSON.stringify(toJsonTree(event))
       const response = await fetch(`${AGENTCOIN_FUN_API_URL}/api/agents/event`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: this.cookie },
@@ -68,7 +72,7 @@ export class AyaAuthAPI {
         throw new Error(ErrorResponseSchema.parse(error).error)
       }
     } catch (error) {
-      console.error('Failed to publish event', body, error)
+      console.error('Failed to publish event', event, `because of`, error)
     }
   }
 
