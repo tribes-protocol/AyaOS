@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.46
+
+### Patch Changes
+
+- b06cf7a: fix uncaught exceptions
+
 ## 0.1.45
 
 ### Patch Changes
