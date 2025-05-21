@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.47
+
+### Patch Changes
+
+- ea291c7: don't store memory if room doesn't exists
+
 ## 0.1.46
 
 ### Patch Changes
