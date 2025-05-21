@@ -106,6 +106,7 @@ export class MessageManager {
     content: TelegramContent,
     replyToMessageId?: number
   ): Promise<Message.CommonMessage[]> {
+    console.log('[AyaOS] Sending TG message in chunks', content)
     if (content.attachments && content.attachments.length > 0) {
       const sentMessages: Message.CommonMessage[] = []
       for (const attachment of content.attachments) {
@@ -624,34 +625,36 @@ export class MessageManager {
       // Create room ID
       const roomId = createUniqueUuid(this.runtime, chatId.toString())
 
-      // Create memories for the sent messages
-      const memories: Memory[] = []
-      for (const sentMessage of sentMessages) {
-        let text: string | undefined
-        if ('text' in sentMessage && isRequiredString(sentMessage.text)) {
-          text = sentMessage.text
-        }
+      const room = await this.runtime.getRoom(roomId)
 
-        if (isNull(text)) {
-          continue
-        }
+      if (room) {
+        // Create memories for the sent messages
+        for (const sentMessage of sentMessages) {
+          let text: string | undefined
+          if ('text' in sentMessage && isRequiredString(sentMessage.text)) {
+            text = sentMessage.text
+          }
 
-        const memory: Memory = {
-          id: createUniqueUuid(this.runtime, sentMessage.message_id.toString()),
-          entityId: this.runtime.agentId,
-          agentId: this.runtime.agentId,
-          roomId,
-          content: {
-            ...content,
-            text,
-            source: 'telegram',
-            channelType: getChannelType('private')
-          },
-          createdAt: sentMessage.date * 1000
-        }
+          if (isNull(text)) {
+            continue
+          }
 
-        await this.runtime.createMemory(memory, 'messages')
-        memories.push(memory)
+          const memory: Memory = {
+            id: createUniqueUuid(this.runtime, sentMessage.message_id.toString()),
+            entityId: this.runtime.agentId,
+            agentId: this.runtime.agentId,
+            roomId,
+            content: {
+              ...content,
+              text,
+              source: 'telegram',
+              channelType: getChannelType('private')
+            },
+            createdAt: sentMessage.date * 1000
+          }
+
+          await this.runtime.createMemory(memory, 'messages')
+        }
       }
 
       // Emit both generic and platform-specific message sent events
