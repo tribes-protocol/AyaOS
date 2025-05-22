@@ -280,7 +280,7 @@ export class MessageManager {
     })
 
     // Create interval for repeating typing indicators
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       try {
         // Check if we've been typing too long
         if (Date.now() - startTime > MAX_TYPING_DURATION_MS) {
@@ -288,7 +288,7 @@ export class MessageManager {
           return
         }
 
-        void this.bot.telegram.sendChatAction(chatId, 'typing')
+        await this.bot.telegram.sendChatAction(chatId, 'typing')
       } catch (error) {
         this.clearTypingIndicator(chatIdStr)
         console.error('Failed to send typing action:', error)
