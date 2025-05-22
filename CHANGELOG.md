@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.48
+
+### Patch Changes
+
+- cd37856: Fix uncaught exception
+
 ## 0.1.47
 
 ### Patch Changes
