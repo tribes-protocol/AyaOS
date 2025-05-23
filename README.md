@@ -1,36 +1,33 @@
 # AyaOS
 
-AyaOS is a high-level framework built on top of ElizaOS for creating autonomous AI agents. It provides a simple yet powerful interface for building, customizing, and deploying AI agents with advanced capabilities.
+AyaOS is a high-level framework built on top of ElizaOS for creating autonomous AI agents. It provides a simple yet powerful interface for building, customizing, and deploying AI agents with advanced capabilities. Out of the box it uses the free `meta/llama-3.3-70b-instruct-fp8` model from [function.network](https://function.network).
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js 20 or higher
+- Node.js 22 or higher
 - PostgreSQL (pgvector extension required) or Supabase
 
 ### Installation
 
-Choose one of these two options to get started:
-
-#### Option 1: Use bun (Recommended)
-
-You can initialize a new project directly using bunx (or npx):
+The fastest way to bootstrap an agent is with `npx`:
 
 ```bash
-# Install bun if needed
+# Install bun (used by the dev server)
 curl -fsSL https://bun.sh/install | bash
 
-# Using the `init` function requires bun to be installed
-bunx @tribesxyz/ayaos init
-
-# OR install as global package
-
-bun install -g @tribesxyz/ayaos
-bunx ayaos init
+npx @tribesxyz/ayaos init
 ```
 
-#### Option 2: Use the CLI
+After answering the prompts, start the agent:
+
+```bash
+cd <project-name>
+bun dev
+```
+
+#### Manual Setup
 
 Create a new directory for your project and initialize it:
 
@@ -89,6 +86,22 @@ bun dev
 ```
 
 When running for the first time, you'll see a URL in the terminal. Visit this URL to authenticate and complete the agent registration process. After successful authentication, your agent will be provisioned and ready to use.
+
+## Developer Setup
+
+If you want to hack on AyaOS itself, clone the repository and install the dependencies:
+
+```bash
+git clone https://github.com/tribes-protocol/ayaos.git
+cd ayaos
+bun install
+```
+
+Run the example agent during development with:
+
+```bash
+bun dev
+```
 
 ## Agent Architecture
 
@@ -455,6 +468,19 @@ The `get` function of a provider returns a `ProviderResult` object containing:
 
 4. **Structure Return Values Consistently**
    - Maintain a consistent structure in your provider's return values
+
+## Default Actions
+
+AyaOS ships with several built-in actions that are ready to use:
+
+- **REPLY** – send a text response back to the user.
+- **IGNORE** – end the conversation politely if no reply is needed.
+- **CAPABILITIES** – list what the agent can do.
+- **WEB_SEARCH** – perform a web search using Tavily.
+
+The default language model is the free `meta/llama-3.3-70b-instruct-fp8` hosted by [function.network](https://function.network).
+
+You can register additional actions or override these as needed.
 
 ## Security and Authentication
 
