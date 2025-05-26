@@ -49,7 +49,8 @@ export class TelegramService extends Service {
     super(runtime)
     console.log('📱 Constructing new TelegramService...')
     const botToken = runtime.getSetting('TELEGRAM_BOT_TOKEN') || process.env.TELEGRAM_BOT_TOKEN
-    this.bot = new Telegraf(botToken)
+    const timeout = runtime.getSetting('TELEGRAM_TIMEOUT')
+    this.bot = new Telegraf(botToken, { handlerTimeout: timeout })
     this.messageManager = new MessageManager(this.bot, this.runtime)
     console.log('✅ TelegramService constructor completed')
   }
