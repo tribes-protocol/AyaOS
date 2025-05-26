@@ -325,3 +325,15 @@ export function toJsonTreeString(
 
   return JSON.stringify(toJsonTree(obj), null, pretty ? 2 : undefined)
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function ensureNumber(value: any, message: string): number {
+  if (isNull(value)) {
+    throw new Error(message)
+  }
+  const num = typeof value === 'number' ? value : Number(value)
+  if (isNaN(num)) {
+    throw new Error(`${message}: Value "${value}" is not a valid number`)
+  }
+  return num
+}

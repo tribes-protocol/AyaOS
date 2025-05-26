@@ -1,4 +1,4 @@
-import { isNull, isRequiredString } from '@/common/functions'
+import { ensureNumber, isNull, isRequiredString } from '@/common/functions'
 import { TELEGRAM_SERVICE_NAME } from '@/plugins/telegram/constants'
 import { validateTelegramConfig } from '@/plugins/telegram/environment'
 import { MessageManager } from '@/plugins/telegram/messageManager'
@@ -50,8 +50,13 @@ export class TelegramService extends Service {
     console.log('📱 Constructing new TelegramService...')
     const botToken = runtime.getSetting('TELEGRAM_BOT_TOKEN') || process.env.TELEGRAM_BOT_TOKEN
     const timeout = runtime.getSetting('TELEGRAM_TIMEOUT')
-    this.bot = new Telegraf(botToken, { handlerTimeout: timeout })
-    this.bot = new Telegraf(botToken)
+    if (timeout) {
+      this.bot = new Telegraf(botToken, {
+        handlerTimeout: ensureNumber(timeout, 'TELEGRAM_TIMEOUT')
+      })
+    } else {
+      this.bot = new Telegraf(botToken)
+    }
     this.bot.catch((err, ctx) => {
       console.error('Telegram error for update', ctx.update, err)
     })
