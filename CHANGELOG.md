@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.49
+
+### Patch Changes
+
+- 2702265: add catch all for telegram crashes
+
 ## 0.1.48
 
 ### Patch Changes
