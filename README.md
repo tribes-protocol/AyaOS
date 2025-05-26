@@ -54,6 +54,7 @@ POSTGRES_URL=postgresql://username:password@localhost:5432/database_name
 # Optional: API keys for various providers (if needed)
 OPENAI_API_KEY=your_openai_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
+TELEGRAM_TIMEOUT=10000 # Optional timeout in milliseconds for Telegram handlers
 ```
 
 ### Creating Your First Agent

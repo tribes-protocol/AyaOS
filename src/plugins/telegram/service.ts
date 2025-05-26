@@ -49,6 +49,8 @@ export class TelegramService extends Service {
     super(runtime)
     console.log('📱 Constructing new TelegramService...')
     const botToken = runtime.getSetting('TELEGRAM_BOT_TOKEN') || process.env.TELEGRAM_BOT_TOKEN
+    const timeout = runtime.getSetting('TELEGRAM_TIMEOUT')
+    this.bot = new Telegraf(botToken, { handlerTimeout: timeout })
     this.bot = new Telegraf(botToken)
     this.bot.catch((err, ctx) => {
       console.error('Telegram error for update', ctx.update, err)
