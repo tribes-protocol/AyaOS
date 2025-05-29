@@ -35,6 +35,8 @@ import openaiPlugin from '@/plugins/openai'
 import sqlPlugin from '@/plugins/sql'
 import { telegramPlugin } from '@/plugins/telegram'
 import { TelegramService } from '@/plugins/telegram/service'
+import xmtpPlugin from '@/plugins/xmtp'
+import { XMTP_KEY } from '@/plugins/xmtp/constants'
 import { IKnowledgeService, ILLMService, IWalletService } from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
 import { LLMService } from '@/services/llm'
@@ -245,6 +247,11 @@ export class Agent implements IAyaAgent {
         this.runtime.getSetting('TELEGRAM_BOT_TOKEN') || process.env.TELEGRAM_BOT_TOKEN
       if (TELEGRAM_BOT_TOKEN) {
         await hackRegisterPlugin(telegramPlugin, this.runtime)
+      }
+
+      const XMTP_WALLET_PRIVATE_KEY = this.runtime.getSetting(XMTP_KEY)
+      if (XMTP_WALLET_PRIVATE_KEY) {
+        await hackRegisterPlugin(xmtpPlugin, this.runtime)
       }
 
       // start the managers
