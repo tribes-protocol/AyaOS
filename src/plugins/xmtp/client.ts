@@ -23,7 +23,7 @@ export class XMTPManager {
   }
 
   async start(): Promise<void> {
-    elizaLogger.success('XMTP client started')
+    elizaLogger.info('XMTP client started')
 
     elizaLogger.info('Syncing conversations...')
     await this.client.conversations.sync()
@@ -36,7 +36,7 @@ export class XMTPManager {
     elizaLogger.info('Waiting for messages...')
     const stream = this.client.conversations.streamAllMessages()
 
-    elizaLogger.success('✅ XMTP client started')
+    elizaLogger.info('✅ XMTP client started')
 
     for await (const message of await stream) {
       if (
@@ -81,7 +81,7 @@ export class XMTPManager {
       message: memory,
       source: XMTP_SOURCE,
       callback: async (content) => {
-        elizaLogger.success(`[XMTP] message received response: ${content.text}`)
+        elizaLogger.info(`[XMTP] message received response: ${content.text}`)
         await conversation.send(content.text)
         const memory = await this.createMessageMemory(message, conversation)
         await this.runtime.createMemory(memory, 'messages')

@@ -32,7 +32,7 @@ export class XMTPService extends Service {
     service.managers.set(runtime.agentId, manager)
     await manager.start()
 
-    elizaLogger.success('XMTP client started', runtime.agentId)
+    elizaLogger.info('XMTP client started', runtime.agentId)
     return service
   }
 
