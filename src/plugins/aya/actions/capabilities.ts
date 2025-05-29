@@ -24,7 +24,11 @@ export const capabilitiesAction: Action = {
     'AVAILABLE_ACTIONS'
   ],
   description:
-    'Lists all available capabilities and actions that the agent can perform. This action should ALWAYS be used when a user asks "what can you do?", "what are your capabilities?", "help", or similar questions about the agent\'s abilities. Never use REPLY for these types of questions.',
+    'Lists all available capabilities and actions that the agent can perform. ' +
+    'This action should ALWAYS be used when a user asks "what can you do?",' +
+    ' "what are your capabilities?", "help", or similar questions about the agent\'s abilities.' +
+    ' Never use REPLY for these types of questions.' +
+    'IMPORTANT: Only call CAPABILITIES action, and NEVER call the REPLY action',
   validate: async (_runtime: IAgentRuntime) => {
     return true
   },
@@ -83,7 +87,6 @@ export const capabilitiesAction: Action = {
       {
         name: '{{agentName}}',
         content: {
-          text: "Here's what I can do for you:\n\n- Answer questions and provide information\n- Search the web for real-time information\n- ...",
           actions: ['CAPABILITIES']
         }
       }
@@ -98,7 +101,6 @@ export const capabilitiesAction: Action = {
       {
         name: '{{agentName}}',
         content: {
-          text: "Here's what I can do for you:\n\n- Help with information retrieval\n- Search for current events and data\n- ...",
           actions: ['CAPABILITIES']
         }
       }
@@ -113,7 +115,6 @@ export const capabilitiesAction: Action = {
       {
         name: '{{agentName}}',
         content: {
-          text: "Here's what I can do for you:\n\n- Provide informative responses\n- Search the internet for up-to-date information\n- ...",
           actions: ['CAPABILITIES']
         }
       }
@@ -128,7 +129,6 @@ export const capabilitiesAction: Action = {
       {
         name: '{{agentName}}',
         content: {
-          text: "Here's what I can do for you:\n\n- Answer your questions with detailed information\n- Look up current information online\n- ...",
           actions: ['CAPABILITIES']
         }
       }

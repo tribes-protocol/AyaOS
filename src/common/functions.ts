@@ -1,4 +1,5 @@
 import { UUID_PATTERN } from '@/common/constants'
+import { ayaLogger } from '@/common/logger'
 import {
   ChatChannel,
   ChatChannelKind,
@@ -119,11 +120,7 @@ export function retry<T>(
     maxRetries: number
     logError: boolean
     ms: number
-  } = {
-    maxRetries: 3,
-    logError: true,
-    ms: 1000
-  }
+  } = { maxRetries: 3, logError: true, ms: 1000 }
 ): Promise<T> {
   const { maxRetries, logError, ms } = options
   return new Promise((resolve, reject) => {
@@ -133,7 +130,7 @@ export function retry<T>(
         .then(resolve)
         .catch((error) => {
           if (logError) {
-            console.error(`Error: ${error}`)
+            ayaLogger.error(`Error: ${error}`)
           }
           if (retries < maxRetries) {
             retries++
@@ -196,7 +193,7 @@ export function isValidSignature(message: string, publicKey: string, signature: 
 
     return keyPair.verify(msgHash, signature)
   } catch (error) {
-    console.error('Signature verification error:', error)
+    ayaLogger.error('Signature verification error:', error)
     return false
   }
 }

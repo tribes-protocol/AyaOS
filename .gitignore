@@ -9,4 +9,3 @@ db.sqlite
 pglite
 src/characters/
 .DS_Store
-xmtp-*

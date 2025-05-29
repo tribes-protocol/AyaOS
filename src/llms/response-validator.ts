@@ -1,4 +1,5 @@
 import { isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { Content, IAgentRuntime, ModelType } from '@elizaos/core'
 import { z } from 'zod'
 
@@ -74,7 +75,7 @@ raw json. No markdown or anything else:
   /* eslint-enable max-len */
 
   try {
-    console.log('Validating request:', JSON.stringify(response, null, 2))
+    ayaLogger.log('Validating request:', JSON.stringify(response, null, 2))
 
     // Try to parse the result up to three times
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -87,7 +88,7 @@ raw json. No markdown or anything else:
           return response
         }
 
-        console.log('Validated response:', JSON.stringify(validationResult, null, 2))
+        ayaLogger.log('Validated response:', JSON.stringify(validationResult, null, 2))
 
         return {
           ...response,
@@ -96,7 +97,7 @@ raw json. No markdown or anything else:
         }
       } catch (parseError) {
         if (attempt === 2) {
-          console.error('Failed to parse validation result after 3 attempts:', parseError)
+          ayaLogger.error('Failed to parse validation result after 3 attempts:', parseError)
           return undefined
         }
         // Continue to next attempt
@@ -105,7 +106,7 @@ raw json. No markdown or anything else:
 
     return undefined
   } catch (error) {
-    console.error('Response validation failed:', error)
+    ayaLogger.error('Response validation failed:', error)
     return undefined
   }
 }

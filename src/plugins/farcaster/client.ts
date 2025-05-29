@@ -1,3 +1,4 @@
+import { ayaLogger } from '@/common/logger'
 import {
   DEFAULT_CAST_CACHE_SIZE,
   DEFAULT_CAST_CACHE_TTL
@@ -70,10 +71,10 @@ export class FarcasterClient {
       throw new Error(`[Farcaster] Error publishing [${cast}] parentCastId: [${parentCastId}]`)
     } catch (err) {
       if (isApiErrorResponse(err)) {
-        console.error('Neynar error: ', err.response.data)
+        ayaLogger.error('Neynar error: ', err.response.data)
         throw err.response.data
       } else {
-        console.error('Error: ', err)
+        ayaLogger.error('Error: ', err)
         throw err
       }
     }
@@ -120,7 +121,7 @@ export class FarcasterClient {
     try {
       const result = await this.neynar.fetchBulkUsers({ fids: [fid] })
       if (!result.users || result.users.length < 1) {
-        console.error('Error fetching user by fid')
+        ayaLogger.error('Error fetching user by fid')
         throw new Error('Profile fetch failed')
       }
 
@@ -141,7 +142,7 @@ export class FarcasterClient {
 
       return profile
     } catch (error) {
-      console.error('Error fetching profile:', error)
+      ayaLogger.error('Error fetching profile:', error)
       throw error
     }
   }

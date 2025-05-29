@@ -1,6 +1,7 @@
 import { AYA_JWT_COOKIE_NAME } from '@/common/constants'
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { serializeIdentity, toJsonTree } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import {
   AgentEventData,
   AgentWallet,
@@ -54,7 +55,7 @@ export class AyaAuthAPI {
         throw new Error(parsed.error)
       }
     } catch (error) {
-      console.error('Failed to send status', newMessage, `because of`, error)
+      ayaLogger.error('Failed to send status', { newMessage, error })
     }
   }
 
@@ -72,7 +73,7 @@ export class AyaAuthAPI {
         throw new Error(ErrorResponseSchema.parse(error).error)
       }
     } catch (error) {
-      console.error('Failed to publish event', event, `because of`, error)
+      ayaLogger.error('Failed to publish event', { event, error })
     }
   }
 

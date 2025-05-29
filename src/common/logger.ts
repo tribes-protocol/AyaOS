@@ -140,7 +140,7 @@ class AyaLogger {
   }
 
   /**
-   * Alias for info method to match console.log behavior
+   * Alias for info method to match ayaLogger.log behavior
    * @param message The message string
    * @param ...args Additional arguments to log
    */

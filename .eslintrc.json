@@ -105,6 +105,11 @@
             "name": "@reown/appkit/networks",
             "importNames": ["base", "mainnet"],
             "message": "Do not use base directly. Use supported_chains instead."
+          },
+          {
+            "name": "@elizaos/core",
+            "importNames": ["elizaLogger"],
+            "message": "Import from @elizaos/core is not allowed in this project."
           }
         ]
       }

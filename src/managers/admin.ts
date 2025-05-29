@@ -25,7 +25,9 @@ export class LoginManager {
   constructor(
     private readonly keychain: KeychainManager,
     private readonly pathResolver: PathManager
-  ) {}
+  ) {
+    //
+  }
 
   async getUser(identity: Identity): Promise<User | undefined> {
     return this.api.getUser(identity)
@@ -49,12 +51,12 @@ export class LoginManager {
     name?: string | undefined,
     purpose?: string | undefined
   ): Promise<AuthInfo> {
-    console.log('Checking if agent coin is provisioned...')
+    ayaLogger.log('Checking if agent coin is provisioned...')
     if (await this.isProvisioned()) {
       return this.getAuthInfo()
     }
 
-    console.log('Provisioning agent...')
+    ayaLogger.log('Provisioning agent...')
 
     const regPath = this.pathResolver.registrationFile
 
@@ -119,15 +121,15 @@ export class LoginManager {
     const agentUrl = `${AGENTCOIN_FUN_API_URL}/agent/${agent.id}`
     const boxWidth = Math.max(70, agentUrl.length + 6) // Ensure minimum width of 70 chars
 
-    console.log('\n┌' + '─'.repeat(boxWidth) + '┐')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('│' + '  🎉 Congratulations! Your agent is created  '.padEnd(boxWidth, ' ') + '│')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('│' + '  Check it out here:'.padEnd(boxWidth, ' ') + '│')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('│' + `  ${agentUrl}`.padEnd(boxWidth, ' ') + '│')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('└' + '─'.repeat(boxWidth) + '┘\n')
+    ayaLogger.log('\n┌' + '─'.repeat(boxWidth) + '┐')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('│' + '  🎉 Congratulations! Your agent is created  '.padEnd(boxWidth, ' ') + '│')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('│' + '  Check it out here:'.padEnd(boxWidth, ' ') + '│')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('│' + `  ${agentUrl}`.padEnd(boxWidth, ' ') + '│')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('└' + '─'.repeat(boxWidth) + '┘\n')
 
     return agent.id
   }
@@ -151,17 +153,17 @@ export class LoginManager {
     const boxWidth = Math.max(70, url.length + 6) // Ensure minimum width of 70 chars
 
     // Print a fancy bordered URL message for the user
-    console.log('\n┌' + '─'.repeat(boxWidth) + '┐')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('│' + '  🔐 Authentication Required  '.padEnd(boxWidth, ' ') + '│')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('│' + '  Please visit:'.padEnd(boxWidth, ' ') + '│')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('│' + `  ${url}`.padEnd(boxWidth, ' ') + '│')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('│' + '  Waiting for authentication...'.padEnd(boxWidth, ' ') + '│')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('└' + '─'.repeat(boxWidth) + '┘\n')
+    ayaLogger.log('\n┌' + '─'.repeat(boxWidth) + '┐')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('│' + '  🔐 Authentication Required  '.padEnd(boxWidth, ' ') + '│')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('│' + '  Please visit:'.padEnd(boxWidth, ' ') + '│')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('│' + `  ${url}`.padEnd(boxWidth, ' ') + '│')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('│' + '  Waiting for authentication...'.padEnd(boxWidth, ' ') + '│')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('└' + '─'.repeat(boxWidth) + '┘\n')
 
     // Poll for the response token
     let token: string | undefined
@@ -181,11 +183,11 @@ export class LoginManager {
           token = await this.api.getCliAuthRequest(id)
           if (token) {
             clearInterval(waitingInterval)
-            console.log('\n\n┌' + '─'.repeat(boxWidth) + '┐')
-            console.log('│' + ' '.repeat(boxWidth) + '│')
-            console.log('│' + '  ✅ Authentication successful!'.padEnd(boxWidth - 1, ' ') + '│')
-            console.log('│' + ' '.repeat(boxWidth) + '│')
-            console.log('└' + '─'.repeat(boxWidth) + '┘\n')
+            ayaLogger.log('\n\n┌' + '─'.repeat(boxWidth) + '┐')
+            ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+            ayaLogger.log('│' + '  ✅ Authentication successful!'.padEnd(boxWidth - 1, ' ') + '│')
+            ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+            ayaLogger.log('└' + '─'.repeat(boxWidth) + '┘\n')
 
             // Save the token to credentials.json
             fs.writeFileSync(
@@ -198,7 +200,7 @@ export class LoginManager {
           }
         } catch (error) {
           clearInterval(waitingInterval)
-          console.error('Error polling for CLI auth token', error)
+          ayaLogger.error('Error polling for CLI auth token', error)
           throw new Error('Failed to authenticate via CLI')
         }
       }
@@ -221,7 +223,7 @@ export class LoginManager {
       await this.getIdentity()
       return true
     } catch {
-      console.log('Provision file not found, assuming agent is not provisioned')
+      ayaLogger.log('Provision file not found, assuming agent is not provisioned')
       return false
     }
   }

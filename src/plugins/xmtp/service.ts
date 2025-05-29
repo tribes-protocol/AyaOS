@@ -1,8 +1,9 @@
+import { ayaLogger } from '@/common/logger'
 import { HexStringSchema } from '@/common/types'
 import { XMTPManager } from '@/plugins/xmtp/client'
 import { XMTP_KEY } from '@/plugins/xmtp/constants'
 import { createSigner } from '@/plugins/xmtp/helper'
-import { elizaLogger, IAgentRuntime, Service, UUID } from '@elizaos/core'
+import { IAgentRuntime, Service, UUID } from '@elizaos/core'
 import { Client as XmtpClient, XmtpEnv } from '@xmtp/node-sdk'
 
 export class XMTPService extends Service {
@@ -15,14 +16,14 @@ export class XMTPService extends Service {
     let manager = service.managers.get(runtime.agentId)
 
     if (manager) {
-      elizaLogger.warn('XMTP service already started', runtime.agentId)
+      ayaLogger.warn('XMTP service already started', runtime.agentId)
       return service
     }
 
     const walletPrivateKey = HexStringSchema.parse(runtime.getSetting(XMTP_KEY))
 
     const signer = createSigner(walletPrivateKey)
-    const env: XmtpEnv = 'dev'
+    const env: XmtpEnv = 'production'
 
     const client = await XmtpClient.create(signer, {
       env
@@ -32,7 +33,7 @@ export class XMTPService extends Service {
     service.managers.set(runtime.agentId, manager)
     await manager.start()
 
-    elizaLogger.info('XMTP client started', runtime.agentId)
+    ayaLogger.info('XMTP client started', runtime.agentId)
     return service
   }
 
@@ -51,7 +52,7 @@ export class XMTPService extends Service {
       try {
         await XMTPService.stop(manager.runtime)
       } catch (error) {
-        console.error('Error stopping XMTP service', agentId, error)
+        ayaLogger.error('Error stopping XMTP service', { agentId, error })
       }
     }
   }

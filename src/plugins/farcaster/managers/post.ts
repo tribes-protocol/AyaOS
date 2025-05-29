@@ -1,3 +1,4 @@
+import { ayaLogger } from '@/common/logger'
 import type { FarcasterClient } from '@/plugins/farcaster/client'
 import { standardCastHandlerCallback } from '@/plugins/farcaster/common/callbacks'
 import { FARCASTER_SOURCE } from '@/plugins/farcaster/common/constants'
@@ -65,16 +66,19 @@ export class FarcasterPostManager {
           await this.generateNewCast()
         }
 
-        console.log(`Next cast scheduled in ${randomMinutes} minutes`)
+        ayaLogger.log(`Next cast scheduled in ${randomMinutes} minutes`)
         await new Promise((resolve) => (this.timeout = setTimeout(resolve, delay)))
       } catch (error) {
-        console.error('[Farcaster] Error in periodic post:', this.runtime.agentId, error)
+        ayaLogger.error('[Farcaster] Error in periodic post:', {
+          agentId: this.runtime.agentId,
+          error
+        })
       }
     }
   }
 
   private async generateNewCast(): Promise<void> {
-    console.log('Generating new cast')
+    ayaLogger.log('Generating new cast')
     try {
       const worldId = createUniqueUuid(this.runtime, this.fid.toString())
       const roomId = createUniqueUuid(this.runtime, `${this.fid}-home`)
@@ -103,7 +107,7 @@ export class FarcasterPostManager {
         source: FARCASTER_SOURCE
       })
     } catch (error) {
-      console.error('Error generating new cast:', error)
+      ayaLogger.error('Error generating new cast:', error)
     }
   }
 }

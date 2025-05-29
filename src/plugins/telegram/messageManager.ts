@@ -15,6 +15,7 @@ import type { Context, NarrowedContext, Telegraf } from 'telegraf'
 import { Markup } from 'telegraf'
 
 import { isNull, isRequiredString, toJsonTreeString } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import fs from 'node:fs'
 
 /**
@@ -76,7 +77,7 @@ export class MessageManager {
     try {
       let imageUrl: string | null = null
 
-      console.debug(`Telegram Message: ${toJsonTreeString(message, { pretty: true })}`)
+      ayaLogger.debug(`Telegram Message: ${toJsonTreeString(message, { pretty: true })}`)
 
       if ('photo' in message && message.photo?.length > 0) {
         const photo = message.photo[message.photo.length - 1]
@@ -95,7 +96,7 @@ export class MessageManager {
         return { description: `[Image: ${title}\n${description}]` }
       }
     } catch (error) {
-      console.error('❌ Error processing image:', error)
+      ayaLogger.error('❌ Error processing image:', error)
     }
 
     return null
@@ -106,7 +107,7 @@ export class MessageManager {
     content: TelegramContent,
     replyToMessageId?: number
   ): Promise<Message.CommonMessage[]> {
-    console.log('[AyaOS] Sending TG message in chunks', content)
+    ayaLogger.log('[AyaOS] Sending TG message in chunks', content)
     if (content.attachments && content.attachments.length > 0) {
       const sentMessages: Message.CommonMessage[] = []
       for (const attachment of content.attachments) {
@@ -230,7 +231,7 @@ export class MessageManager {
         }
       }
     } catch (error) {
-      console.error(`Failed to send ${type}. Path: ${mediaPath}. Error:`, error)
+      ayaLogger.error(`Failed to send ${type}. Path: ${mediaPath}. Error:`, error)
       throw error
     }
   }
@@ -276,7 +277,7 @@ export class MessageManager {
 
     // Send initial typing indicator immediately
     void this.bot.telegram.sendChatAction(chatId, 'typing').catch((error) => {
-      console.error('Failed to send initial typing action:', error)
+      ayaLogger.error('Failed to send initial typing action:', error)
     })
 
     // Create interval for repeating typing indicators
@@ -291,7 +292,7 @@ export class MessageManager {
         await this.bot.telegram.sendChatAction(chatId, 'typing')
       } catch (error) {
         this.clearTypingIndicator(chatIdStr)
-        console.error('Failed to send typing action:', error)
+        ayaLogger.error('Failed to send typing action:', error)
       }
     }, TYPING_INTERVAL_MS)
 
@@ -468,7 +469,7 @@ export class MessageManager {
         } catch (error) {
           // Clear typing indicator in case of error too
           this.clearTypingIndicator(chatId.toString())
-          console.error('Error in message callback:', error)
+          ayaLogger.error('Error in message callback:', error)
           return []
         }
       }
@@ -499,7 +500,7 @@ export class MessageManager {
         this.clearTypingIndicator(chatId.toString())
       }
 
-      console.error('Error handling Telegram message:', {
+      ayaLogger.error('Error handling Telegram message:', {
         error,
         chatId: ctx.chat?.id,
         messageId: ctx.message?.message_id,
@@ -567,7 +568,7 @@ export class MessageManager {
           }
           return [responseMemory]
         } catch (error) {
-          console.error('Error in reaction callback:', error)
+          ayaLogger.error('Error in reaction callback:', error)
           return []
         }
       }
@@ -591,7 +592,7 @@ export class MessageManager {
         originalReaction: reaction.new_reaction[0]
       })
     } catch (error) {
-      console.error('Error handling reaction:', error)
+      ayaLogger.error('Error handling reaction:', error)
     }
   }
 
@@ -677,7 +678,7 @@ export class MessageManager {
     } catch (error) {
       // Clear typing indicator in case of error
       this.clearTypingIndicator(chatId.toString())
-      console.error('Error sending message to Telegram:', error)
+      ayaLogger.error('Error sending message to Telegram:', error)
       return []
     }
   }
