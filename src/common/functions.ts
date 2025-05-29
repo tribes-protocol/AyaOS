@@ -120,11 +120,7 @@ export function retry<T>(
     maxRetries: number
     logError: boolean
     ms: number
-  } = {
-      maxRetries: 3,
-      logError: true,
-      ms: 1000
-    }
+  } = { maxRetries: 3, logError: true, ms: 1000 }
 ): Promise<T> {
   const { maxRetries, logError, ms } = options
   return new Promise((resolve, reject) => {

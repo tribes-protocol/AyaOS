@@ -20,7 +20,9 @@ export class ConfigManager {
   constructor(
     private readonly eventService: EventManager,
     private readonly pathResolver: PathManager
-  ) { }
+  ) {
+    //
+  }
 
   setShutdownFunc(func: (signal?: string) => Promise<void>): void {
     this.shutdownFunc = func
