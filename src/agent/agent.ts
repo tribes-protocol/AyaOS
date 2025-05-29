@@ -26,8 +26,9 @@ import {
 import { ayaLogger } from '@/common/logger'
 import { AuthInfo, AyaOSOptions, CharacterSchema } from '@/common/types'
 import { FarcasterManager } from '@/managers/farcaster'
-import { IFarcasterManager, ITelegramManager } from '@/managers/interfaces'
+import { IFarcasterManager, ITelegramManager, ITwitterManager } from '@/managers/interfaces'
 import { TelegramManager } from '@/managers/telegram'
+import { TwitterManager } from '@/managers/twitter'
 import { ayaPlugin } from '@/plugins/aya'
 import farcasterPlugin from '@/plugins/farcaster'
 import { FarcasterService } from '@/plugins/farcaster/service'
@@ -35,6 +36,8 @@ import openaiPlugin from '@/plugins/openai'
 import sqlPlugin from '@/plugins/sql'
 import { telegramPlugin } from '@/plugins/telegram'
 import { TelegramService } from '@/plugins/telegram/service'
+import twitterPlugin from '@/plugins/twitter'
+import { TwitterService } from '@/plugins/twitter/service'
 import xmtpPlugin from '@/plugins/xmtp'
 import { XMTP_KEY } from '@/plugins/xmtp/constants'
 import { IKnowledgeService, ILLMService, IWalletService } from '@/services/interfaces'
@@ -67,6 +70,7 @@ export class Agent implements IAyaAgent {
   private context_?: AgentContext
   private telegram_?: ITelegramManager
   private farcaster_?: IFarcasterManager
+  private twitter_?: ITwitterManager
   private character_?: Character | undefined
 
   constructor(readonly options?: AyaOSOptions) {}
@@ -145,6 +149,20 @@ export class Agent implements IAyaAgent {
     }
     this.farcaster_ = new FarcasterManager(farcasterService, this.runtime)
     return this.farcaster_
+  }
+
+  get twitter(): ITwitterManager {
+    if (isNull(this.twitter_)) {
+      const twitterService = this.runtime.getService<TwitterService>(
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        'twitter' as ServiceTypeName
+      )
+      if (isNull(twitterService)) {
+        throw new Error('Twitter service not found')
+      }
+      this.twitter_ = new TwitterManager(twitterService, this.runtime)
+    }
+    return this.twitter_
   }
 
   async start(): Promise<void> {
@@ -252,6 +270,11 @@ export class Agent implements IAyaAgent {
       const XMTP_WALLET_PRIVATE_KEY = this.runtime.getSetting(XMTP_KEY)
       if (XMTP_WALLET_PRIVATE_KEY) {
         await hackRegisterPlugin(xmtpPlugin, this.runtime)
+      }
+
+      const X_ACCESS_TOKEN = this.runtime.getSetting('X_ACCESS_TOKEN')
+      if (X_ACCESS_TOKEN) {
+        await hackRegisterPlugin(twitterPlugin, this.runtime)
       }
 
       // start the managers
