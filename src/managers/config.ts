@@ -1,5 +1,6 @@
 import { isNull, isRequiredString } from '@/common/functions'
 import { OperationQueue } from '@/common/lang/operation_queue'
+import { ayaLogger } from '@/common/logger'
 import { EventManager } from '@/managers/event'
 import { PathManager } from '@/managers/path'
 import crypto from 'crypto'
@@ -19,7 +20,7 @@ export class ConfigManager {
   constructor(
     private readonly eventService: EventManager,
     private readonly pathResolver: PathManager
-  ) {}
+  ) { }
 
   setShutdownFunc(func: (signal?: string) => Promise<void>): void {
     this.shutdownFunc = func
@@ -27,17 +28,17 @@ export class ConfigManager {
 
   async kill(): Promise<void> {
     if (isNull(this.shutdownFunc)) {
-      console.log('No shutdown function set. killing process...')
+      ayaLogger.log('No shutdown function set. killing process...')
       process.kill(process.pid, 'SIGTERM')
     }
     await this.shutdownFunc?.()
   }
 
   async start(): Promise<void> {
-    console.log('Starting config service...')
+    ayaLogger.log('Starting config service...')
     // disable in dev mode
     if (process.env.NODE_ENV !== 'production') {
-      console.log('Config service disabled in dev mode')
+      ayaLogger.log('Config service disabled in dev mode')
       return
     }
 
@@ -52,7 +53,7 @@ export class ConfigManager {
 
     app.get('/command/new', async (req, res) => {
       const { kind } = req.query
-      console.log(`Received command request: ${kind}`)
+      ayaLogger.log(`Received command request: ${kind}`)
 
       if (isNull(kind)) {
         res.status(400).json({ error: 'Kind parameter is required' })
@@ -69,7 +70,7 @@ export class ConfigManager {
             res.status(400).json({ error: `Invalid kind parameter: ${kind}` })
         }
       } catch (error) {
-        console.error('Error processing command:', error)
+        ayaLogger.error('Error processing command:', error)
         res.status(500).json({ error: 'Internal server error' })
       }
     })
@@ -96,7 +97,7 @@ export class ConfigManager {
         return
       }
 
-      console.log(`New envvars file detected. Restarting agent...`)
+      ayaLogger.log(`New envvars file detected. Restarting agent...`)
       await this.eventService.publishEnvChangeEvent(envvars)
       this.envvarsChecksum = checksum
 
@@ -114,7 +115,7 @@ export class ConfigManager {
         const remoteUrl = await git.remote(['get-url', 'origin'])
 
         if (!isRequiredString(remoteUrl)) {
-          console.error('No remote url found')
+          ayaLogger.error('No remote url found')
           return
         }
 
@@ -122,7 +123,7 @@ export class ConfigManager {
           this.gitCommitHash = commitHash
         } else {
           // kill the process and docker container should restart it
-          console.log(
+          ayaLogger.log(
             `New code detected current=${this.gitCommitHash} new=${commitHash}. Restarting agent...`
           )
           this.gitCommitHash = commitHash
@@ -136,9 +137,9 @@ export class ConfigManager {
           e instanceof Error &&
           e.message.includes('Cannot use simple-git on a directory that does not exist')
         ) {
-          console.log('Git directory not initiated yet')
+          ayaLogger.log('Git directory not initiated yet')
         } else {
-          console.error('Error checking git status:', e)
+          ayaLogger.error('Error checking git status:', e)
         }
       }
     })
@@ -148,13 +149,13 @@ export class ConfigManager {
     this.isRunning = false
     if (this.server) {
       this.server.close()
-      console.log('Closing server')
+      ayaLogger.log('Closing server')
       if (fs.existsSync(this.pathResolver.runtimeServerSocketFile)) {
-        console.log('Removing socket file')
+        ayaLogger.log('Removing socket file')
         fs.unlinkSync(this.pathResolver.runtimeServerSocketFile)
       }
       this.server = undefined
     }
-    console.log('Stopping config service...')
+    ayaLogger.log('Stopping config service...')
   }
 }

@@ -1,4 +1,5 @@
 import { isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import {
   TavilySearchResponseSchema,
   type IWebSearchService,
@@ -49,7 +50,9 @@ export class WebSearchService extends Service implements IWebSearchService {
     return undefined
   }
 
-  async stop(): Promise<void> {}
+  async stop(): Promise<void> {
+    //
+  }
 
   async search(query: string, options?: SearchOptions): Promise<SearchResponse> {
     if (isNull(this.apiKey)) {
@@ -91,13 +94,13 @@ export class WebSearchService extends Service implements IWebSearchService {
       return validatedData
     } catch (error) {
       if (error instanceof Error) {
-        console.error('Web search error:', error.message)
+        ayaLogger.error('Web search error:', error.message)
         if (error.cause) {
-          console.error('Cause:', error.cause)
+          ayaLogger.error('Cause:', error.cause)
         }
         throw error
       } else {
-        console.error('An unknown web search error occurred:', error)
+        ayaLogger.error('An unknown web search error occurred:', error)
         throw new Error('An unknown web search error occurred')
       }
     }

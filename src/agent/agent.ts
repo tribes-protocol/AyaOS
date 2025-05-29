@@ -69,7 +69,7 @@ export class Agent implements IAyaAgent {
   private farcaster_?: IFarcasterManager
   private character_?: Character | undefined
 
-  constructor(readonly options?: AyaOSOptions) {}
+  constructor(readonly options?: AyaOSOptions) { }
 
   get runtime(): AgentRuntime {
     if (!this.runtime_) {
@@ -151,7 +151,7 @@ export class Agent implements IAyaAgent {
     let runtime: AgentRuntime | undefined
 
     try {
-      console.log('Starting agent...', AGENTCOIN_FUN_API_URL)
+      ayaLogger.log('Starting agent...', AGENTCOIN_FUN_API_URL)
 
       // step 1: provision the hardware if needed.
       const context = await AgentRegistry.setup(this.options)
@@ -186,24 +186,24 @@ export class Agent implements IAyaAgent {
           }
           isShuttingDown = true
 
-          console.warn(`Received ${signal} signal. Stopping agent...`)
+          ayaLogger.warn(`Received ${signal} signal. Stopping agent...`)
 
           if (runtime) {
             try {
               const agentId = runtime.agentId
-              console.warn('Stopping agent runtime...', agentId)
+              ayaLogger.warn('Stopping agent runtime...', agentId)
               await runtime.stop()
               await AgentRegistry.destroy(this.context.dataDir)
               ayaLogger.info('Agent runtime stopped successfully!', agentId)
             } catch (error) {
-              console.error('Error stopping agent:', error)
+              ayaLogger.error('Error stopping agent:', error)
             }
           }
 
-          console.log('The End.')
+          ayaLogger.log('The End.')
           process.exit(0)
         } catch (error) {
-          console.error('Error shutting down:', error)
+          ayaLogger.error('Error shutting down:', error)
           process.exit(1)
         }
       }
@@ -258,21 +258,21 @@ export class Agent implements IAyaAgent {
       const AGENTCOIN_MONITORING_ENABLED = this.runtime.getSetting('AGENTCOIN_MONITORING_ENABLED')
 
       if (AGENTCOIN_MONITORING_ENABLED) {
-        console.log('Agentcoin monitoring enabled')
+        ayaLogger.log('Agentcoin monitoring enabled')
         await managers.config.start()
       }
 
-      console.log(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
+      ayaLogger.log(`Started ${this.runtime.character.name} as ${this.runtime.agentId}`)
     } catch (error: unknown) {
-      console.log('sdk error', error)
-      console.error(
+      ayaLogger.log('sdk error', error)
+      ayaLogger.error(
         'Error creating agent:',
         error instanceof Error
           ? {
-              message: error.message,
-              stack: error.stack,
-              cause: error.cause
-            }
+            message: error.message,
+            stack: error.stack,
+            cause: error.cause
+          }
           : String(error)
       )
       throw error
@@ -288,15 +288,15 @@ export class Agent implements IAyaAgent {
     const boxWidth = Math.max(70, agentUrl.length + 6)
 
     // Print a fancy bordered URL message
-    console.log('\n┌' + '─'.repeat(boxWidth) + '┐')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('│' + '  🚀 Your agent is ready!  '.padEnd(boxWidth, ' ') + '│')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('│' + '  Visit your agent at:'.padEnd(boxWidth, ' ') + '│')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('│' + `  ${agentUrl}`.padEnd(boxWidth, ' ') + '│')
-    console.log('│' + ' '.repeat(boxWidth) + '│')
-    console.log('└' + '─'.repeat(boxWidth) + '┘\n')
+    ayaLogger.log('\n┌' + '─'.repeat(boxWidth) + '┐')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('│' + '  🚀 Your agent is ready!  '.padEnd(boxWidth, ' ') + '│')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('│' + '  Visit your agent at:'.padEnd(boxWidth, ' ') + '│')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('│' + `  ${agentUrl}`.padEnd(boxWidth, ' ') + '│')
+    ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
+    ayaLogger.log('└' + '─'.repeat(boxWidth) + '┘\n')
   }
 
   async register(kind: 'service', handler: typeof Service): Promise<void>
@@ -346,7 +346,7 @@ export class Agent implements IAyaAgent {
     authInfo: AuthInfo,
     envSettings: Record<string, string>
   ): Promise<Character> {
-    console.log('Loading character...')
+    ayaLogger.log('Loading character...')
     const { identity, token } = authInfo
 
     const characterId = ensureUUID(identity.substring(6))
@@ -396,7 +396,7 @@ export class Agent implements IAyaAgent {
       character.secrets.PGLITE_DATA_DIR = path.join(this.context.dataDir, 'elizadb')
     }
 
-    console.log('loaded character', character.name)
+    ayaLogger.log('loaded character', character.name)
 
     return character
   }
@@ -425,7 +425,7 @@ export class Agent implements IAyaAgent {
       if (key.startsWith('AGENTCOIN_ENC_') && isRequiredString(value)) {
         const decryptedValue = this.context.managers.keychain.decrypt(value)
         const newKey = key.substring(14)
-        console.log('Decrypted secret:', newKey)
+        ayaLogger.log('Decrypted secret:', newKey)
         env[newKey] = decryptedValue
         delete env[key]
       }
@@ -439,7 +439,7 @@ export class Agent implements IAyaAgent {
 
 async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promise<void> {
   if (!plugin) {
-    console.error('*** registerPlugin plugin is undefined')
+    ayaLogger.error('*** registerPlugin plugin is undefined')
     throw new Error('*** registerPlugin plugin is undefined')
   }
 
@@ -448,14 +448,14 @@ async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promi
   if (!runtime.plugins.some((p) => p.name === plugin.name)) {
     // Push to plugins array - this works because we're modifying the array, not reassigning it
     runtime.plugins.push(plugin)
-    console.log(`Success: Plugin ${plugin.name} registered successfully`)
+    ayaLogger.log(`Success: Plugin ${plugin.name} registered successfully`)
   }
 
   // Initialize the plugin if it has an init function
   if (plugin.init) {
     try {
       await plugin.init(plugin.config || {}, runtime)
-      console.log(`Success: Plugin ${plugin.name} initialized successfully`)
+      ayaLogger.log(`Success: Plugin ${plugin.name} initialized successfully`)
     } catch (error) {
       // Check if the error is related to missing API keys
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -466,11 +466,11 @@ async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promi
         errorMessage.includes('Invalid plugin configuration')
       ) {
         // Instead of throwing an error, log a friendly message
-        console.warn(`Plugin ${plugin.name} requires configuration. ${errorMessage}`)
-        console.warn(
+        ayaLogger.warn(`Plugin ${plugin.name} requires configuration. ${errorMessage}`)
+        ayaLogger.warn(
           'Please check your environment variables and ensure all required API keys are set.'
         )
-        console.warn('You can set these in your .eliza/.env file.')
+        ayaLogger.warn('You can set these in your .eliza/.env file.')
 
         // We don't throw here, allowing the application to continue
         // with reduced functionality
@@ -483,7 +483,7 @@ async function hackRegisterPlugin(plugin: Plugin, runtime: IAgentRuntime): Promi
 
   // Register plugin adapter
   if (plugin.adapter) {
-    console.log(`Registering database adapter for plugin ${plugin.name}`)
+    ayaLogger.log(`Registering database adapter for plugin ${plugin.name}`)
     runtime.registerDatabaseAdapter(plugin.adapter)
   }
 
@@ -545,12 +545,12 @@ async function hackRegisterService(service: typeof Service, runtime: IAgentRunti
   const serviceType = service.serviceType as ServiceTypeName
 
   if (runtime.services.has(serviceType)) {
-    console.warn(`(${runtime.agentId}) - Service ${serviceType} is already registered.`)
+    ayaLogger.warn(`(${runtime.agentId}) - Service ${serviceType} is already registered.`)
     return
   }
 
   const serviceInstance = await service.start(runtime)
   // Add the service to the services map
   runtime.services.set(serviceType, serviceInstance)
-  console.log(`(${runtime.agentId}) - Service ${serviceType} registered successfully`)
+  ayaLogger.log(`(${runtime.agentId}) - Service ${serviceType} registered successfully`)
 }

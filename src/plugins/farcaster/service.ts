@@ -1,3 +1,4 @@
+import { ayaLogger } from '@/common/logger'
 import { hasFarcasterEnabled, validateFarcasterConfig } from '@/plugins/farcaster/common/config'
 import { FARCASTER_SERVICE_NAME } from '@/plugins/farcaster/common/constants'
 import { FarcasterAgentManager } from '@/plugins/farcaster/managers/agent'
@@ -14,7 +15,7 @@ export class FarcasterService extends Service {
     let manager = service.managers.get(runtime.agentId)
 
     if (manager) {
-      console.warn('Farcaster service already started', runtime.agentId)
+      ayaLogger.warn('Farcaster service already started', runtime.agentId)
       return service
     }
 
@@ -39,7 +40,7 @@ export class FarcasterService extends Service {
     if (manager) {
       await manager.stop()
       service.managers.delete(runtime.agentId)
-      console.log('Farcaster client stopped', runtime.agentId)
+      ayaLogger.log('Farcaster client stopped', runtime.agentId)
     } else {
       logger.debug('Farcaster service not running', runtime.agentId)
     }
@@ -53,7 +54,7 @@ export class FarcasterService extends Service {
       try {
         await FarcasterService.stop(manager.runtime)
       } catch (error) {
-        console.error('Error stopping Farcaster service', agentId, error)
+        ayaLogger.error('Error stopping Farcaster service', { agentId, error })
       }
     }
   }

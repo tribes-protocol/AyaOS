@@ -1,4 +1,5 @@
 import { ensureRuntimeService, isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { WebSearchService } from '@/plugins/aya/services/websearch'
 import type { SearchResult } from '@/plugins/aya/types'
 import {
@@ -90,8 +91,8 @@ export const webSearch: Action = {
         text: summary
       })
     } else {
-      console.error('search failed or returned no data.')
-      console.log('search failed or returned no data.')
+      ayaLogger.error('search failed or returned no data.')
+      ayaLogger.log('search failed or returned no data.')
     }
   },
   examples: [

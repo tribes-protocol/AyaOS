@@ -52,7 +52,7 @@ export class XMTPService extends Service {
       try {
         await XMTPService.stop(manager.runtime)
       } catch (error) {
-        console.error('Error stopping XMTP service', agentId, error)
+        ayaLogger.error('Error stopping XMTP service', { agentId, error })
       }
     }
   }

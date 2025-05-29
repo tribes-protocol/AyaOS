@@ -147,7 +147,7 @@ export async function generateObjectByModelType(
       temperature: params.temperature
     })
 
-    // console.log('openaiResponse', openaiResponse)
+    // ayaLogger.log('openaiResponse', openaiResponse)
 
     // // Write the OpenAI response to a file for debugging/logging purposes
     // try {
@@ -163,9 +163,9 @@ export async function generateObjectByModelType(
 
     //   const filePath = path.join(dirPath, `${timestamp}.json`)
     //   fs.writeFileSync(filePath, openaiResponse, 'utf8')
-    //   console.log(`OpenAI response written to ${filePath}`)
+    //   ayaLogger.log(`OpenAI response written to ${filePath}`)
     // } catch (writeError) {
-    //   console.error('Error writing OpenAI response to file:', writeError)
+    //   ayaLogger.error('Error writing OpenAI response to file:', writeError)
     //   // Continue execution even if writing to file fails
     // }
 
@@ -246,7 +246,7 @@ export const openaiPlugin: Plugin = {
     OPENAI_EMBEDDING_DIMENSIONS: process.env.OPENAI_EMBEDDING_DIMENSIONS
   },
   async init(_config, _runtime) {
-    console.debug('OpenAI plugin initialized')
+    ayaLogger.debug('OpenAI plugin initialized')
   },
   models: {
     [ModelType.TEXT_EMBEDDING]: async (
@@ -260,7 +260,7 @@ export const openaiPlugin: Plugin = {
 
       // Validate embedding dimension
       if (!Object.values(VECTOR_DIMS).includes(embeddingDimension)) {
-        console.error(
+        ayaLogger.error(
           `Invalid embedding dimension: ${embeddingDimension}. Must be one of: ${Object.values(VECTOR_DIMS).join(', ')}`
         )
         throw new Error(
@@ -284,7 +284,7 @@ export const openaiPlugin: Plugin = {
       } else if (typeof params === 'object' && params.text) {
         text = params.text // Object with text property
       } else {
-        console.warn('Invalid input format for embedding')
+        ayaLogger.warn('Invalid input format for embedding')
         // Return a fallback for invalid input
         const fallbackVector = Array(embeddingDimension).fill(0)
         fallbackVector[0] = 0.2 // Different value for tracking
@@ -293,7 +293,7 @@ export const openaiPlugin: Plugin = {
 
       // Skip API call for empty text
       if (!text.trim()) {
-        console.warn('Empty text for embedding')
+        ayaLogger.warn('Empty text for embedding')
         const emptyVector = Array(embeddingDimension).fill(0)
         emptyVector[0] = 0.3 // Different value for tracking
         return emptyVector
@@ -316,7 +316,7 @@ export const openaiPlugin: Plugin = {
         })
 
         if (!response.ok) {
-          console.error(`OpenAI API error: ${response.status} - ${response.statusText}`)
+          ayaLogger.error(`OpenAI API error: ${response.status} - ${response.statusText}`)
           const errorVector = Array(embeddingDimension).fill(0)
           errorVector[0] = 0.4 // Different value for tracking
           return errorVector
@@ -328,7 +328,7 @@ export const openaiPlugin: Plugin = {
         }
 
         if (!data?.data?.[0]?.embedding) {
-          console.error('API returned invalid structure')
+          ayaLogger.error('API returned invalid structure')
           const errorVector = Array(embeddingDimension).fill(0)
           errorVector[0] = 0.5 // Different value for tracking
           return errorVector
@@ -337,7 +337,7 @@ export const openaiPlugin: Plugin = {
         const embedding = data.data[0].embedding
         return embedding
       } catch (error) {
-        console.error('Error generating embedding:', error)
+        ayaLogger.error('Error generating embedding:', error)
         const errorVector = Array(embeddingDimension).fill(0)
         errorVector[0] = 0.6 // Different value for tracking
         return errorVector
@@ -457,7 +457,7 @@ export const openaiPlugin: Plugin = {
         const apiKey = getApiKey(runtime)
 
         if (!apiKey) {
-          console.error('OpenAI API key not set')
+          ayaLogger.error('OpenAI API key not set')
           return {
             title: 'Failed to analyze image',
             description: 'API key not configured'
@@ -518,7 +518,7 @@ export const openaiPlugin: Plugin = {
 
         return { title, description }
       } catch (error) {
-        console.error('Error analyzing image:', error)
+        ayaLogger.error('Error analyzing image:', error)
         return {
           title: 'Failed to analyze image',
           description: `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -526,7 +526,7 @@ export const openaiPlugin: Plugin = {
       }
     },
     [ModelType.TRANSCRIPTION]: async (runtime, audioBuffer: Buffer) => {
-      console.log('audioBuffer', audioBuffer)
+      ayaLogger.log('audioBuffer', audioBuffer)
       const baseURL = getBaseURL(runtime)
 
       const formData = new FormData()
@@ -541,7 +541,7 @@ export const openaiPlugin: Plugin = {
         body: formData
       })
 
-      console.log('response', response)
+      ayaLogger.log('response', response)
       if (!response.ok) {
         throw new Error(`Failed to transcribe audio: ${response.statusText}`)
       }
@@ -577,7 +577,7 @@ export const openaiPlugin: Plugin = {
             const data = await response.json()
             // eslint-disable-next-line max-len
             // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-            console.log('Models Available:', (data as any)?.data.length)
+            ayaLogger.log('Models Available:', (data as any)?.data.length)
             if (!response.ok) {
               throw new Error(`Failed to validate OpenAI API key: ${response.statusText}`)
             }
@@ -590,9 +590,9 @@ export const openaiPlugin: Plugin = {
               const embedding = await runtime.useModel(ModelType.TEXT_EMBEDDING, {
                 text: 'Hello, world!'
               })
-              console.log('embedding', embedding)
+              ayaLogger.log('embedding', embedding)
             } catch (error) {
-              console.error('Error in test_text_embedding:', error)
+              ayaLogger.error('Error in test_text_embedding:', error)
               throw error
             }
           }
@@ -607,9 +607,9 @@ export const openaiPlugin: Plugin = {
               if (text.length === 0) {
                 throw new Error('Failed to generate text')
               }
-              console.log('generated with test_text_large:', text)
+              ayaLogger.log('generated with test_text_large:', text)
             } catch (error) {
-              console.error('Error in test_text_large:', error)
+              ayaLogger.error('Error in test_text_large:', error)
               throw error
             }
           }
@@ -624,9 +624,9 @@ export const openaiPlugin: Plugin = {
               if (text.length === 0) {
                 throw new Error('Failed to generate text')
               }
-              console.log('generated with test_text_small:', text)
+              ayaLogger.log('generated with test_text_small:', text)
             } catch (error) {
-              console.error('Error in test_text_small:', error)
+              ayaLogger.error('Error in test_text_small:', error)
               throw error
             }
           }
@@ -634,16 +634,16 @@ export const openaiPlugin: Plugin = {
         {
           name: 'openai_test_image_generation',
           fn: async (runtime) => {
-            console.log('openai_test_image_generation')
+            ayaLogger.log('openai_test_image_generation')
             try {
               const image = await runtime.useModel(ModelType.IMAGE, {
                 prompt: 'A beautiful sunset over a calm ocean',
                 n: 1,
                 size: '1024x1024'
               })
-              console.log('generated with test_image_generation:', image)
+              ayaLogger.log('generated with test_image_generation:', image)
             } catch (error) {
-              console.error('Error in test_image_generation:', error)
+              ayaLogger.error('Error in test_image_generation:', error)
               throw error
             }
           }
@@ -652,7 +652,7 @@ export const openaiPlugin: Plugin = {
           name: 'image-description',
           fn: async (runtime) => {
             try {
-              console.log('openai_test_image_description')
+              ayaLogger.log('openai_test_image_description')
               try {
                 const result = await runtime.useModel(
                   ModelType.IMAGE_DESCRIPTION,
@@ -666,22 +666,22 @@ export const openaiPlugin: Plugin = {
                   'title' in result &&
                   'description' in result
                 ) {
-                  console.log('Image description:', result)
+                  ayaLogger.log('Image description:', result)
                 } else {
-                  console.error('Invalid image description result format:', result)
+                  ayaLogger.error('Invalid image description result format:', result)
                 }
               } catch (e) {
-                console.error('Error in image description test:', e)
+                ayaLogger.error('Error in image description test:', e)
               }
             } catch (e) {
-              console.error('Error in openai_test_image_description:', e)
+              ayaLogger.error('Error in openai_test_image_description:', e)
             }
           }
         },
         {
           name: 'openai_test_transcription',
           fn: async (runtime) => {
-            console.log('openai_test_transcription')
+            ayaLogger.log('openai_test_transcription')
             try {
               const response = await fetch(
                 'https://upload.wikimedia.org/wikipedia/en/4/40/Chris_Benoit_Voice_Message.ogg'
@@ -691,9 +691,9 @@ export const openaiPlugin: Plugin = {
                 ModelType.TRANSCRIPTION,
                 Buffer.from(new Uint8Array(arrayBuffer))
               )
-              console.log('generated with test_transcription:', transcription)
+              ayaLogger.log('generated with test_transcription:', transcription)
             } catch (error) {
-              console.error('Error in test_transcription:', error)
+              ayaLogger.error('Error in test_transcription:', error)
               throw error
             }
           }
@@ -706,7 +706,7 @@ export const openaiPlugin: Plugin = {
             if (!Array.isArray(tokens) || tokens.length === 0) {
               throw new Error('Failed to tokenize text: expected non-empty array of tokens')
             }
-            console.log('Tokenized output:', tokens)
+            ayaLogger.log('Tokenized output:', tokens)
           }
         },
         {
@@ -722,7 +722,7 @@ export const openaiPlugin: Plugin = {
                 `Decoded text does not match original. Expected "${prompt}", got "${decodedText}"`
               )
             }
-            console.log('Decoded text:', decodedText)
+            ayaLogger.log('Decoded text:', decodedText)
           }
         },
         {
@@ -734,9 +734,9 @@ export const openaiPlugin: Plugin = {
               if (!response) {
                 throw new Error('Failed to generate speech')
               }
-              console.log('Generated speech successfully')
+              ayaLogger.log('Generated speech successfully')
             } catch (error) {
-              console.error('Error in openai_test_text_to_speech:', error)
+              ayaLogger.error('Error in openai_test_text_to_speech:', error)
               throw error
             }
           }

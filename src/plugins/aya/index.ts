@@ -1,4 +1,5 @@
 import { isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { capabilitiesAction } from '@/plugins/aya/actions/capabilities'
 import { ignoreAction } from '@/plugins/aya/actions/ignore'
 import { replyAction } from '@/plugins/aya/actions/reply'
@@ -120,9 +121,9 @@ const events = {
           }
           await payload.runtime.updateEntity(entity)
         }
-        console.log(`User ${payload.entityId} left world ${payload.worldId}`)
+        ayaLogger.log(`User ${payload.entityId} left world ${payload.worldId}`)
       } catch (error) {
-        console.error(
+        ayaLogger.error(
           `Error handling user left: ${error instanceof Error ? error.message : String(error)}`
         )
       }

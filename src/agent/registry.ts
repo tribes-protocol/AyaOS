@@ -1,5 +1,6 @@
 import RateLimiter from '@/agent/ratelimiter'
 import { isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { AuthInfo, AyaOSOptions } from '@/common/types'
 import { LoginManager } from '@/managers/admin'
 import { ConfigManager } from '@/managers/config'
@@ -72,7 +73,7 @@ export const AgentRegistry = {
   async destroy(dataDir: string): Promise<void> {
     const context = this.instances.get(dataDir)
     if (isNull(context)) {
-      console.warn('Agent not registered: ' + dataDir)
+      ayaLogger.warn('Agent not registered: ' + dataDir)
       return
     }
 
