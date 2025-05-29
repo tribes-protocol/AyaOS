@@ -25,7 +25,9 @@ export class LoginManager {
   constructor(
     private readonly keychain: KeychainManager,
     private readonly pathResolver: PathManager
-  ) { }
+  ) {
+    //
+  }
 
   async getUser(identity: Identity): Promise<User | undefined> {
     return this.api.getUser(identity)

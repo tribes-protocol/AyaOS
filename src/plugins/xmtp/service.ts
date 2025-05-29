@@ -23,7 +23,7 @@ export class XMTPService extends Service {
     const walletPrivateKey = HexStringSchema.parse(runtime.getSetting(XMTP_KEY))
 
     const signer = createSigner(walletPrivateKey)
-    const env: XmtpEnv = 'dev'
+    const env: XmtpEnv = 'production'
 
     const client = await XmtpClient.create(signer, {
       env

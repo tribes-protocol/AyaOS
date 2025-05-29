@@ -173,10 +173,8 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       ayaLogger.info('Database tables initialized successfully')
     } catch (error) {
       ayaLogger.error('Failed to initialize database tables:', error)
-      throw new Error(
-        `Failed to initialize database tables: ${error instanceof Error ? error.message : String(error)
-        }`
-      )
+      const errMsg = error instanceof Error ? error.message : String(error)
+      throw new Error(`Failed to initialize database tables: ${errMsg}`)
     }
   }
 
@@ -302,8 +300,8 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
       if (remoteKnowledgeIds.length > 0 || knowledgeIdsToRemove.length > 0) {
         ayaLogger.debug(
-          `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ` +
-          `${knowledgeIdsToRemove.length} items removed`
+          // eslint-disable-next-line max-len
+          `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ${knowledgeIdsToRemove.length} items removed`
         )
       }
     } catch (error) {

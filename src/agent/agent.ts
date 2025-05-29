@@ -69,7 +69,9 @@ export class Agent implements IAyaAgent {
   private farcaster_?: IFarcasterManager
   private character_?: Character | undefined
 
-  constructor(readonly options?: AyaOSOptions) { }
+  constructor(readonly options?: AyaOSOptions) {
+    //
+  }
 
   get runtime(): AgentRuntime {
     if (!this.runtime_) {
@@ -268,11 +270,7 @@ export class Agent implements IAyaAgent {
       ayaLogger.error(
         'Error creating agent:',
         error instanceof Error
-          ? {
-            message: error.message,
-            stack: error.stack,
-            cause: error.cause
-          }
+          ? { message: error.message, stack: error.stack, cause: error.cause }
           : String(error)
       )
       throw error
