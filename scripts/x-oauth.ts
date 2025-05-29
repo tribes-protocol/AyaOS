@@ -54,7 +54,7 @@ const callbackHandler: RequestHandler = async (req, res) => {
 
   try {
     // 2) Exchange code for tokens
-    const tokenRes = await fetch('https://api.twitter.com/2/oauth2/token', {
+    const tokenRes = await fetch('https://api.x.com/2/oauth2/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',

@@ -1,6 +1,6 @@
 import { isNull } from '@/common/functions'
 import { TwitterManager } from '@/plugins/twitter/client'
-import { X_ACCESS_TOKEN } from '@/plugins/twitter/constants'
+import { X_ACCESS_TOKEN, X_REFRESH_TOKEN } from '@/plugins/twitter/constants'
 import { elizaLogger, IAgentRuntime, Service, UUID } from '@elizaos/core'
 import { TwitterApi } from 'twitter-api-v2'
 
@@ -19,15 +19,15 @@ export class TwitterService extends Service {
     }
 
     const accessToken = runtime.getSetting(X_ACCESS_TOKEN)
-
-    if (isNull(accessToken)) {
-      throw new Error('Missing required Twitter access token')
+    const refreshToken = runtime.getSetting(X_REFRESH_TOKEN)
+    if (isNull(accessToken) || isNull(refreshToken)) {
+      throw new Error('Missing required Twitter access token or refresh token')
     }
 
     // Create Twitter client
     const client = new TwitterApi(accessToken)
 
-    manager = new TwitterManager(runtime, client)
+    manager = new TwitterManager(runtime, client, refreshToken)
     service.managers.set(runtime.agentId, manager)
     await manager.start()
 

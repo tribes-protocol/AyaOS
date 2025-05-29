@@ -1,3 +1,4 @@
+import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { TWITTER_SOURCE } from '@/plugins/twitter/constants'
 import { elizaLogger, IAgentRuntime } from '@elizaos/core'
 import { TwitterApi } from 'twitter-api-v2'
@@ -15,19 +16,28 @@ export interface PostTweetResponse {
   text: string
 }
 
+const TokenRefreshResponseSchema = z.object({
+  accessToken: z.string(),
+  refreshToken: z.string()
+})
+
 export class TwitterManager {
   runtime: IAgentRuntime
   private client: TwitterApi
+  private refreshToken_: string
 
-  constructor(runtime: IAgentRuntime, client: TwitterApi) {
+  constructor(runtime: IAgentRuntime, client: TwitterApi, refreshToken: string) {
     this.runtime = runtime
     this.client = client
+    this.refreshToken_ = refreshToken
   }
 
   async start(): Promise<void> {
     elizaLogger.info('Twitter client started')
 
     try {
+      await this.refreshToken()
+
       // Verify credentials by getting user info
       const user = await this.client.v2.me()
       elizaLogger.info(`Twitter client authenticated for user: @${user.data.username}`)
@@ -39,9 +49,43 @@ export class TwitterManager {
     elizaLogger.info('✅ Twitter client started')
   }
 
+  private async refreshToken(): Promise<void> {
+    try {
+      elizaLogger.info(`[${TWITTER_SOURCE}] Refreshing Twitter access token`)
+
+      const refreshUrl = `${AGENTCOIN_FUN_API_URL}/api/x/refresh`
+      const response = await fetch(refreshUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          refreshToken: this.refreshToken_
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Token refresh failed: ${response.status} ${response.statusText}`)
+      }
+
+      const responseData = await response.json()
+      const { accessToken, refreshToken } = TokenRefreshResponseSchema.parse(responseData)
+
+      this.client = new TwitterApi(accessToken)
+      this.refreshToken_ = refreshToken
+      elizaLogger.info(`[${TWITTER_SOURCE}] Token refreshed successfully`)
+    } catch (error) {
+      elizaLogger.error(`[${TWITTER_SOURCE}] Failed to refresh token:`, error)
+      throw error
+    }
+  }
+
   async postTweet(request: PostTweetRequest): Promise<PostTweetResponse> {
     try {
       const validatedRequest = PostTweetRequestSchema.parse(request)
+
+      // Refresh token before posting
+      await this.refreshToken()
 
       elizaLogger.info(`[${TWITTER_SOURCE}] Posting tweet: ${validatedRequest.text}`)
 
