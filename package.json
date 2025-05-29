@@ -21,7 +21,7 @@
     "build-project": "bun run type-check && tsup src/index.ts --format esm --dts",
     "build-script": "tsup scripts/create-agent.ts --format esm --dts",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src/**/*.ts",
+    "lint": "eslint 'src/**/*.ts'",
     "dev": "dotenv --e .env -- tsx src/example.ts",
     "check-packages": "bash ./scripts/check-packages.sh",
     "release": "bun run build && changeset publish",

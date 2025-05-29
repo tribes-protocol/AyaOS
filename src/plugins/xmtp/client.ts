@@ -1,16 +1,15 @@
-import { DecodedMessage, Client as XmtpClient, type Conversation } from '@xmtp/node-sdk'
-
 import { isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { XMTP_SOURCE } from '@/plugins/xmtp/constants'
 import {
   ChannelType,
-  elizaLogger,
   EventType,
   IAgentRuntime,
   Memory,
   MessagePayload,
   stringToUuid
 } from '@elizaos/core'
+import { DecodedMessage, Client as XmtpClient, type Conversation } from '@xmtp/node-sdk'
 import { z } from 'zod'
 
 export class XMTPManager {
@@ -23,20 +22,20 @@ export class XMTPManager {
   }
 
   async start(): Promise<void> {
-    elizaLogger.info('XMTP client started')
+    ayaLogger.info('XMTP client started')
 
-    elizaLogger.info('Syncing conversations...')
+    ayaLogger.info('Syncing conversations...')
     await this.client.conversations.sync()
 
-    elizaLogger.info(
+    ayaLogger.info(
       `Agent initialized on ${this.client.accountIdentifier}\n
       Send a message on http://xmtp.chat/dm/${this.client.accountIdentifier?.identifier}`
     )
 
-    elizaLogger.info('Waiting for messages...')
+    ayaLogger.info('Waiting for messages...')
     const stream = this.client.conversations.streamAllMessages()
 
-    elizaLogger.info('✅ XMTP client started')
+    ayaLogger.info('✅ XMTP client started')
 
     for await (const message of await stream) {
       if (
@@ -51,20 +50,20 @@ export class XMTPManager {
         continue
       }
 
-      elizaLogger.info(`Received message: ${message.content} by ${message.senderInboxId}`)
+      ayaLogger.info(`Received message: ${message.content} by ${message.senderInboxId}`)
 
       const conversation = await this.client.conversations.getConversationById(
         message.conversationId
       )
 
       if (isNull(conversation)) {
-        elizaLogger.warn('Unable to find conversation, skipping')
+        ayaLogger.warn('Unable to find conversation, skipping')
         continue
       }
 
       await this.processMessage(message, conversation)
 
-      elizaLogger.info('Waiting for messages...')
+      ayaLogger.info('Waiting for messages...')
     }
   }
 
@@ -72,7 +71,7 @@ export class XMTPManager {
     const memory = await this.ensureMessageConnection(message, conversation)
 
     if (isNull(memory.content.text) || memory.content.text.trim() === '') {
-      elizaLogger.warn(`skipping message with no text: ${message.id}`)
+      ayaLogger.warn(`skipping message with no text: ${message.id}`)
       return
     }
 
@@ -81,7 +80,7 @@ export class XMTPManager {
       message: memory,
       source: XMTP_SOURCE,
       callback: async (content) => {
-        elizaLogger.info(`[XMTP] message received response: ${content.text}`)
+        ayaLogger.info(`[XMTP] message received response: ${content.text}`)
         await conversation.send(content.text)
         const memory = await this.createMessageMemory(message, conversation)
         await this.runtime.createMemory(memory, 'messages')
@@ -176,12 +175,12 @@ export class XMTPManager {
 
       return memory
     } catch (error) {
-      elizaLogger.error(`Error in XMTP ensureMessageConnection: ${error}`)
+      ayaLogger.error(`Error in XMTP ensureMessageConnection: ${error}`)
       throw error
     }
   }
 
   async stop(): Promise<void> {
-    elizaLogger.warn('XMTP client does not support stopping yet')
+    ayaLogger.warn('XMTP client does not support stopping yet')
   }
 }
