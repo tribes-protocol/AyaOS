@@ -27,7 +27,7 @@ jobs:
         run: bun run build
 
       - name: Run linting
-        run: npx eslint src/**/*.ts
+        run: npx eslint 'src/**/*.ts'
 
       - name: Check package.json
         run: bun run check-packages
