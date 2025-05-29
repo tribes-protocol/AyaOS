@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.51
+
+### Patch Changes
+
+- b569886: fix xmtp
+
 ## 0.1.50
 
 ### Patch Changes
