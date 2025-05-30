@@ -12,6 +12,7 @@ export class PathManager {
   public readonly codeDir: string
   public readonly runtimeServerSocketFile: string
   public readonly knowledgeRoot: string
+  public readonly xmtpDbDir: string
 
   constructor(rootDir?: string) {
     if (rootDir && !path.isAbsolute(rootDir)) {
@@ -27,6 +28,7 @@ export class PathManager {
     this.codeDir = path.join(this.dataDir, 'code')
     this.runtimeServerSocketFile = path.join(this.dataDir, 'runtime-server.sock')
     this.knowledgeRoot = path.join(this.dataDir, 'knowledgeFiles')
+    this.xmtpDbDir = path.join(this.dataDir, 'xmtp-db')
 
     this.ensureRootDirExists()
   }
@@ -38,6 +40,10 @@ export class PathManager {
 
     if (!fs.existsSync(this.knowledgeRoot)) {
       fs.mkdirSync(this.knowledgeRoot, { recursive: true })
+    }
+
+    if (!fs.existsSync(this.xmtpDbDir)) {
+      fs.mkdirSync(this.xmtpDbDir, { recursive: true })
     }
   }
 }

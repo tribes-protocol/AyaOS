@@ -1,4 +1,5 @@
 import { isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import {
   Action,
   IAgentRuntime,
@@ -41,6 +42,10 @@ export const capabilitiesAction: Action = {
     },
     callback?: HandlerCallback
   ) => {
+    // Print all available action names using ayaLogger
+    const actionNames = runtime.actions.map((action) => action.name)
+    ayaLogger.info('[capabilitiesAction] Available actions:', actionNames)
+
     // Collect all available actions
     const actionsData = runtime.actions.filter((action) => !IGNORE_ACTIONS.has(action.name))
 

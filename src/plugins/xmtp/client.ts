@@ -1,4 +1,4 @@
-import { isNull, toJsonTreeString } from '@/common/functions'
+import { isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { XMTP_SOURCE } from '@/plugins/xmtp/constants'
 import {
@@ -28,8 +28,7 @@ export class XMTPManager {
     await this.client.conversations.sync()
 
     ayaLogger.info(
-      `Agent initialized on ${toJsonTreeString(this.client.accountIdentifier)}\n
-      Send a message on http://xmtp.chat/dm/${this.client.accountIdentifier?.identifier}`
+      `[XMTP] Send a message on http://xmtp.chat/dm/${this.client.accountIdentifier?.identifier}`
     )
 
     ayaLogger.info('Waiting for messages...')

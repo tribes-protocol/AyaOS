@@ -1,4 +1,6 @@
-import { isNull } from '@/common/functions'
+import { AgentRegistry } from '@/agent/registry'
+import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
+import { ensureStringSetting, isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { HexStringSchema } from '@/common/types'
 import { XMTPManager } from '@/plugins/xmtp/client'
@@ -7,6 +9,7 @@ import { createSigner } from '@/plugins/xmtp/helper'
 import { WalletService } from '@/services/wallet'
 import { IAgentRuntime, Service, ServiceTypeName, UUID } from '@elizaos/core'
 import { Client as XmtpClient, XmtpEnv } from '@xmtp/node-sdk'
+import path from 'path'
 import { Account, privateKeyToAccount } from 'viem/accounts'
 
 export class XMTPService extends Service {
@@ -50,9 +53,17 @@ export class XMTPService extends Service {
     const signer = createSigner(account)
     const env: XmtpEnv = 'production'
 
-    const client = await XmtpClient.create(signer, {
-      env
-    })
+    const dataDir = ensureStringSetting(runtime, AYA_AGENT_DATA_DIR_KEY)
+    const { managers } = AgentRegistry.get(dataDir)
+    const pathResolver = managers.path
+
+    const config = {
+      env,
+      dbPath: path.join(pathResolver.xmtpDbDir, 'messages')
+    }
+
+    ayaLogger.info('XMTP initializing...', config)
+    const client = await XmtpClient.create(signer, config)
 
     manager = new XMTPManager(runtime, client)
     service.managers.set(runtime.agentId, manager)
