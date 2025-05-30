@@ -1,5 +1,18 @@
 # @tribesxyz/ayaos
 
+## 0.1.51
+
+### Patch Changes
+
+- b569886: fix xmtp
+
+## 0.1.50
+
+### Patch Changes
+
+- 55f05fd: XMTP
+- 0fc6a21: xmtp plugin integration
+
 ## 0.1.49
 
 ### Patch Changes

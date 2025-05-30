@@ -1,5 +1,6 @@
+import { ayaLogger } from '@/common/logger'
 import { XMTPService } from '@/plugins/xmtp/service'
-import { elizaLogger, Plugin } from '@elizaos/core'
+import { Plugin } from '@elizaos/core'
 
 const xmtpPlugin: Plugin = {
   name: 'xmtp',
@@ -7,7 +8,7 @@ const xmtpPlugin: Plugin = {
   services: [XMTPService],
   tests: [],
   init: async (_config, runtime) => {
-    elizaLogger.info('xmtpPlugin init for agentId', runtime.agentId)
+    ayaLogger.info('xmtpPlugin init for agentId', runtime.agentId)
   }
 }
 export default xmtpPlugin

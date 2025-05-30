@@ -1,4 +1,5 @@
 import { ensureNumber, isNull, isRequiredString } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { TELEGRAM_SERVICE_NAME } from '@/plugins/telegram/constants'
 import { validateTelegramConfig } from '@/plugins/telegram/environment'
 import { MessageManager } from '@/plugins/telegram/messageManager'
@@ -47,7 +48,7 @@ export class TelegramService extends Service {
    */
   constructor(runtime: IAgentRuntime) {
     super(runtime)
-    console.log('📱 Constructing new TelegramService...')
+    ayaLogger.log('📱 Constructing new TelegramService...')
     const botToken = runtime.getSetting('TELEGRAM_BOT_TOKEN') || process.env.TELEGRAM_BOT_TOKEN
     const timeout = runtime.getSetting('TELEGRAM_TIMEOUT')
     if (timeout) {
@@ -58,10 +59,13 @@ export class TelegramService extends Service {
       this.bot = new Telegraf(botToken)
     }
     this.bot.catch((err, ctx) => {
-      console.error('Telegram error for update', ctx.update, err)
+      ayaLogger.error('Telegram error for update', {
+        update: ctx.update,
+        error: err
+      })
     })
     this.messageManager = new MessageManager(this.bot, this.runtime)
-    console.log('✅ TelegramService constructor completed')
+    ayaLogger.log('✅ TelegramService constructor completed')
   }
 
   /**
@@ -87,11 +91,11 @@ export class TelegramService extends Service {
       try {
         const service = new TelegramService(runtime)
 
-        console.log(
+        ayaLogger.log(
           `✅ Telegram client successfully started for character ${runtime.character.name}`
         )
 
-        console.log('🚀 Starting Telegram bot...')
+        ayaLogger.log('🚀 Starting Telegram bot...')
         await service.initializeBot()
 
         // Set up middlewares before message handlers to ensure proper preprocessing
@@ -103,14 +107,14 @@ export class TelegramService extends Service {
         return service
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
-        console.error(
+        ayaLogger.error(
           `Telegram initialization attempt ${retryCount + 1} failed: ${lastError.message}`
         )
         retryCount++
 
         if (retryCount < maxRetries) {
           const delay = 2 ** retryCount * 1000 // Exponential backoff
-          console.log(`Retrying Telegram initialization in ${delay / 1000} seconds...`)
+          ayaLogger.log(`Retrying Telegram initialization in ${delay / 1000} seconds...`)
           await new Promise((resolve) => setTimeout(resolve, delay))
         }
       }
@@ -154,7 +158,7 @@ export class TelegramService extends Service {
 
     // Get bot info for identification purposes
     const botInfo = await this.bot.telegram.getMe()
-    console.log(`Bot info: ${JSON.stringify(botInfo)}`)
+    ayaLogger.info(`Bot info: ${JSON.stringify(botInfo)}`)
 
     // Handle sigint and sigterm signals to gracefully stop the bot
     process.once('SIGINT', () => this.bot.stop('SIGINT'))
@@ -280,7 +284,7 @@ export class TelegramService extends Service {
       try {
         await this.handleForumTopic(ctx)
       } catch (error) {
-        console.error(`Error handling forum topic: ${error}`)
+        ayaLogger.error(`Error handling forum topic: ${error}`)
       }
     }
 
@@ -303,7 +307,7 @@ export class TelegramService extends Service {
         // Message handling is now simplified since all preprocessing is done by middleware
         await this.messageManager.handleMessage(ctx)
       } catch (error) {
-        console.error('Error handling message:', error)
+        ayaLogger.error('Error handling message:', error)
       }
     })
 
@@ -312,7 +316,7 @@ export class TelegramService extends Service {
       try {
         await this.messageManager.handleReaction(ctx)
       } catch (error) {
-        console.error('Error handling reaction:', error)
+        ayaLogger.error('Error handling reaction:', error)
       }
     })
   }
@@ -353,7 +357,7 @@ export class TelegramService extends Service {
       }
       return allowedChatsList.includes(chatId)
     } catch (error) {
-      console.error('Error parsing TELEGRAM_ALLOWED_CHATS:', error)
+      ayaLogger.error('Error parsing TELEGRAM_ALLOWED_CHATS:', error)
       return false
     }
   }
@@ -613,7 +617,7 @@ export class TelegramService extends Service {
         owner = admins.find((admin) => admin.status === 'creator')
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error)
-        console.warn(`Could not get chat administrators: ${errMsg}`)
+        ayaLogger.warn(`Could not get chat administrators: ${errMsg}`)
       }
     }
 
@@ -633,11 +637,7 @@ export class TelegramService extends Service {
       metadata: {
         source: 'telegram',
         ownership: ownerId ? { ownerId } : undefined,
-        roles: ownerId
-          ? {
-              [ownerId]: Role.OWNER
-            }
-          : {},
+        roles: ownerId ? { [ownerId]: Role.OWNER } : {},
         chatType: chat.type,
         isForumEnabled: chat.type === 'supergroup' && chat.is_forum
       }
@@ -775,7 +775,7 @@ export class TelegramService extends Service {
             })
           } catch (err) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            console.warn(`Failed to sync user ${entity.metadata?.telegram?.username}: ${err}`)
+            ayaLogger.warn(`Failed to sync user ${entity.metadata?.telegram?.username}: ${err}`)
           }
         })
       )
@@ -903,12 +903,12 @@ export class TelegramService extends Service {
             }
           }
         } catch (error) {
-          console.warn(`Could not fetch administrators for chat ${chat.id}: ${error}`)
+          ayaLogger.warn(`Could not fetch administrators for chat ${chat.id}: ${error}`)
         }
       }
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error)
-      console.error(`Error building standardized entities: ${errMsg}`)
+      ayaLogger.error(`Error building standardized entities: ${errMsg}`)
     }
 
     return entities
@@ -995,7 +995,7 @@ export class TelegramService extends Service {
 
       return room
     } catch (error) {
-      console.error(
+      ayaLogger.error(
         `Error building forum topic room: ${error instanceof Error ? error.message : String(error)}`
       )
       return null
@@ -1028,7 +1028,7 @@ export class TelegramService extends Service {
         imageUrl = fileLink.toString()
       }
     } catch (error) {
-      console.warn(`Failed to get profile photo for user ${telegramId}: ${error}`)
+      ayaLogger.warn(`Failed to get profile photo for user ${telegramId}: ${error}`)
     }
 
     await this.runtime.createEntity({

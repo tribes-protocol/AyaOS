@@ -172,12 +172,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
       ayaLogger.info('Database tables initialized successfully')
     } catch (error) {
-      console.error('Failed to initialize database tables:', error)
-      throw new Error(
-        `Failed to initialize database tables: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      )
+      ayaLogger.error('Failed to initialize database tables:', error)
+      const errMsg = error instanceof Error ? error.message : String(error)
+      throw new Error(`Failed to initialize database tables: ${errMsg}`)
     }
   }
 
@@ -194,9 +191,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         await this.syncKnowledge()
       } catch (error) {
         if (error instanceof Error) {
-          console.error('⚠️ Error in sync job:', error.message)
+          ayaLogger.error('⚠️ Error in sync job:', error.message)
         } else {
-          console.error('⚠️ Error in sync job:', error)
+          ayaLogger.error('⚠️ Error in sync job:', error)
         }
       }
       // Wait for 1 minute before the next run
@@ -207,7 +204,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
   async stop(): Promise<void> {
     this.isRunning = false
-    console.log('Knowledge sync service stopped')
+    ayaLogger.log('Knowledge sync service stopped')
   }
 
   static async start(runtime: IAgentRuntime): Promise<Service> {
@@ -287,7 +284,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         remoteKnowledgeIds.push(itemId)
 
         if (!existingKnowledgeIds.has(itemId)) {
-          console.log(`Processing new knowledge: ${knowledge.name}`)
+          ayaLogger.log(`Processing new knowledge: ${knowledge.name}`)
           await this.processFileKnowledge(knowledge, itemId)
         }
       }
@@ -297,21 +294,21 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       )
 
       for (const knowledgeId of knowledgeIdsToRemove) {
-        console.log(`Removing knowledge: ${knowledgeId}`)
+        ayaLogger.log(`Removing knowledge: ${knowledgeId}`)
         await this.remove(knowledgeId)
       }
 
       if (remoteKnowledgeIds.length > 0 || knowledgeIdsToRemove.length > 0) {
-        console.debug(
-          `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ` +
-            `${knowledgeIdsToRemove.length} items removed`
+        ayaLogger.debug(
+          // eslint-disable-next-line max-len
+          `Knowledge sync completed: ${remoteKnowledgeIds.length} remote items, ${knowledgeIdsToRemove.length} items removed`
         )
       }
     } catch (error) {
       if (error instanceof Error) {
-        console.error(`Error processing knowledge files: ${error.message}`)
+        ayaLogger.error(`Error processing knowledge files: ${error.message}`)
       } else {
-        console.error(`Error processing knowledge files: ${error}`)
+        ayaLogger.error(`Error processing knowledge files: ${error}`)
       }
       throw error
     }
@@ -328,7 +325,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         kind: KNOWLEDGE_KIND
       })
     } catch (error) {
-      console.error(`Error processing file metadata for ${data.name}: ${error}`)
+      ayaLogger.error(`Error processing file metadata for ${data.name}: ${error}`)
     }
   }
 
@@ -358,7 +355,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
       const fileExtension = path.extname(file.name).toLowerCase()
       if (!isValidFileExtension(fileExtension)) {
-        console.error(`Unsupported file type: ${fileExtension}`)
+        ayaLogger.error(`Unsupported file type: ${fileExtension}`)
         throw new Error(`Unsupported file type: ${fileExtension}`)
       }
 
@@ -368,14 +365,14 @@ export class KnowledgeService extends Service implements IKnowledgeService {
         const loader = new LoaderClass(outputPath)
         const docs = await loader.load()
         const content = docs.map((doc) => doc.pageContent).join('\n')
-        console.log(`Successfully processed file: ${file.name}`)
+        ayaLogger.log(`Successfully processed file: ${file.name}`)
         return content
       } catch (error) {
-        console.error(`Error parsing ${fileExtension} file: ${file.name}`, error)
+        ayaLogger.error(`Error parsing ${fileExtension} file: ${file.name}`, error)
         return ''
       }
     } catch (error) {
-      console.error(`Error processing file from ${file.metadata.url}:`, error)
+      ayaLogger.error(`Error processing file from ${file.metadata.url}:`, error)
       throw error
     }
   }
@@ -388,9 +385,9 @@ export class KnowledgeService extends Service implements IKnowledgeService {
     const [item] = await this.db.select().from(Knowledges).where(eq(Knowledges.id, id))
 
     if (isNull(item)) {
-      // console.debug(`[${kind}] knowledge=[${id}] does not exist. creating...`)
+      // ayaLogger.debug(`[${kind}] knowledge=[${id}] does not exist. creating...`)
     } else if (item?.checksum === checksum) {
-      // console.debug(`[${kind}] knowledge=[${id}] already exists. skipping...`)
+      // ayaLogger.debug(`[${kind}] knowledge=[${id}] already exists. skipping...`)
       return
     }
 
@@ -437,7 +434,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       })
     }
 
-    console.debug(`[${kind}] indexed knowledge=[${id}] with ${fragments.length} fragments`)
+    ayaLogger.debug(`[${kind}] indexed knowledge=[${id}] with ${fragments.length} fragments`)
   }
 
   async list(options?: {
@@ -474,7 +471,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
       .orderBy(sort === 'asc' ? asc(Knowledges.createdAt) : desc(Knowledges.createdAt))
       .limit(limit)
 
-    // console.debug('Knowledge list query:', query.toSQL())
+    // ayaLogger.debug('Knowledge list query:', query.toSQL())
 
     const results = await query
 
@@ -583,7 +580,7 @@ export class KnowledgeService extends Service implements IKnowledgeService {
 
       await fs.unlink(path.join(this.pathResolver.knowledgeRoot, knowledge.source))
     } catch (error) {
-      console.error(`Error removing knowledge: ${error}`)
+      ayaLogger.error(`Error removing knowledge: ${error}`)
     }
   }
 }

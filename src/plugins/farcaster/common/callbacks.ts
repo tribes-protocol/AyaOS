@@ -1,3 +1,4 @@
+import { ayaLogger } from '@/common/logger'
 import { FarcasterClient } from '@/plugins/farcaster/client'
 import { CastId, FarcasterConfig } from '@/plugins/farcaster/common/types'
 import { createCastMemory, neynarCastToCast } from '@/plugins/farcaster/common/utils'
@@ -24,14 +25,14 @@ export function standardCastHandlerCallback({
   const callback: HandlerCallback = async (content, _files) => {
     try {
       if (config.FARCASTER_DRY_RUN) {
-        console.log(`[Farcaster] Dry run: would have cast: ${content.text}`)
+        ayaLogger.info(`[Farcaster] Dry run: would have cast: ${content.text}`)
         return []
       }
 
       const casts = await client.sendCast({ content, inReplyTo })
 
       if (casts.length === 0) {
-        console.warn('[Farcaster] No casts posted')
+        ayaLogger.warn('[Farcaster] No casts posted')
         return []
       }
 
@@ -62,7 +63,7 @@ export function standardCastHandlerCallback({
 
       return memories
     } catch (error) {
-      console.error('[Farcaster] Error posting cast:', error)
+      ayaLogger.error('[Farcaster] Error posting cast:', error)
 
       if (onError) {
         await onError(error)

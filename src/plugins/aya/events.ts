@@ -1,6 +1,7 @@
 import { AgentRegistry } from '@/agent/registry'
 import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
 import { ensureStringSetting, isNull, toJsonTreeString } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { messageHandlerTemplate, shouldRespondTemplate } from '@/common/templates'
 import { validateResponse } from '@/llms/response-validator'
 import {
@@ -37,7 +38,7 @@ export const messageReceivedHandler = async ({
   callback,
   onComplete
 }: MessageReceivedHandlerParams): Promise<void> => {
-  console.log('messageReceivedHandler:', JSON.stringify(message, null, 2))
+  ayaLogger.info('messageReceivedHandler:', JSON.stringify(message, null, 2))
   const messageId = message.id
   if (isNull(messageId)) {
     throw Error(`Message ID is required: ${message}`)
@@ -84,7 +85,7 @@ export const messageReceivedHandler = async ({
         })
         reject(new Error('Run exceeded 60 minute timeout'))
       } catch (error) {
-        console.error('Failed to emit timeout event:', error)
+        ayaLogger.error('Failed to emit timeout event:', error)
         reject(error)
       }
     }, timeoutDuration)
@@ -103,7 +104,7 @@ export const messageReceivedHandler = async ({
       if (rateLimiter) {
         const canProcess = await rateLimiter.canProcess(message)
         if (!canProcess) {
-          console.warn('Rate limit exceeded, skipping message from user:', message.entityId)
+          ayaLogger.warn('Rate limit exceeded, skipping message from user:', message.entityId)
           return
         }
       }
@@ -157,7 +158,7 @@ export const messageReceivedHandler = async ({
       const providers = responseObject?.providers as string[] | undefined
       logger.debug('*** Providers Value ***', providers)
 
-      console.log('responseObject', responseObject)
+      ayaLogger.log('responseObject', responseObject)
 
       const shouldRespond = responseObject?.action && responseObject.action !== 'IGNORE'
       logger.debug('*** Should Respond ***', shouldRespond)
@@ -187,7 +188,7 @@ export const messageReceivedHandler = async ({
 
           retries++
           if (!responseContent?.thought && !responseContent?.actions) {
-            console.warn('*** Missing required fields, retrying... ***')
+            ayaLogger.warn('*** Missing required fields, retrying... ***')
           }
         }
 
@@ -225,7 +226,7 @@ export const messageReceivedHandler = async ({
           ]
         }
 
-        console.log('responseMessages', toJsonTreeString(responseMessages, { pretty: true }))
+        ayaLogger.info('responseMessages', toJsonTreeString(responseMessages, { pretty: true }))
 
         await runtime.processActions(message, responseMessages, state, callback)
       }
@@ -286,10 +287,10 @@ export const reactionReceivedHandler = async ({
     await runtime.createMemory(message, 'messages')
   } catch (error) {
     if (error instanceof Error && error.message === '23505') {
-      console.warn('Duplicate reaction memory, skipping')
+      ayaLogger.warn('Duplicate reaction memory, skipping')
       return
     }
-    console.error('Error in reaction handler:', error)
+    ayaLogger.error('Error in reaction handler:', error)
   }
 }
 
@@ -301,7 +302,7 @@ export const postGeneratedHandler = async ({
   roomId,
   source
 }: InvokePayload): Promise<void> => {
-  console.log('Generating new post...')
+  ayaLogger.log('Generating new post...')
   // Ensure world exists first
   await runtime.ensureWorldExists({
     id: worldId,
@@ -383,7 +384,7 @@ export const postGeneratedHandler = async ({
   // 		const fetchedMedia = await fetchMediaData(imagePromptMedia);
   // 		mediaData.push(...fetchedMedia);
   // 	} catch (error) {
-  // 		console.error("Error fetching media for tweet:", error);
+  // 		ayaLogger.error("Error fetching media for tweet:", error);
   // 	}
   // }
 

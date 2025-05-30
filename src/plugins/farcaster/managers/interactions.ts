@@ -1,3 +1,4 @@
+import { ayaLogger } from '@/common/logger'
 import { updateEntity } from '@/helpers/updateEntity'
 import type { FarcasterClient } from '@/plugins/farcaster/client'
 import { AsyncQueue } from '@/plugins/farcaster/common/asyncqueue'
@@ -22,6 +23,7 @@ import {
   UUID
 } from '@elizaos/core'
 import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api'
+
 interface FarcasterInteractionParams {
   client: FarcasterClient
   runtime: IAgentRuntime
@@ -45,7 +47,7 @@ export class FarcasterInteractionManager {
   }
 
   public async start(): Promise<void> {
-    console.log('Starting Farcaster interactions')
+    ayaLogger.log('Starting Farcaster interactions')
     if (this.isRunning) {
       return
     }
@@ -70,7 +72,10 @@ export class FarcasterInteractionManager {
         const delay = this.config.FARCASTER_POLL_INTERVAL * 1000
         await new Promise((resolve) => (this.timeout = setTimeout(resolve, delay)))
       } catch (error) {
-        console.error('[Farcaster] Error in periodic interactions:', this.runtime.agentId, error)
+        ayaLogger.error('[Farcaster] Error in periodic interactions:', {
+          agentId: this.runtime.agentId,
+          error
+        })
       }
     }
   }
@@ -173,7 +178,7 @@ export class FarcasterInteractionManager {
         continue
       }
 
-      console.log('New Cast found', mention.hash)
+      ayaLogger.log('New Cast found', mention.hash)
 
       // filter out the agent mentions
       if (mention.authorFid === agentFid) {
@@ -208,7 +213,7 @@ export class FarcasterInteractionManager {
       const memory = await runtime.getMemoryById(memoryId)
 
       if (!memory) {
-        console.log('Creating memory for cast', currentCast.hash)
+        ayaLogger.log('Creating memory for cast', currentCast.hash)
         const memory = await self.ensureCastConnection(currentCast)
         await runtime.createMemory(memory, 'messages')
         await runtime.emitEvent(FarcasterEventTypes.THREAD_CAST_CREATED, {
@@ -241,7 +246,7 @@ export class FarcasterInteractionManager {
     mention: Cast
   }): Promise<void> {
     if (mention.profile.fid === agent.fid) {
-      console.log('skipping cast from bot itself', mention.hash)
+      ayaLogger.log('skipping cast from bot itself', mention.hash)
       return
     }
 
@@ -253,7 +258,7 @@ export class FarcasterInteractionManager {
     )
 
     if (!memory.content.text || memory.content.text.trim() === '') {
-      console.log('skipping cast with no text', mention.hash)
+      ayaLogger.log('skipping cast with no text', mention.hash)
       return
     }
 
@@ -293,12 +298,12 @@ export class FarcasterInteractionManager {
 
     // const responseActions = (response.match(/(?:RESPOND|IGNORE|STOP)/g) || ['IGNORE'])[0]
     // if (responseActions !== 'RESPOND') {
-    //   console.log(`Not responding to cast based on shouldRespond decision: ${responseActions}`)
+    //   ayaLogger.log(`Not responding to cast based on shouldRespond decision: ${responseActions}`)
     //   try {
     //     // save the memory so we don't process it again in mentions
     //     await this.runtime.createMemory(memory, 'messages')
     //   } catch (error) {
-    //     console.error('Error creating ignoredmemory', error)
+    //     ayaLogger.error('Error creating ignoredmemory', error)
     //   }
     //   return
     // }
@@ -332,7 +337,7 @@ export class FarcasterInteractionManager {
       cast,
       source: FARCASTER_SOURCE,
       callback: async (content, _files) => {
-        console.log('[Farcaster] mention received response:', content)
+        ayaLogger.log('[Farcaster] mention received response:', content)
         return []
       }
     }

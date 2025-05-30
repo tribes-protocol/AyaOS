@@ -1,5 +1,6 @@
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
 import { serializeIdentity } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import {
   Agent,
   AgentSchema,
@@ -159,7 +160,7 @@ export class AgentcoinAPI {
 
     if (response.status !== 200) {
       const errorBody = await response.text()
-      console.error('Failed to create pure agent', errorBody)
+      ayaLogger.error('Failed to create pure agent', errorBody)
       throw new Error(`Failed to create pure agent`)
     }
 

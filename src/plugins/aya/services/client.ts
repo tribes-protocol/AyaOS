@@ -68,7 +68,7 @@ export class AyaClientService extends Service {
 
   async stop(): Promise<void> {
     if (isNull(this.socket)) {
-      console.warn('AyaService not started', this.runtime.agentId)
+      ayaLogger.warn('AyaService not started', this.runtime.agentId)
       return
     }
 
@@ -78,7 +78,7 @@ export class AyaClientService extends Service {
 
   private async start(): Promise<void> {
     if (this.socket) {
-      console.warn(`Aya client already started for ${this.runtime.agentId}`)
+      ayaLogger.warn(`Aya client already started for ${this.runtime.agentId}`)
       return
     }
     ayaLogger.info(`Starting Aya client for ${this.runtime.agentId}`)
@@ -100,7 +100,7 @@ export class AyaClientService extends Service {
         try {
           cb({ jwtToken: this.authAPI.token })
         } catch (error) {
-          console.error('Error getting JWT token', error)
+          ayaLogger.error('Error getting JWT token', error)
           cb({})
         }
       }
@@ -141,8 +141,8 @@ export class AyaClientService extends Service {
             break
         }
       } catch (error) {
-        console.error('Error processing message from agentcoin client', error)
-        console.error('Error processing message from agentcoin client', error)
+        ayaLogger.error('Error processing message from agentcoin client', error)
+        ayaLogger.error('Error processing message from agentcoin client', error)
       }
     })
 
@@ -165,7 +165,7 @@ export class AyaClientService extends Service {
           const command = SentinelCommandSchema.parse(JSON.parse(content))
           await this.handleAdminCommand(command)
         } catch (e) {
-          console.error('Error handling admin command:', e, payload)
+          ayaLogger.error('Error handling admin command:', { e, payload })
         }
       })
     }
@@ -325,7 +325,7 @@ export class AyaClientService extends Service {
         source: AYA_SOURCE
       })
     } catch (error) {
-      console.error('Error processing message', error)
+      ayaLogger.error('Error processing message', error)
       stopStatusInterval()
       await this.sendMessageAsAgent({
         identity: message.sender,
