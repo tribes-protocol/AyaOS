@@ -1,6 +1,7 @@
 import { AgentRegistry } from '@/agent/registry'
 import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
 import { ensureStringSetting, isNull, toJsonTreeString } from '@/common/functions'
+import { messageHandlerTemplate, shouldRespondTemplate } from '@/common/templates'
 import { validateResponse } from '@/llms/response-validator'
 import {
   asUUID,
@@ -17,46 +18,9 @@ import {
   ModelType,
   parseJSONObjectFromText,
   postCreationTemplate,
-  shouldRespondTemplate,
   truncateToCompleteSentence
 } from '@elizaos/core'
 import { v4 } from 'uuid'
-
-export const messageHandlerTemplate = `
-# Task: Generate dialog and actions for the character {{agentName}}.
-{{providers}}
-# Instructions: Write a thought and plan for {{agentName}} and decide what actions to take. Also 
-include the providers that {{agentName}} will use to have the right context for responding and
-acting, if any.
-
-First, think about what you want to do next and plan your actions. Then, write the next message 
-and include the actions you plan to take.
-"thought" should be a short description of what the agent is thinking about and planning.
-"actions" should be an array of the actions {{agentName}} plans to take based on the thought 
-(if none, use IGNORE, if simply responding with text, use REPLY)
-"providers" should be an optional array of the providers that {{agentName}} will use to have the 
-right context for responding and acting
-"evaluators" should be an optional array of the evaluators that {{agentName}} will use to evaluate 
-the conversation after responding
-"message" should be the next message for {{agentName}} which they will send to the conversation.
-These are the available valid actions: {{actionNames}}
-
-IMPORTANT: 
-- The order of actions matters. Actions are executed in the sequence they are listed 
-in your response. Ensure your actions are ordered logically to accomplish the task effectively. 
-- If you need to use the REPLY action, put that first under the "actions" property.
-
-Response format should be formatted in a valid JSON block like this:
-\`\`\`json
-{
-    "thought": "<string>",
-    "actions": ["<string>", "<string>", ...],
-    "providers": ["<string>", "<string>", ...],
-    "message": "<string>"
-}
-\`\`\`
-
-Your response should include the valid JSON block and nothing else.`.trim()
 
 /**
  * Handles incoming messages and generates responses based on the provided runtime
@@ -154,13 +118,11 @@ export const messageReceivedHandler = async ({
         return
       }
 
-      let state = await runtime.composeState(message, [
-        'PROVIDERS',
-        'SHOULD_RESPOND',
-        'CHARACTER',
-        'RECENT_MESSAGES',
-        'ENTITIES'
-      ])
+      let state = await runtime.composeState(
+        message,
+        ['PROVIDERS', 'SHOULD_RESPOND', 'CHARACTER', 'RECENT_MESSAGES', 'ENTITIES'],
+        ['ACTIONS']
+      )
 
       const shouldRespondPrompt = composePromptFromState({
         state,
@@ -209,8 +171,6 @@ export const messageReceivedHandler = async ({
           state,
           template: runtime.character.templates?.messageHandlerTemplate || messageHandlerTemplate
         })
-
-        // console.log('prompt', prompt)
 
         let responseContent: Content | null = null
 
