@@ -62,11 +62,9 @@ export class WalletService extends Service implements IWalletService {
     // nothing to do
   }
 
-  async getDefaultWallet(kind: AgentWalletKind): Promise<AgentWallet> {
+  async getDefaultWallet(kind: AgentWalletKind): Promise<AgentWallet | undefined> {
     const wallet = await this.authAPI.getDefaultWallet(this.identity, kind)
-    if (isNull(wallet)) {
-      throw new Error('Failed to get default wallet')
-    }
+
     return wallet
   }
 

@@ -1,11 +1,10 @@
+import { isNull } from '@/common/functions'
 import { Identifier, IdentifierKind, Signer } from '@xmtp/node-sdk'
 import { getRandomValues } from 'node:crypto'
 import { fromString, toString } from 'uint8arrays'
-import { toBytes } from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
+import { Account, toBytes } from 'viem'
 
-export const createSigner = (privateKey: `0x${string}`): Signer => {
-  const account = privateKeyToAccount(privateKey)
+export const createSigner = (account: Account): Signer => {
   const accountIdentifier: Identifier = {
     identifier: account.address,
     identifierKind: IdentifierKind.Ethereum
@@ -15,6 +14,10 @@ export const createSigner = (privateKey: `0x${string}`): Signer => {
     type: 'EOA',
     getIdentifier: async () => accountIdentifier,
     signMessage: async (message: string) => {
+      if (isNull(account.signMessage)) {
+        throw new Error('Account does not have a signMessage method')
+      }
+
       const signature = await account.signMessage({
         message
       })
