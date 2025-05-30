@@ -1,4 +1,5 @@
 import { TelegramContent } from '@/plugins/telegram/types'
+import { PostTweetRequest, PostTweetResponse } from '@/plugins/twitter/client'
 import { CastId, CastWithInteractions } from '@neynar/nodejs-sdk/build/api'
 import { Context } from 'telegraf'
 
@@ -19,4 +20,8 @@ export interface IFarcasterManager {
     inReplyTo?: CastId
   }): Promise<CastWithInteractions[]>
   getCast(params: { hash: string }): Promise<CastWithInteractions>
+}
+
+export interface ITwitterManager {
+  postTweet(params: PostTweetRequest): Promise<PostTweetResponse>
 }
