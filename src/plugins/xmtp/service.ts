@@ -1,10 +1,13 @@
+import { isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { HexStringSchema } from '@/common/types'
 import { XMTPManager } from '@/plugins/xmtp/client'
 import { XMTP_KEY } from '@/plugins/xmtp/constants'
 import { createSigner } from '@/plugins/xmtp/helper'
-import { IAgentRuntime, Service, UUID } from '@elizaos/core'
+import { WalletService } from '@/services/wallet'
+import { IAgentRuntime, Service, ServiceTypeName, UUID } from '@elizaos/core'
 import { Client as XmtpClient, XmtpEnv } from '@xmtp/node-sdk'
+import { Account, privateKeyToAccount } from 'viem/accounts'
 
 export class XMTPService extends Service {
   static serviceType = 'xmtp'
@@ -20,9 +23,31 @@ export class XMTPService extends Service {
       return service
     }
 
-    const walletPrivateKey = HexStringSchema.parse(runtime.getSetting(XMTP_KEY))
+    const walletService = runtime.getService<WalletService>(
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      WalletService.serviceType as ServiceTypeName
+    )
 
-    const signer = createSigner(walletPrivateKey)
+    if (isNull(walletService)) {
+      throw new Error('Wallet service not found')
+    }
+
+    const pvtKey = runtime.getSetting(XMTP_KEY)
+    let account: Account
+
+    if (isNull(pvtKey)) {
+      const defaultWallet = await walletService.getDefaultWallet('evm')
+      if (isNull(defaultWallet)) {
+        throw new Error('Default wallet not found, cannot start XMTP service')
+      }
+
+      account = walletService.getAccount(defaultWallet)
+    } else {
+      const walletPrivateKey = HexStringSchema.parse(pvtKey)
+      account = privateKeyToAccount(walletPrivateKey)
+    }
+
+    const signer = createSigner(account)
     const env: XmtpEnv = 'production'
 
     const client = await XmtpClient.create(signer, {

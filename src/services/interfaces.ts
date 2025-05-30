@@ -11,7 +11,7 @@ import { z } from 'zod'
 
 export interface IWalletService {
   signPersonalMessage(wallet: AgentWallet, message: string): Promise<string>
-  getDefaultWallet(kind: AgentWalletKind): Promise<AgentWallet>
+  getDefaultWallet(kind: AgentWalletKind): Promise<AgentWallet | undefined>
   getAccount(wallet: AgentWallet): Account
 }
 

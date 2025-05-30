@@ -251,9 +251,12 @@ export class Agent implements IAyaAgent {
         await hackRegisterPlugin(telegramPlugin, this.runtime)
       }
 
+      const defaultWallet = await this.wallet.getDefaultWallet('evm')
       const XMTP_WALLET_PRIVATE_KEY = this.runtime.getSetting(XMTP_KEY)
-      if (XMTP_WALLET_PRIVATE_KEY) {
+      if (XMTP_WALLET_PRIVATE_KEY || defaultWallet) {
         await hackRegisterPlugin(xmtpPlugin, this.runtime)
+      } else {
+        ayaLogger.info('No XMTP wallet found, skipping XMTP plugin')
       }
 
       // start the managers
