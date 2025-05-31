@@ -1,6 +1,6 @@
 import { AgentRegistry } from '@/agent/registry'
 import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
-import { ensureStringSetting, isNull } from '@/common/functions'
+import { ensureStringSetting, isNull, retry } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { HexStringSchema } from '@/common/types'
 import { XMTPManager } from '@/plugins/xmtp/client'
@@ -67,7 +67,7 @@ export class XMTPService extends Service {
 
     manager = new XMTPManager(runtime, client)
     service.managers.set(runtime.agentId, manager)
-    await manager.start()
+    void retry(async () => await manager.start(), { maxRetries: 3, logError: true, ms: 1000 })
 
     ayaLogger.info('XMTP client started', runtime.agentId)
     return service

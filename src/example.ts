@@ -11,6 +11,7 @@ async function main(): Promise<void> {
     await agent.register('action', webSearch)
 
     await agent.start()
+    ayaLogger.info('example agent started')
   } catch (error) {
     ayaLogger.error('An error occurred', { error })
 
