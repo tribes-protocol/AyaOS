@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.53
+
+### Patch Changes
+
+- e9dcaac: fix blocking xmtp service
+
 ## 0.1.52
 
 ### Patch Changes
