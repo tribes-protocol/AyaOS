@@ -44,7 +44,8 @@ If a user asks {{agentName}} to be quiet, respond with STOP action.
 If {{agentName}} should ignore the message, respond with IGNORE action.
 If responding with the RESPOND action, include a list of optional providers that could be 
 relevant to the response.
-Also these are the available valid actions/capabilities you have: {{actionNames}}
+Also these are the available valid actions/capabilities you have:
+{{actions}}
 
 Response format should be formatted in a valid JSON block like this:
 \`\`\`json
