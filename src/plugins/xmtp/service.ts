@@ -8,6 +8,7 @@ import { XMTP_KEY } from '@/plugins/xmtp/constants'
 import { createSigner } from '@/plugins/xmtp/helper'
 import { WalletService } from '@/services/wallet'
 import { IAgentRuntime, Service, ServiceTypeName, UUID } from '@elizaos/core'
+import { ReplyCodec } from '@xmtp/content-type-reply'
 import { Client as XmtpClient, XmtpEnv } from '@xmtp/node-sdk'
 import path from 'path'
 import { Account, privateKeyToAccount } from 'viem/accounts'
@@ -59,7 +60,8 @@ export class XMTPService extends Service {
 
     const config = {
       env,
-      dbPath: path.join(pathResolver.xmtpDbDir, 'messages')
+      dbPath: path.join(pathResolver.xmtpDbDir, 'messages'),
+      codecs: [new ReplyCodec()]
     }
 
     ayaLogger.info('XMTP initializing...', config)
