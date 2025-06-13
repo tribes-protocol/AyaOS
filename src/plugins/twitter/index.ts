@@ -1,5 +1,6 @@
+import { ayaLogger } from '@/common/logger'
 import { TwitterService } from '@/plugins/twitter/service'
-import { elizaLogger, Plugin } from '@elizaos/core'
+import { Plugin } from '@elizaos/core'
 
 const twitterPlugin: Plugin = {
   name: 'twitter',
@@ -7,7 +8,7 @@ const twitterPlugin: Plugin = {
   services: [TwitterService],
   tests: [],
   init: async (_config, runtime) => {
-    elizaLogger.info('twitterPlugin init for agentId', runtime.agentId)
+    ayaLogger.info('twitterPlugin init for agentId', runtime.agentId)
   }
 }
 
