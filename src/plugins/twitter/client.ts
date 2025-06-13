@@ -1,6 +1,7 @@
 import { AGENTCOIN_FUN_API_URL } from '@/common/env'
+import { ayaLogger } from '@/common/logger'
 import { TWITTER_SOURCE } from '@/plugins/twitter/constants'
-import { elizaLogger, IAgentRuntime } from '@elizaos/core'
+import { IAgentRuntime } from '@elizaos/core'
 import { TwitterApi } from 'twitter-api-v2'
 import { z } from 'zod'
 
@@ -33,25 +34,25 @@ export class TwitterManager {
   }
 
   async start(): Promise<void> {
-    elizaLogger.info('Twitter client started')
+    ayaLogger.info('Twitter client started')
 
     try {
       await this.refreshToken()
 
       // Verify credentials by getting user info
       const user = await this.client.v2.me()
-      elizaLogger.info(`Twitter client authenticated for user: @${user.data.username}`)
+      ayaLogger.info(`Twitter client authenticated for user: @${user.data.username}`)
     } catch (error) {
-      elizaLogger.error('Failed to authenticate Twitter client:', error)
+      ayaLogger.error('Failed to authenticate Twitter client:', error)
       throw error
     }
 
-    elizaLogger.info('✅ Twitter client started')
+    ayaLogger.info('✅ Twitter client started')
   }
 
   private async refreshToken(): Promise<void> {
     try {
-      elizaLogger.info(`[${TWITTER_SOURCE}] Refreshing Twitter access token`)
+      ayaLogger.info(`[${TWITTER_SOURCE}] Refreshing Twitter access token`)
 
       const refreshUrl = `${AGENTCOIN_FUN_API_URL}/api/x/refresh`
       const response = await fetch(refreshUrl, {
@@ -73,9 +74,9 @@ export class TwitterManager {
 
       this.client = new TwitterApi(accessToken)
       this.refreshToken_ = refreshToken
-      elizaLogger.info(`[${TWITTER_SOURCE}] Token refreshed successfully`)
+      ayaLogger.info(`[${TWITTER_SOURCE}] Token refreshed successfully`)
     } catch (error) {
-      elizaLogger.error(`[${TWITTER_SOURCE}] Failed to refresh token:`, error)
+      ayaLogger.error(`[${TWITTER_SOURCE}] Failed to refresh token:`, error)
       throw error
     }
   }
@@ -87,15 +88,13 @@ export class TwitterManager {
       // Refresh token before posting
       await this.refreshToken()
 
-      elizaLogger.info(`[${TWITTER_SOURCE}] Posting tweet: ${validatedRequest.text}`)
+      ayaLogger.info(`[${TWITTER_SOURCE}] Posting tweet: ${validatedRequest.text}`)
 
       const mediaIds: string[] = []
 
       // Upload media if provided
       if (validatedRequest.media && validatedRequest.media.length > 0) {
-        elizaLogger.info(
-          `[${TWITTER_SOURCE}] Uploading ${validatedRequest.media.length} media files`
-        )
+        ayaLogger.info(`[${TWITTER_SOURCE}] Uploading ${validatedRequest.media.length} media files`)
 
         for (const mediaUrl of validatedRequest.media) {
           try {
@@ -111,9 +110,9 @@ export class TwitterManager {
             })
 
             mediaIds.push(mediaUpload)
-            elizaLogger.info(`[${TWITTER_SOURCE}] Media uploaded with ID: ${mediaUpload}`)
+            ayaLogger.info(`[${TWITTER_SOURCE}] Media uploaded with ID: ${mediaUpload}`)
           } catch (mediaError) {
-            elizaLogger.error(`[${TWITTER_SOURCE}] Failed to upload media ${mediaUrl}:`, mediaError)
+            ayaLogger.error(`[${TWITTER_SOURCE}] Failed to upload media ${mediaUrl}:`, mediaError)
             // Continue with other media files
           }
         }
@@ -163,16 +162,16 @@ export class TwitterManager {
         text: tweet.data.text
       }
 
-      elizaLogger.info(`[${TWITTER_SOURCE}] Tweet posted successfully with ID: ${tweet.data.id}`)
+      ayaLogger.info(`[${TWITTER_SOURCE}] Tweet posted successfully with ID: ${tweet.data.id}`)
 
       return response
     } catch (error) {
-      elizaLogger.error(`[${TWITTER_SOURCE}] Failed to post tweet:`, error)
+      ayaLogger.error(`[${TWITTER_SOURCE}] Failed to post tweet:`, error)
       throw error
     }
   }
 
   async stop(): Promise<void> {
-    elizaLogger.info('Twitter client stopped')
+    ayaLogger.info('Twitter client stopped')
   }
 }
