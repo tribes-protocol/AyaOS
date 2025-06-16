@@ -1,7 +1,8 @@
 import { isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { TwitterManager } from '@/plugins/twitter/client'
 import { X_ACCESS_TOKEN, X_REFRESH_TOKEN } from '@/plugins/twitter/constants'
-import { elizaLogger, IAgentRuntime, Service, UUID } from '@elizaos/core'
+import { IAgentRuntime, Service, UUID } from '@elizaos/core'
 import { TwitterApi } from 'twitter-api-v2'
 
 export class TwitterService extends Service {
@@ -14,7 +15,7 @@ export class TwitterService extends Service {
     let manager = service.managers.get(runtime.agentId)
 
     if (manager) {
-      elizaLogger.warn('Twitter service already started', runtime.agentId)
+      ayaLogger.warn('Twitter service already started', runtime.agentId)
       return service
     }
 
@@ -31,7 +32,7 @@ export class TwitterService extends Service {
     service.managers.set(runtime.agentId, manager)
     await manager.start()
 
-    elizaLogger.info('Twitter service started', runtime.agentId)
+    ayaLogger.info('Twitter service started', runtime.agentId)
     return service
   }
 

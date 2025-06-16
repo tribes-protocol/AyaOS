@@ -9,7 +9,11 @@ import {
   MessagePayload,
   stringToUuid
 } from '@elizaos/core'
-import { DecodedMessage, Client as XmtpClient, type Conversation } from '@xmtp/node-sdk'
+import type { Reply } from '@xmtp/content-type-reply'
+import { ContentTypeReply } from '@xmtp/content-type-reply'
+import { ContentTypeText } from '@xmtp/content-type-text'
+
+import { DecodedMessage, Dm, Group, Client as XmtpClient, type Conversation } from '@xmtp/node-sdk'
 import { z } from 'zod'
 
 export class XMTPManager {
@@ -60,10 +64,84 @@ export class XMTPManager {
         continue
       }
 
+      // Check if this is a group chat and if we should respond
+      if (!(await this.shouldProcessMessage(message, conversation))) {
+        ayaLogger.info('Skipping message - not mentioned in group chat')
+        continue
+      }
+
       await this.processMessage(message, conversation)
 
       ayaLogger.info('Waiting for messages...')
     }
+  }
+
+  /**
+   * Determines if we should process a message based on conversation type and mentions
+   * - Always process DM messages
+   * - Only process group messages if bot is mentioned by address or username
+   */
+  private async shouldProcessMessage(
+    message: DecodedMessage,
+    conversation: Conversation
+  ): Promise<boolean> {
+    // Always process DM messages
+    if (conversation instanceof Dm) {
+      return true
+    }
+
+    // For group chats, only process if mentioned
+    if (conversation instanceof Group) {
+      return this.isBotMentioned(message)
+    }
+
+    // Default to processing (fallback for unknown conversation types)
+    return true
+  }
+
+  /**
+   * Checks if the bot is mentioned in the message by address or username
+   */
+  private isBotMentioned(message: DecodedMessage): boolean {
+    const messageText = z.string().safeParse(message.content)
+    if (!messageText.success || !messageText.data) {
+      return false
+    }
+
+    const text = messageText.data.toLowerCase()
+    const botInboxId = this.client.inboxId.toLowerCase()
+    const botAddress = this.client.accountIdentifier?.identifier?.toLowerCase()
+
+    // Check for mention by inbox ID
+    if (text.includes(botInboxId)) {
+      ayaLogger.info(`Bot mentioned by inbox ID: ${botInboxId}`)
+      return true
+    }
+
+    // Check for mention by address/identifier
+    if (botAddress && text.includes(botAddress)) {
+      ayaLogger.info(`Bot mentioned by address: ${botAddress}`)
+      return true
+    }
+
+    // Check for common mention patterns like @address or @username
+    if (botAddress && text.includes(`@${botAddress}`)) {
+      ayaLogger.info(`Bot mentioned with @ symbol: @${botAddress}`)
+      return true
+    }
+
+    if (text.includes(`@${botInboxId}`)) {
+      ayaLogger.info(`Bot mentioned with @ symbol: @${botInboxId}`)
+      return true
+    }
+
+    const xmptEnsName = this.runtime.getSetting('XMTP_ENS_NAME')
+    if (xmptEnsName && text.includes(xmptEnsName)) {
+      ayaLogger.info(`Bot mentioned with ENS name: ${xmptEnsName}`)
+      return true
+    }
+
+    return false
   }
 
   private async processMessage(message: DecodedMessage, conversation: Conversation): Promise<void> {
@@ -79,8 +157,14 @@ export class XMTPManager {
       message: memory,
       source: XMTP_SOURCE,
       callback: async (content) => {
+        const reply: Reply = {
+          reference: message.id,
+          content: content.text,
+          contentType: ContentTypeText
+        }
+
         ayaLogger.info(`[XMTP] message received response: ${content.text}`)
-        await conversation.send(content.text)
+        await conversation.send(reply, ContentTypeReply)
         const memory = await this.createMessageMemory(message, conversation)
         await this.runtime.createMemory(memory, 'messages')
         return [memory]
