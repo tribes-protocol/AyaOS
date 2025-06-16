@@ -135,6 +135,12 @@ export class XMTPManager {
       return true
     }
 
+    const xmptEnsName = this.runtime.getSetting('XMTP_ENS_NAME')
+    if (xmptEnsName && text.includes(xmptEnsName)) {
+      ayaLogger.info(`Bot mentioned with ENS name: ${xmptEnsName}`)
+      return true
+    }
+
     return false
   }
 
