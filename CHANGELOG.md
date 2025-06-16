@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.54
+
+### Patch Changes
+
+- 49c397a: xmtp enhancements
+
 ## 0.1.53
 
 ### Patch Changes
