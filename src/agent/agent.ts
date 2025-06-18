@@ -312,7 +312,7 @@ export class Agent implements IAyaAgent {
     const boxWidth = Math.max(70, agentUrl.length + 6)
 
     // Print a fancy bordered URL message
-    ayaLogger.log('\n┌' + '─'.repeat(boxWidth) + '┐')
+    ayaLogger.log('┌' + '─'.repeat(boxWidth) + '┐')
     ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
     ayaLogger.log('│' + '  🚀 Your agent is ready!  '.padEnd(boxWidth, ' ') + '│')
     ayaLogger.log('│' + ' '.repeat(boxWidth) + '│')
