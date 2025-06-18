@@ -7,7 +7,6 @@ AyaOS is a high-level framework built on top of ElizaOS for creating autonomous 
 ### Prerequisites
 
 - Node.js 22 or higher
-- PostgreSQL (pgvector extension required) or Supabase
 
 ### Installation
 
@@ -27,152 +26,6 @@ cd <project-name>
 bun dev
 ```
 
-#### Manual Setup
-
-Create a new directory for your project and initialize it:
-
-```bash
-mkdir my-aya-agent
-cd my-aya-agent
-bun init -y # or npm init -y
-```
-
-Install AyaOS:
-
-```bash
-bun add @tribesxyz/ayaos # or npm install @tribesxyz/ayaos
-```
-
-#### Set Environment Variables
-
-Create a `.env` file in the root directory with the following required variables:
-
-```bash
-# Database configuration
-POSTGRES_URL=postgresql://username:password@localhost:5432/database_name
-
-# Optional: API keys for various providers (if needed)
-OPENAI_API_KEY=your_openai_api_key
-ANTHROPIC_API_KEY=your_anthropic_api_key
-TELEGRAM_TIMEOUT=10000 # Optional timeout in milliseconds for Telegram handlers
-```
-
-### Creating Your First Agent
-
-Create a file at `src/index.ts` (or edit the existing one if you cloned the template) with the following code:
-
-```typescript
-import { Agent } from '@tribesxyz/ayaos'
-
-async function main() {
-  // Create a new agent
-  const agent = new Agent({
-    // Optional: custom data directory
-    dataDir: './agent-data'
-  })
-
-  // Start the agent
-  await agent.start()
-
-  ayaLogger.info('Agent started with ID:', agent.agentId)
-}
-
-main().catch(console.error)
-```
-
-### Running Your Agent
-
-```bash
-bun dev
-```
-
-When running for the first time, you'll see a URL in the terminal. Visit this URL to authenticate and complete the agent registration process. After successful authentication, your agent will be provisioned and ready to use.
-
-## Developer Setup
-
-If you want to hack on AyaOS itself, clone the repository and install the dependencies:
-
-```bash
-git clone https://github.com/tribes-protocol/ayaos.git
-cd ayaos
-bun install
-```
-
-Run the example agent during development with:
-
-```bash
-bun dev
-```
-
-## Agent Architecture
-
-AyaOS extends ElizaOS with a set of abstractions designed to build sophisticated autonomous agents. The following sections detail each component of the architecture.
-
-### Agent Lifecycle
-
-AyaOS agents follow a specific processing flow. Understanding this flow is crucial for developing effective agents:
-
-```
-pre:llm → LLM processing → post:llm → (optional) pre:action → action execution → post:action
-```
-
-Each step in the lifecycle can be intercepted and modified using event handlers.
-
-### Event Handlers
-
-Event handlers allow you to intercept and modify the agent's behavior at different points in its processing flow:
-
-```typescript
-// Pre-LLM handler - executed before sending context to the LLM
-agent.on('pre:llm', async (context) => {
-  // Modify the context before it's sent to the LLM
-  return true // Return true to continue execution, false to stop
-})
-
-// Post-LLM handler - executed after receiving response from the LLM
-agent.on('post:llm', async (context) => {
-  // Process the LLM response
-  return true
-})
-
-// Pre-action handler - executed before an action is performed
-agent.on('pre:action', async (context) => {
-  // Validate or modify action parameters
-  return true
-})
-
-// Post-action handler - executed after an action is performed
-agent.on('post:action', async (context) => {
-  // Process action results
-  return true
-})
-```
-
-Each handler receives a context object containing:
-
-- `memory`: The current memory being processed
-- `responses`: Previous responses
-- `state`: Current agent state
-- `content`: Content being processed
-
-Returning `false` from any handler stops the execution flow, providing control over the agent's behavior.
-
-### Data Directory
-
-AyaOS stores agent configuration, credentials, and other persistent data in a dedicated directory. By default, this is located at `~/.agentcoin-fun`, but you can specify a custom location when creating an agent:
-
-```typescript
-const agent = new Agent({
-  dataDir: './custom-agent-data'
-})
-```
-
-The data directory contains the following files:
-
-- `character.json`: The agent's character configuration
-- `agent-keypair.json`: The agent's cryptographic keys
-- `registration.json`: Temporary registration data (removed after successful provisioning)
-
 ### Agent Provisioning
 
 When you start an agent for the first time, it goes through a provisioning process:
@@ -180,7 +33,7 @@ When you start an agent for the first time, it goes through a provisioning proce
 1. A keypair is generated for secure communication
 2. A CLI authentication flow is initiated (requires user action)
 3. The agent connects to the platform
-4. A character is created and stored in the data directory
+4. A generic character file is created and stored in code base
 
 This process ensures secure and authenticated agent creation with proper identity management.
 

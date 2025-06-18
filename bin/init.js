@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { execSync } from 'child_process'
-import fs from 'fs'
-import path from 'path'
-import * as readline from 'readline/promises' // Node 18+
-import { fileURLToPath } from 'url'
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import * as readline from 'readline/promises'; // Node 18+
+import { fileURLToPath } from 'url';
 
 // ----------------------------------------------------------------------------
 // 1. Validate CLI arguments
@@ -158,7 +158,7 @@ try {
 // 12. Final success message
 // ----------------------------------------------------------------------------
 console.log()
-console.log('┌──────────────────────────────────────────────────────────────────────┐')
+console.log('┌────────────────────────────────────────────────────────────────┐')
 console.log('│                                                                      │')
 console.log('│  ✓ Repository cloned successfully!                                   │')
 console.log('│                                                                      │')
@@ -166,10 +166,7 @@ console.log('│  Next steps:                                                   
 console.log('│                                                                      │')
 console.log(`│  1. cd ${projectName}                                                │`)
 console.log('│                                                                      │')
-console.log('│  2. Add your OpenAI API key to .env:                                 │')
-console.log('│     OPENAI_API_KEY=your_api_key_here                                 │')
+console.log('│  2. Run the development server with: bun dev                         │')
 console.log('│                                                                      │')
-console.log('│  3. Run the development server with: bun dev                         │')
-console.log('│                                                                      │')
-console.log('└──────────────────────────────────────────────────────────────────────┘')
+console.log('└────────────────────────────────────────────────────────────────┘')
 console.log()
