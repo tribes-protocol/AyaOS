@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.55
+
+### Patch Changes
+
+- d781a30: update readme
+
 ## 0.1.54
 
 ### Patch Changes
