@@ -336,6 +336,169 @@ The default language model is the free `meta/llama-3.3-70b-instruct-fp8` hosted 
 
 You can register additional actions or override these as needed.
 
+## Platform Integration
+
+AyaOS includes built-in support for multiple messaging platforms and communication protocols. These integrations are automatically enabled when the required environment variables are configured.
+
+### Telegram Integration
+
+The Telegram plugin allows your agent to communicate on Telegram through a bot interface.
+
+#### Prerequisites
+
+1. Create a Telegram bot by messaging [@BotFather](https://t.me/BotFather) on Telegram
+2. Follow the instructions to create a new bot and obtain your bot token
+
+#### Configuration
+
+Add your Telegram bot token to your environment variables:
+
+```bash
+# Required: Your Telegram bot token from BotFather
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+
+# Optional: Timeout for handling updates (in milliseconds)
+TELEGRAM_TIMEOUT=30000
+```
+
+#### Features
+
+The Telegram integration provides:
+
+- **Message Handling**: Send and receive text messages
+- **Group Support**: Works in both private chats and group conversations
+- **Forum Topics**: Handles Telegram forum topics as separate conversation rooms
+- **Authorization**: Optional chat authorization controls
+- **Rich Context**: Access to sender information, chat metadata, and message threading
+
+#### Usage Example
+
+Once configured, your agent will automatically connect to Telegram when started. The integration is enabled automatically when a `TELEGRAM_BOT_TOKEN` is detected.
+
+```typescript
+import { Agent } from '@tribesxyz/ayaos'
+
+async function main() {
+  const agent = new Agent()
+  await agent.start()
+
+  // Telegram integration is automatically active
+  // Your agent will now respond to messages on Telegram
+}
+```
+
+#### Advanced Configuration
+
+You can access the Telegram manager programmatically:
+
+```typescript
+import { Agent } from '@tribesxyz/ayaos'
+
+async function main() {
+  const agent = new Agent()
+  await agent.start()
+
+  // Access the Telegram manager (if available)
+  if (agent.telegram) {
+    // Add custom command handlers
+    agent.telegram.addCommandHandler('/start', async (ctx) => {
+      await ctx.reply("Hello! I'm your AI agent.")
+    })
+  }
+}
+```
+
+### XMTP Integration
+
+XMTP (eXtensible Message Transport Protocol) provides decentralized, end-to-end encrypted messaging capabilities for your agent.
+
+#### Prerequisites
+
+Your agent needs access to an Ethereum wallet to use XMTP. This can be provided in two ways:
+
+1. **Using the default wallet**: AyaOS automatically uses the agent's default EVM wallet
+2. **Using a specific private key**: Provide a dedicated private key for XMTP
+
+#### Configuration
+
+**Option 1: Using Default Wallet (Recommended)**
+
+No additional configuration needed. The agent will use its default EVM wallet for XMTP if available.
+
+**Option 2: Using Specific Private Key**
+
+```bash
+# Optional: Dedicated private key for XMTP (hex format with 0x prefix)
+XMTP_WALLET_PRIVATE_KEY=0x1234567890abcdef...
+```
+
+#### Features
+
+The XMTP integration provides:
+
+- **Decentralized Messaging**: Send and receive messages on the XMTP network
+- **End-to-End Encryption**: All messages are automatically encrypted
+- **Web3 Native**: Integrates seamlessly with Ethereum ecosystem
+- **Cross-Platform**: Works with any XMTP-compatible client
+- **Reply Support**: Full support for message threads and replies
+
+#### Usage Example
+
+```typescript
+import { Agent } from '@tribesxyz/ayaos'
+
+async function main() {
+  const agent = new Agent()
+  await agent.start()
+
+  // XMTP integration is automatically active if wallet is available
+  // Your agent will now send and receive messages on XMTP
+}
+```
+
+#### Getting Started with XMTP
+
+1. Ensure your agent has an EVM wallet configured
+2. Start your agent - XMTP will initialize automatically
+3. Other XMTP users can message your agent using its wallet address
+4. Your agent will respond to incoming XMTP messages
+
+#### Network Configuration
+
+XMTP integration uses the production network by default. The service automatically:
+
+- Creates an XMTP client with your wallet
+- Sets up message persistence in a local database
+- Handles message encoding/decoding including reply threading
+- Manages connection lifecycle and error recovery
+
+### Platform Status
+
+You can verify which platforms are active by checking the console output when starting your agent:
+
+```bash
+bun dev
+```
+
+Look for messages like:
+
+- `✅ Telegram client successfully started for character <name>`
+- `✅ XMTP client started <agentId>`
+
+### Troubleshooting Platform Integrations
+
+#### Telegram Issues
+
+- **Bot not responding**: Verify your `TELEGRAM_BOT_TOKEN` is correct and the bot is not already running elsewhere
+- **Permission errors**: Ensure the bot has necessary permissions in groups/channels
+- **Rate limiting**: Implement appropriate delays between messages if hitting Telegram's rate limits
+
+#### XMTP Issues
+
+- **Failed to start**: Ensure you have a valid EVM wallet or `XMTP_WALLET_PRIVATE_KEY`
+- **Connection issues**: Check network connectivity and try restarting the agent
+- **Message delivery**: XMTP requires both parties to be online; messages are queued when offline
+
 ## Security and Authentication
 
 AyaOS uses secure cryptographic methods to authenticate and secure your agent:
@@ -364,27 +527,6 @@ The authentication process follows these steps:
 4. The agent uses this token for further API calls
 
 This ensures that only authorized users can create and manage agents.
-
-## Advanced Usage Examples
-
-### Creating an Agent with Custom Model Configuration
-
-```typescript
-import { Agent } from '@tribesxyz/ayaos'
-
-async function main() {
-  const agent = new Agent({
-    modelConfig: {
-      provider: 'anthropic',
-      apiKey: process.env.ANTHROPIC_API_KEY,
-      endpoint: 'https://api.anthropic.com/v1/messages'
-    },
-    dataDir: './custom-agent-data'
-  })
-
-  await agent.start()
-}
-```
 
 ### Building an Agent with Advanced Knowledge Management
 
@@ -424,7 +566,7 @@ async function main() {
 }
 ```
 
-### Creating an Agent with Custom Action and Event Handlers
+### Creating an Agent with Custom Action
 
 ```typescript
 import { Agent, Action } from '@tribesxyz/ayaos'
@@ -460,20 +602,6 @@ async function main() {
   }
 
   agent.register('action', calculateAction)
-
-  // Add event handlers
-  agent.on('pre:llm', async (context) => {
-    // Add timestamp to context
-    context.state = context.state || {}
-    context.state.timestamp = new Date().toISOString()
-    return true
-  })
-
-  agent.on('post:action', async (context) => {
-    // Log action results
-    ayaLogger.info('Action completed:', context.memory?.content)
-    return true
-  })
 
   await agent.start()
 }
