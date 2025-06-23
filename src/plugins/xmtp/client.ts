@@ -1,6 +1,7 @@
 import { isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { XMTP_SOURCE } from '@/plugins/xmtp/constants'
+import { XmtpContent } from '@/plugins/xmtp/types'
 import {
   ChannelType,
   EventType,
@@ -12,8 +13,15 @@ import {
 import type { Reply } from '@xmtp/content-type-reply'
 import { ContentTypeReply } from '@xmtp/content-type-reply'
 import { ContentTypeText } from '@xmtp/content-type-text'
-
-import { DecodedMessage, Dm, Group, Client as XmtpClient, type Conversation } from '@xmtp/node-sdk'
+import { ContentTypeWalletSendCalls } from '@xmtp/content-type-wallet-send-calls'
+import {
+  DecodedMessage,
+  Dm,
+  Group,
+  IdentifierKind,
+  Client as XmtpClient,
+  type Conversation
+} from '@xmtp/node-sdk'
 import { z } from 'zod'
 
 export class XMTPManager {
@@ -147,53 +155,69 @@ export class XMTPManager {
   private async processMessage(message: DecodedMessage, conversation: Conversation): Promise<void> {
     const memory = await this.ensureMessageConnection(message, conversation)
 
-    if (isNull(memory.content.text) || memory.content.text.trim() === '') {
-      ayaLogger.warn(`skipping message with no text: ${message.id}`)
-      return
-    }
+    // console.dir(message, { depth: null })
+    // const members = await conversation.members()
+    // members.forEach((member) => {
+    //   console.log(member.accountIdentifiers)
+    //   console.log(member.inboxId)
+    // })
+
+    // if (isNull(memory.content.text) || memory.content.text.trim() === '') {
+    //   ayaLogger.warn(`skipping message with no text: ${message.id}`)
+    //   return
+    // }
 
     const messageReceivedPayload: MessagePayload = {
       runtime: this.runtime,
       message: memory,
       source: XMTP_SOURCE,
       callback: async (content) => {
-        const reply: Reply = {
-          reference: message.id,
-          content: content.text,
-          contentType: ContentTypeText
-        }
-
-        ayaLogger.info(`[XMTP] message received response: ${content.text}`)
-        await conversation.send(reply, ContentTypeReply)
-        const memory = await this.createMessageMemory(message, conversation)
+        const messageId = await this.sendMessage(message, conversation, content)
+        const memory = await this.createResponseMemory(conversation, content, messageId)
         await this.runtime.createMemory(memory, 'messages')
         return [memory]
       }
     }
-
     await this.runtime.emitEvent(EventType.MESSAGE_RECEIVED, messageReceivedPayload)
   }
 
-  private async createMessageMemory(
+  private async sendMessage(
     message: DecodedMessage,
-    conversation: Conversation
+    conversation: Conversation,
+    content: XmtpContent
+  ): Promise<string> {
+    if (content.transactionCalls) {
+      return conversation.send(content.transactionCalls, ContentTypeWalletSendCalls)
+    }
+
+    const reply: Reply = {
+      reference: message.id,
+      content: content.text,
+      contentType: ContentTypeText
+    }
+
+    return conversation.send(reply, ContentTypeReply)
+  }
+
+  private async createResponseMemory(
+    conversation: Conversation,
+    content: XmtpContent,
+    messageId: string
   ): Promise<Memory> {
-    const text = z.string().parse(message.content)
-    const messageId = stringToUuid(message.id)
-    const entityId = stringToUuid(message.senderInboxId)
+    const entityId = this.runtime.agentId
     const roomId = stringToUuid(conversation.id)
 
     return {
-      id: messageId,
+      id: stringToUuid(messageId),
       agentId: this.runtime.agentId,
       content: {
-        text,
+        text: content.text,
         source: XMTP_SOURCE,
         channelType: ChannelType.THREAD
       },
       entityId,
       roomId,
-      createdAt: message.sentAt.getTime()
+      createdAt: new Date().getTime()
     }
   }
 
@@ -243,13 +267,24 @@ export class XMTPManager {
         })
       }
 
+      const conversationMembers = await conversation.members()
+      let senderIdentifier: string | undefined
+      conversationMembers.forEach((member) => {
+        if (member.inboxId === message.senderInboxId) {
+          senderIdentifier = member.accountIdentifiers.find(
+            (identifier) => identifier.identifierKind === IdentifierKind.Ethereum
+          )?.identifier
+        }
+      })
+
       const memory: Memory = {
         id: messageId,
         agentId: this.runtime.agentId,
         content: {
           text,
           source: XMTP_SOURCE,
-          channelType: ChannelType.THREAD
+          channelType: ChannelType.THREAD,
+          senderIdentifier
         },
         entityId,
         roomId,
