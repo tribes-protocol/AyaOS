@@ -9,7 +9,7 @@ import {
   IAgentRuntime,
   Memory,
   MessagePayload,
-  stringToUuid
+  UUID
 } from '@elizaos/core'
 import type { Reply } from '@xmtp/content-type-reply'
 import { ContentTypeReply } from '@xmtp/content-type-reply'
@@ -154,22 +154,27 @@ export class XMTPManager {
   }
 
   private async processMessage(message: DecodedMessage, conversation: Conversation): Promise<void> {
-    const memory = await this.ensureMessageConnection(message, conversation)
+    const userMemory = await this.ensureMessageConnection(message, conversation)
 
-    if (isNull(memory.content.text) || memory.content.text.trim() === '') {
+    if (isNull(userMemory.content.text) || userMemory.content.text.trim() === '') {
       ayaLogger.warn(`skipping message with no text: ${message.id}`)
       return
     }
 
     const messageReceivedPayload: MessagePayload = {
       runtime: this.runtime,
-      message: memory,
+      message: userMemory,
       source: XMTP_SOURCE,
       callback: async (content) => {
         const messageId = await this.sendMessage(message, conversation, content)
-        const memory = await this.createResponseMemory(conversation, content, messageId)
-        await this.runtime.createMemory(memory, 'messages')
-        return [memory]
+        const agentMemory = await this.createResponseMemory(
+          conversation,
+          content,
+          messageId,
+          userMemory.id
+        )
+        await this.runtime.createMemory(agentMemory, 'messages')
+        return [agentMemory]
       }
     }
     await this.runtime.emitEvent(EventType.MESSAGE_RECEIVED, messageReceivedPayload)
@@ -196,17 +201,18 @@ export class XMTPManager {
   private async createResponseMemory(
     conversation: Conversation,
     content: XmtpContent,
-    messageId: string
+    messageId: string,
+    inReplyTo?: UUID
   ): Promise<Memory> {
     const entityId = this.runtime.agentId
-    const roomId = stringToUuid(conversation.id)
+    const roomId = createUniqueUuid(this.runtime, conversation.id)
 
     return {
-      id: stringToUuid(messageId),
+      id: createUniqueUuid(this.runtime, messageId),
       agentId: this.runtime.agentId,
       content: {
         text: content.text,
-        inReplyTo: createUniqueUuid(this.runtime, messageId),
+        inReplyTo,
         source: XMTP_SOURCE,
         channelType: ChannelType.THREAD
       },
@@ -222,10 +228,10 @@ export class XMTPManager {
   ): Promise<Memory> {
     try {
       const text = z.string().parse(message.content)
-      const messageId = stringToUuid(message.id)
-      const entityId = stringToUuid(message.senderInboxId)
-      const roomId = stringToUuid(conversation.id)
-      const worldId = stringToUuid(conversation.id)
+      const messageId = createUniqueUuid(this.runtime, message.id)
+      const entityId = createUniqueUuid(this.runtime, message.senderInboxId)
+      const roomId = createUniqueUuid(this.runtime, conversation.id)
+      const worldId = createUniqueUuid(this.runtime, conversation.id)
       const serverId = message.senderInboxId
 
       await this.runtime.ensureWorldExists({
