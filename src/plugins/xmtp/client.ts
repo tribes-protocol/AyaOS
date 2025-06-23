@@ -4,6 +4,7 @@ import { XMTP_SOURCE } from '@/plugins/xmtp/constants'
 import { XmtpContent } from '@/plugins/xmtp/types'
 import {
   ChannelType,
+  createUniqueUuid,
   EventType,
   IAgentRuntime,
   Memory,
@@ -205,6 +206,7 @@ export class XMTPManager {
       agentId: this.runtime.agentId,
       content: {
         text: content.text,
+        inReplyTo: createUniqueUuid(this.runtime, messageId),
         source: XMTP_SOURCE,
         channelType: ChannelType.THREAD
       },
