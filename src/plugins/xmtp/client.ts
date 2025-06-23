@@ -155,17 +155,10 @@ export class XMTPManager {
   private async processMessage(message: DecodedMessage, conversation: Conversation): Promise<void> {
     const memory = await this.ensureMessageConnection(message, conversation)
 
-    // console.dir(message, { depth: null })
-    // const members = await conversation.members()
-    // members.forEach((member) => {
-    //   console.log(member.accountIdentifiers)
-    //   console.log(member.inboxId)
-    // })
-
-    // if (isNull(memory.content.text) || memory.content.text.trim() === '') {
-    //   ayaLogger.warn(`skipping message with no text: ${message.id}`)
-    //   return
-    // }
+    if (isNull(memory.content.text) || memory.content.text.trim() === '') {
+      ayaLogger.warn(`skipping message with no text: ${message.id}`)
+      return
+    }
 
     const messageReceivedPayload: MessagePayload = {
       runtime: this.runtime,
