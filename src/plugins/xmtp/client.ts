@@ -1,19 +1,28 @@
 import { isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { XMTP_SOURCE } from '@/plugins/xmtp/constants'
+import { XmtpContent } from '@/plugins/xmtp/types'
 import {
   ChannelType,
+  createUniqueUuid,
   EventType,
   IAgentRuntime,
   Memory,
   MessagePayload,
-  stringToUuid
+  UUID
 } from '@elizaos/core'
 import type { Reply } from '@xmtp/content-type-reply'
 import { ContentTypeReply } from '@xmtp/content-type-reply'
 import { ContentTypeText } from '@xmtp/content-type-text'
-
-import { DecodedMessage, Dm, Group, Client as XmtpClient, type Conversation } from '@xmtp/node-sdk'
+import { ContentTypeWalletSendCalls } from '@xmtp/content-type-wallet-send-calls'
+import {
+  DecodedMessage,
+  Dm,
+  Group,
+  IdentifierKind,
+  Client as XmtpClient,
+  type Conversation
+} from '@xmtp/node-sdk'
 import { z } from 'zod'
 
 export class XMTPManager {
@@ -145,55 +154,71 @@ export class XMTPManager {
   }
 
   private async processMessage(message: DecodedMessage, conversation: Conversation): Promise<void> {
-    const memory = await this.ensureMessageConnection(message, conversation)
+    const userMemory = await this.ensureMessageConnection(message, conversation)
 
-    if (isNull(memory.content.text) || memory.content.text.trim() === '') {
+    if (isNull(userMemory.content.text) || userMemory.content.text.trim() === '') {
       ayaLogger.warn(`skipping message with no text: ${message.id}`)
       return
     }
 
     const messageReceivedPayload: MessagePayload = {
       runtime: this.runtime,
-      message: memory,
+      message: userMemory,
       source: XMTP_SOURCE,
       callback: async (content) => {
-        const reply: Reply = {
-          reference: message.id,
-          content: content.text,
-          contentType: ContentTypeText
-        }
-
-        ayaLogger.info(`[XMTP] message received response: ${content.text}`)
-        await conversation.send(reply, ContentTypeReply)
-        const memory = await this.createMessageMemory(message, conversation)
-        await this.runtime.createMemory(memory, 'messages')
-        return [memory]
+        const messageId = await this.sendMessage(message, conversation, content)
+        const agentMemory = await this.createResponseMemory(
+          conversation,
+          content,
+          messageId,
+          userMemory.id
+        )
+        await this.runtime.createMemory(agentMemory, 'messages')
+        return [agentMemory]
       }
     }
-
     await this.runtime.emitEvent(EventType.MESSAGE_RECEIVED, messageReceivedPayload)
   }
 
-  private async createMessageMemory(
+  private async sendMessage(
     message: DecodedMessage,
-    conversation: Conversation
+    conversation: Conversation,
+    content: XmtpContent
+  ): Promise<string> {
+    if (content.transactionCalls) {
+      return conversation.send(content.transactionCalls, ContentTypeWalletSendCalls)
+    }
+
+    const reply: Reply = {
+      reference: message.id,
+      content: content.text,
+      contentType: ContentTypeText
+    }
+
+    return conversation.send(reply, ContentTypeReply)
+  }
+
+  private async createResponseMemory(
+    conversation: Conversation,
+    content: XmtpContent,
+    messageId: string,
+    inReplyTo?: UUID
   ): Promise<Memory> {
-    const text = z.string().parse(message.content)
-    const messageId = stringToUuid(message.id)
-    const entityId = stringToUuid(message.senderInboxId)
-    const roomId = stringToUuid(conversation.id)
+    const entityId = this.runtime.agentId
+    const roomId = createUniqueUuid(this.runtime, conversation.id)
 
     return {
-      id: messageId,
+      id: createUniqueUuid(this.runtime, messageId),
       agentId: this.runtime.agentId,
       content: {
-        text,
+        text: content.text,
+        inReplyTo,
         source: XMTP_SOURCE,
         channelType: ChannelType.THREAD
       },
       entityId,
       roomId,
-      createdAt: message.sentAt.getTime()
+      createdAt: new Date().getTime()
     }
   }
 
@@ -203,10 +228,10 @@ export class XMTPManager {
   ): Promise<Memory> {
     try {
       const text = z.string().parse(message.content)
-      const messageId = stringToUuid(message.id)
-      const entityId = stringToUuid(message.senderInboxId)
-      const roomId = stringToUuid(conversation.id)
-      const worldId = stringToUuid(conversation.id)
+      const messageId = createUniqueUuid(this.runtime, message.id)
+      const entityId = createUniqueUuid(this.runtime, message.senderInboxId)
+      const roomId = createUniqueUuid(this.runtime, conversation.id)
+      const worldId = createUniqueUuid(this.runtime, conversation.id)
       const serverId = message.senderInboxId
 
       await this.runtime.ensureWorldExists({
@@ -243,13 +268,24 @@ export class XMTPManager {
         })
       }
 
+      const conversationMembers = await conversation.members()
+      let senderIdentifier: string | undefined
+      conversationMembers.forEach((member) => {
+        if (member.inboxId === message.senderInboxId) {
+          senderIdentifier = member.accountIdentifiers.find(
+            (identifier) => identifier.identifierKind === IdentifierKind.Ethereum
+          )?.identifier
+        }
+      })
+
       const memory: Memory = {
         id: messageId,
         agentId: this.runtime.agentId,
         content: {
           text,
           source: XMTP_SOURCE,
-          channelType: ChannelType.THREAD
+          channelType: ChannelType.THREAD,
+          senderIdentifier
         },
         entityId,
         roomId,
