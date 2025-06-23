@@ -42,3 +42,5 @@ export { ensureRuntimeService } from '@/common/functions'
 export { webSearch } from '@/plugins/aya/actions/websearch'
 
 export { Button, ButtonKind, TelegramContent } from '@/plugins/telegram/types'
+
+export { capabilitiesAction } from '@/plugins/aya/actions/capabilities'
