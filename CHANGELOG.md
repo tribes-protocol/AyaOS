@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.57
+
+### Patch Changes
+
+- a1cf10e: export capabilities action
+
 ## 0.1.56
 
 ### Patch Changes
