@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.56
+
+### Patch Changes
+
+- 9a7729f: xmtp transactions
+
 ## 0.1.55
 
 ### Patch Changes
