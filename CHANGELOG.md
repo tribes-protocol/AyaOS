@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.58
+
+### Patch Changes
+
+- c9826d8: fix the capabilities prompt
+
 ## 0.1.57
 
 ### Patch Changes
