@@ -64,17 +64,26 @@ export const capabilitiesAction: Action = {
       return
     }
 
-    // Generate a user-friendly summary through LLM
+    // Generate a user-friendly, conversational summary through LLM
+    const source = message.content?.source
+    const useMarkdown = source !== 'xmtp'
+    const formatInstruction = useMarkdown
+      ? 'Format your response in Markdown, using clear structure (for example: headings, bullet points, and bold for key terms).'
+      : 'Format your response in a clear, structured way (do not use Markdown formatting).'
+
     const summary = await runtime.useModel(ModelType.TEXT_LARGE, {
-      prompt: `Below is a list of capabilities this AI assistant has.
-       Please create a concise, user-friendly summary in bullet point format that explains these 
-       capabilities in simple terms. Group similar capabilities together where appropriate.
-       
-       Focus on what the assistant can do for the user, not technical implementation details.
-       Make it engaging and clear for someone who wants to know what this assistant can help with.
-       
-       Capabilities:
-       ${actionDescriptions}`
+      prompt: `Hello! Here’s what I can help you with:
+
+Below is a list of my capabilities. Please write a friendly, natural-sounding summary 
+(as if you're talking to a person) that explains what I can do for the user. Group similar 
+abilities together, and make it easy to scan. Avoid technical jargon or implementation details.
+
+Also try to keep the as concise as possible without losing any of key details.
+
+${formatInstruction}
+
+Capabilities:
+${actionDescriptions}`
     })
 
     await callback?.({
