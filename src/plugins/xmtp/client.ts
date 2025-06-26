@@ -75,12 +75,14 @@ export class XMTPManager {
       }
 
       // Check if this is a group chat and if we should respond
-      if (!(await this.shouldProcessMessage(message, conversation))) {
+      if (!this.shouldProcessMessage(message, conversation)) {
         ayaLogger.info('Skipping message - not mentioned in group chat')
         continue
       }
 
-      await this.processMessage(message, conversation)
+      void this.processMessage(message, conversation).catch((error) => {
+        ayaLogger.error(`Error processing message: ${error}`)
+      })
 
       ayaLogger.info('Waiting for messages...')
     }
@@ -91,10 +93,7 @@ export class XMTPManager {
    * - Always process DM messages
    * - Only process group messages if bot is mentioned by address or username
    */
-  private async shouldProcessMessage(
-    message: DecodedMessage,
-    conversation: Conversation
-  ): Promise<boolean> {
+  private shouldProcessMessage(message: DecodedMessage, conversation: Conversation): boolean {
     // Always process DM messages
     if (conversation instanceof Dm) {
       return true
