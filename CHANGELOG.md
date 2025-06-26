@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.59
+
+### Patch Changes
+
+- c401e6a: support xmtp reactions
+
 ## 0.1.58
 
 ### Patch Changes
