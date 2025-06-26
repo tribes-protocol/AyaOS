@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.60
+
+### Patch Changes
+
+- 93c3ab4: Make XMTP message processing async
+
 ## 0.1.59
 
 ### Patch Changes
