@@ -28,7 +28,7 @@ import { z } from 'zod'
 
 export class XMTPManager {
   runtime: IAgentRuntime
-  private client: XmtpClient
+  public client: XmtpClient
 
   constructor(runtime: IAgentRuntime, client: XmtpClient) {
     this.runtime = runtime

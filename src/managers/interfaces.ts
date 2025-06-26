@@ -1,5 +1,7 @@
+import { EthAddress } from '@/common/types'
 import { TelegramContent } from '@/plugins/telegram/types'
 import { PostTweetRequest, PostTweetResponse } from '@/plugins/twitter/client'
+import { XmtpContent } from '@/plugins/xmtp/types'
 import { CastId, CastWithInteractions } from '@neynar/nodejs-sdk/build/api'
 import { Context } from 'telegraf'
 
@@ -11,6 +13,14 @@ export interface ITelegramManager {
     content: TelegramContent
     replyToMessageId?: number | undefined
   }): Promise<number | undefined>
+}
+
+export interface IXmtpManager {
+  sendMessage(params: {
+    identifier: EthAddress
+    content: XmtpContent
+    replyToMessageId?: string | undefined
+  }): Promise<string | undefined>
 }
 
 export interface IFarcasterManager {
