@@ -38,6 +38,7 @@
     "@turnkey/http": "2.18.0",
     "@turnkey/sdk-server": "1.7.3",
     "@turnkey/viem": "0.6.10",
+    "@xmtp/content-type-reaction": "2.0.2",
     "@xmtp/content-type-reply": "2.0.2",
     "@xmtp/content-type-text": "2.0.2",
     "@xmtp/content-type-wallet-send-calls": "2.0.0",

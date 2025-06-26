@@ -11,6 +11,7 @@ import {
   MessagePayload,
   UUID
 } from '@elizaos/core'
+import { ContentTypeReaction, Reaction } from '@xmtp/content-type-reaction'
 import type { Reply } from '@xmtp/content-type-reply'
 import { ContentTypeReply } from '@xmtp/content-type-reply'
 import { ContentTypeText } from '@xmtp/content-type-text'
@@ -187,6 +188,15 @@ export class XMTPManager {
   ): Promise<string> {
     if (content.transactionCalls) {
       return conversation.send(content.transactionCalls, ContentTypeWalletSendCalls)
+    }
+
+    if (content.reaction) {
+      const reaction: Reaction = {
+        ...content.reaction,
+        reference: message.id
+      }
+
+      return conversation.send(reaction, ContentTypeReaction)
     }
 
     const reply: Reply = {
