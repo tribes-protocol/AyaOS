@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.61
+
+### Patch Changes
+
+- 2016fb1: xmtp manager
+
 ## 0.1.60
 
 ### Patch Changes
