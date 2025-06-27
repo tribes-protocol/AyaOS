@@ -18,8 +18,6 @@ export class XmtpManager implements IXmtpManager {
   }): Promise<string | undefined> {
     const { identifier, content, replyToMessageId } = params
 
-    await this.xmtpClient.conversations.sync()
-
     const inboxId = await this.xmtpClient.getInboxIdByIdentifier({
       identifier,
       identifierKind: IdentifierKind.Ethereum
@@ -29,10 +27,7 @@ export class XmtpManager implements IXmtpManager {
       throw new Error(`Inbox ID not found for identifier: ${identifier}`)
     }
 
-    const conversation = this.xmtpClient.conversations.getDmByInboxId(inboxId)
-    if (!conversation) {
-      throw new Error(`Conversation not found: ${inboxId}`)
-    }
+    const conversation = await this.xmtpClient.conversations.newDm(inboxId)
 
     if (content.transactionCalls) {
       return conversation.send(content.transactionCalls, ContentTypeWalletSendCalls)
@@ -54,12 +49,6 @@ export class XmtpManager implements IXmtpManager {
       }
       return conversation.send(reply, ContentTypeReply)
     }
-
-    console.log('sending message to xmtp', {
-      inboxId,
-      conversation,
-      content
-    })
 
     return conversation.send(content.text, ContentTypeText)
   }

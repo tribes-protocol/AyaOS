@@ -14,9 +14,9 @@ async function main(): Promise<void> {
     ayaLogger.info('example agent started')
 
     await agent.xmtp.sendMessage({
-      identifier: '0x6304CE63F2EBf8C0Cc76b60d34Cc52a84aBB6057',
+      identifier: '0xAA6605fDB8e19BACAD3e096999Ba94A0798AD3EE',
       content: {
-        text: 'Hello, world!'
+        text: 'Hello, there!'
       }
     })
   } catch (error) {
