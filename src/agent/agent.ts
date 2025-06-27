@@ -26,9 +26,15 @@ import {
 import { ayaLogger } from '@/common/logger'
 import { AuthInfo, AyaOSOptions, CharacterSchema } from '@/common/types'
 import { FarcasterManager } from '@/managers/farcaster'
-import { IFarcasterManager, ITelegramManager, ITwitterManager } from '@/managers/interfaces'
+import {
+  IFarcasterManager,
+  ITelegramManager,
+  ITwitterManager,
+  IXmtpManager
+} from '@/managers/interfaces'
 import { TelegramManager } from '@/managers/telegram'
 import { TwitterManager } from '@/managers/twitter'
+import { XmtpManager } from '@/managers/xmtp'
 import { ayaPlugin } from '@/plugins/aya'
 import farcasterPlugin from '@/plugins/farcaster'
 import { FarcasterService } from '@/plugins/farcaster/service'
@@ -40,6 +46,7 @@ import twitterPlugin from '@/plugins/twitter'
 import { TwitterService } from '@/plugins/twitter/service'
 import xmtpPlugin from '@/plugins/xmtp'
 import { XMTP_KEY } from '@/plugins/xmtp/constants'
+import { XMTPService } from '@/plugins/xmtp/service'
 import { IKnowledgeService, ILLMService, IWalletService } from '@/services/interfaces'
 import { KnowledgeService } from '@/services/knowledge'
 import { LLMService } from '@/services/llm'
@@ -72,6 +79,7 @@ export class Agent implements IAyaAgent {
   private farcaster_?: IFarcasterManager
   private twitter_?: ITwitterManager
   private character_?: Character | undefined
+  private xmtp_?: IXmtpManager
 
   constructor(readonly options?: AyaOSOptions) {
     //
@@ -165,6 +173,26 @@ export class Agent implements IAyaAgent {
       this.twitter_ = new TwitterManager(twitterService, this.runtime)
     }
     return this.twitter_
+  }
+
+  get xmtp(): IXmtpManager {
+    if (isNull(this.xmtp_)) {
+      const xmtpService = this.runtime.getService<XMTPService>(
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        XMTPService.serviceType as ServiceTypeName
+      )
+      if (isNull(xmtpService)) {
+        throw new Error('XMTP service not found')
+      }
+
+      const xmtpManager = xmtpService.getManager(this.runtime.agentId)
+      if (isNull(xmtpManager)) {
+        throw new Error('XMTP manager not found')
+      }
+
+      this.xmtp_ = new XmtpManager(xmtpManager.client)
+    }
+    return this.xmtp_
   }
 
   async start(): Promise<void> {
