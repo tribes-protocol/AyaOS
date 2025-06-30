@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.62
+
+### Patch Changes
+
+- 0570c8f: xmtp group vs dm channel fix
+
 ## 0.1.61
 
 ### Patch Changes
