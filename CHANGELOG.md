@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.63
+
+### Patch Changes
+
+- 9aaa8bd: Remove shouldRespond check
+
 ## 0.1.62
 
 ### Patch Changes
