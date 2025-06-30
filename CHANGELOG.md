@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.64
+
+### Patch Changes
+
+- d002a65: pass xmtp messageId
+
 ## 0.1.63
 
 ### Patch Changes
