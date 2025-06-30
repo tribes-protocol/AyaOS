@@ -2,7 +2,7 @@ import { AgentRegistry } from '@/agent/registry'
 import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
 import { ensureStringSetting, isNull, toJsonTreeString } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
-import { messageHandlerTemplate, shouldRespondTemplate } from '@/common/templates'
+import { messageHandlerTemplate } from '@/common/templates'
 import { validateResponse } from '@/llms/response-validator'
 import {
   asUUID,
@@ -119,51 +119,53 @@ export const messageReceivedHandler = async ({
         return
       }
 
-      let state = await runtime.composeState(
-        message,
-        ['PROVIDERS', 'SHOULD_RESPOND', 'CHARACTER', 'RECENT_MESSAGES', 'ENTITIES'],
-        ['ACTIONS']
-      )
+      // let state = await runtime.composeState(
+      //   message,
+      //   ['PROVIDERS', 'SHOULD_RESPOND', 'CHARACTER', 'RECENT_MESSAGES', 'ENTITIES'],
+      //   ['ACTIONS']
+      // )
 
-      const shouldRespondPrompt = composePromptFromState({
-        state,
-        template: runtime.character.templates?.shouldRespondTemplate || shouldRespondTemplate
-      })
+      // const shouldRespondPrompt = composePromptFromState({
+      //   state,
+      //   template: runtime.character.templates?.shouldRespondTemplate || shouldRespondTemplate
+      // })
 
-      logger.debug(
-        `*** Should Respond Prompt for ${runtime.character.name} ***\n`,
-        shouldRespondPrompt
-      )
+      // logger.debug(
+      //   `*** Should Respond Prompt for ${runtime.character.name} ***\n`,
+      //   shouldRespondPrompt
+      // )
 
-      const response = await runtime.useModel(ModelType.TEXT_SMALL, {
-        prompt: shouldRespondPrompt
-      })
+      // const response = await runtime.useModel(ModelType.TEXT_SMALL, {
+      //   prompt: shouldRespondPrompt
+      // })
 
-      logger.debug(`*** Should Respond Response for ${runtime.character.name} ***\n`, response)
-      logger.debug(`*** Raw Response Type: ${typeof response} ***`)
+      // logger.debug(`*** Should Respond Response for ${runtime.character.name} ***\n`, response)
+      // logger.debug(`*** Raw Response Type: ${typeof response} ***`)
 
-      // Try to preprocess response by removing code blocks markers if present
-      let processedResponse = response
-      if (typeof response === 'string' && response.includes('```')) {
-        logger.debug('*** Response contains code block markers, attempting to clean up ***')
-        processedResponse = response.replace(/```json\n|\n```|```/g, '')
-        logger.debug('*** Processed Response ***\n', processedResponse)
-      }
+      // // Try to preprocess response by removing code blocks markers if present
+      // let processedResponse = response
+      // if (typeof response === 'string' && response.includes('```')) {
+      //   logger.debug('*** Response contains code block markers, attempting to clean up ***')
+      //   processedResponse = response.replace(/```json\n|\n```|```/g, '')
+      //   logger.debug('*** Processed Response ***\n', processedResponse)
+      // }
 
-      const responseObject = parseJSONObjectFromText(processedResponse)
-      logger.debug('*** Parsed Response Object ***', responseObject)
+      // const responseObject = parseJSONObjectFromText(processedResponse)
+      // logger.debug('*** Parsed Response Object ***', responseObject)
 
-      // Safely handle the case where parsing returns null
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      const providers = responseObject?.providers as string[] | undefined
-      logger.debug('*** Providers Value ***', providers)
+      // // Safely handle the case where parsing returns null
+      // // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      // const providers = responseObject?.providers as string[] | undefined
+      // logger.debug('*** Providers Value ***', providers)
 
-      ayaLogger.log('responseObject', responseObject)
+      // ayaLogger.log('responseObject', responseObject)
 
-      const shouldRespond = responseObject?.action && responseObject.action !== 'IGNORE'
-      logger.debug('*** Should Respond ***', shouldRespond)
+      // const shouldRespond = responseObject?.action && responseObject.action !== 'IGNORE'
+      // logger.debug('*** Should Respond ***', shouldRespond)
 
-      state = await runtime.composeState(message, undefined, providers)
+      const shouldRespond = true
+      const providers = ['ACTIONS', 'PROVIDERS', 'CHARACTER', 'RECENT_MESSAGES', 'ENTITIES']
+      const state = await runtime.composeState(message, undefined, providers)
 
       let responseMessages: Memory[] = []
 
