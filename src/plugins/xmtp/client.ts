@@ -100,12 +100,16 @@ export class XMTPManager {
     }
 
     // For group chats, only process if mentioned
-    if (conversation instanceof Group) {
+    if (this.isConversationGroup(conversation)) {
       return this.isBotMentioned(message)
     }
 
     // Default to processing (fallback for unknown conversation types)
     return true
+  }
+
+  private isConversationGroup(conversation: Conversation): boolean {
+    return conversation instanceof Group
   }
 
   /**
@@ -253,11 +257,14 @@ export class XMTPManager {
         }
       })
 
+      const channelType = this.isConversationGroup(conversation)
+        ? ChannelType.GROUP
+        : ChannelType.DM
+
       await this.runtime.ensureRoomExists({
         id: roomId,
-        name: `Thread with ${message.senderInboxId}`,
         source: XMTP_SOURCE,
-        type: ChannelType.THREAD,
+        type: channelType,
         channelId: conversation.id,
         serverId,
         worldId
@@ -270,7 +277,7 @@ export class XMTPManager {
           userName: message.senderInboxId,
           name: message.senderInboxId,
           source: XMTP_SOURCE,
-          type: ChannelType.THREAD,
+          type: channelType,
           channelId: conversation.id,
           serverId,
           worldId
@@ -293,7 +300,7 @@ export class XMTPManager {
         content: {
           text,
           source: XMTP_SOURCE,
-          channelType: ChannelType.THREAD,
+          channelType,
           senderIdentifier
         },
         entityId,
