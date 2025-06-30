@@ -301,7 +301,8 @@ export class XMTPManager {
           text,
           source: XMTP_SOURCE,
           channelType,
-          senderIdentifier
+          senderIdentifier,
+          xmtpMessageId: message.id
         },
         entityId,
         roomId,
