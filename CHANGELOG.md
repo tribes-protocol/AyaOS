@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.65
+
+### Patch Changes
+
+- 5f2a0ce: should reply in xmtp callback
+
 ## 0.1.64
 
 ### Patch Changes
