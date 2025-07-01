@@ -26,6 +26,11 @@ import {
 } from '@xmtp/node-sdk'
 import { z } from 'zod'
 
+const ReplyContentSchema = z.object({
+  reference: z.string(),
+  content: z.string()
+})
+
 export class XMTPManager {
   runtime: IAgentRuntime
   public readonly client: XmtpClient
@@ -51,10 +56,7 @@ export class XMTPManager {
     ayaLogger.info('✅ XMTP client started')
 
     for await (const message of await stream) {
-      if (
-        message?.senderInboxId.toLowerCase() === this.client.inboxId.toLowerCase() ||
-        message?.contentType?.typeId !== 'text'
-      ) {
+      if (isNull(message)) {
         continue
       }
 
@@ -92,6 +94,7 @@ export class XMTPManager {
    * Determines if we should process a message based on conversation type and mentions
    * - Always process DM messages
    * - Only process group messages if bot is mentioned by address or username
+   *   or if it's a reply to the bot
    */
   private shouldProcessMessage(message: DecodedMessage, conversation: Conversation): boolean {
     // Always process DM messages
@@ -99,9 +102,11 @@ export class XMTPManager {
       return true
     }
 
-    // For group chats, only process if mentioned
+    // For group chats, only process if mentioned or if it's a reply to the bot
     if (this.isConversationGroup(conversation)) {
-      return this.isBotMentioned(message)
+      const isBotMentioned = this.isBotMentioned(message)
+      const isReplyToBot = this.isReplyToBot(message)
+      return isBotMentioned || isReplyToBot
     }
 
     // Default to processing (fallback for unknown conversation types)
@@ -110,6 +115,36 @@ export class XMTPManager {
 
   private isConversationGroup(conversation: Conversation): boolean {
     return conversation instanceof Group
+  }
+
+  /**
+   * Checks if the message is a reply to the bot
+   */
+  private isReplyToBot(message: DecodedMessage): boolean {
+    // Check if this is a reply message
+    if (isNull(message.contentType) || !message.contentType.sameAs(ContentTypeReply)) {
+      return false
+    }
+
+    const replyContent = ReplyContentSchema.safeParse(message.content)
+
+    if (!replyContent.success || isNull(replyContent.data)) {
+      ayaLogger.warn('Failed to parse reply content')
+      return false
+    }
+
+    const referenceMessage = this.client.conversations.getMessageById(replyContent.data.reference)
+    if (isNull(referenceMessage)) {
+      ayaLogger.warn('Failed to find reference message')
+      return false
+    }
+
+    const isReplyToBot = referenceMessage.senderInboxId === this.client.inboxId
+    if (isReplyToBot) {
+      ayaLogger.info(`Reply detected to bot message: ${referenceMessage.id}`)
+    }
+
+    return isReplyToBot
   }
 
   /**
@@ -244,7 +279,19 @@ export class XMTPManager {
     conversation: Conversation
   ): Promise<Memory> {
     try {
-      const text = z.string().parse(message.content)
+      let text: string
+
+      if (message.contentType?.sameAs(ContentTypeReply)) {
+        const replyContent = ReplyContentSchema.safeParse(message.content)
+        if (replyContent.success && replyContent.data) {
+          text = replyContent.data.content
+        } else {
+          throw new Error('Failed to parse reply content')
+        }
+      } else {
+        text = z.string().parse(message.content)
+      }
+
       const messageId = createUniqueUuid(this.runtime, message.id)
       const entityId = createUniqueUuid(this.runtime, message.senderInboxId)
       const roomId = createUniqueUuid(this.runtime, conversation.id)
