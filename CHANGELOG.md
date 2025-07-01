@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.66
+
+### Patch Changes
+
+- 75441bc: xmtp group reply
+
 ## 0.1.65
 
 ### Patch Changes
