@@ -202,13 +202,17 @@ export class XMTPManager {
       return conversation.send(reaction, ContentTypeReaction)
     }
 
-    const reply: Reply = {
-      reference: message.id,
-      content: content.text,
-      contentType: ContentTypeText
+    if (content.shouldReply) {
+      const reply: Reply = {
+        reference: message.id,
+        content: content.text,
+        contentType: ContentTypeText
+      }
+
+      return conversation.send(reply, ContentTypeReply)
     }
 
-    return conversation.send(reply, ContentTypeReply)
+    return conversation.send(content.text, ContentTypeText)
   }
 
   private async createResponseMemory(

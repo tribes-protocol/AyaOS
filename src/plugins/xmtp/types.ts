@@ -8,4 +8,5 @@ import { WalletSendCallsParams } from '@xmtp/content-type-wallet-send-calls'
 export interface XmtpContent extends Content {
   transactionCalls?: WalletSendCallsParams
   reaction?: Omit<Reaction, 'reference' | 'referenceInboxId'>
+  shouldReply?: boolean
 }
