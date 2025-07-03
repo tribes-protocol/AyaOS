@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.1.67
+
+### Patch Changes
+
+- fbad4b4: minor xmtp bugfix
+
 ## 0.1.66
 
 ### Patch Changes
