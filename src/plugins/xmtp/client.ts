@@ -56,7 +56,7 @@ export class XMTPManager {
     ayaLogger.info('✅ XMTP client started')
 
     for await (const message of await stream) {
-      if (isNull(message)) {
+      if (isNull(message?.content)) {
         continue
       }
 
