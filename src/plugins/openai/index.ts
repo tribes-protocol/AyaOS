@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-import { isRequiredString } from '@/common/functions'
+import { isRequiredString, retry } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai'
 import {
@@ -131,6 +131,15 @@ async function detokenizeText(model: ModelTypeName, tokens: number[]): Promise<s
  * Helper function to generate objects using specified model type
  */
 export async function generateObjectByModelType(
+  runtime: IAgentRuntime,
+  params: ObjectGenerationParams,
+  modelType: string,
+  getModelFn: (runtime: IAgentRuntime) => string
+): Promise<JSONValue> {
+  return retry(async () => _generateObjectByModelType(runtime, params, modelType, getModelFn))
+}
+
+async function _generateObjectByModelType(
   runtime: IAgentRuntime,
   params: ObjectGenerationParams,
   modelType: string,

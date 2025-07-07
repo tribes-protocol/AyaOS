@@ -2,8 +2,7 @@ import { AgentRegistry } from '@/agent/registry'
 import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
 import { ensureStringSetting, isNull, toJsonTreeString } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
-import { messageHandlerTemplate } from '@/common/templates'
-import { validateResponse } from '@/llms/response-validator'
+import { actionRouterTemplate } from '@/common/templates'
 import {
   asUUID,
   ChannelType,
@@ -22,6 +21,11 @@ import {
   truncateToCompleteSentence
 } from '@elizaos/core'
 import { v4 } from 'uuid'
+import { z } from 'zod'
+
+export const ActionRouterResponseSchema = z.object({
+  action: z.string()
+})
 
 /**
  * Handles incoming messages and generates responses based on the provided runtime
@@ -119,102 +123,45 @@ export const messageReceivedHandler = async ({
         return
       }
 
-      // let state = await runtime.composeState(
-      //   message,
-      //   ['PROVIDERS', 'SHOULD_RESPOND', 'CHARACTER', 'RECENT_MESSAGES', 'ENTITIES'],
-      //   ['ACTIONS']
-      // )
-
-      // const shouldRespondPrompt = composePromptFromState({
-      //   state,
-      //   template: runtime.character.templates?.shouldRespondTemplate || shouldRespondTemplate
-      // })
-
-      // logger.debug(
-      //   `*** Should Respond Prompt for ${runtime.character.name} ***\n`,
-      //   shouldRespondPrompt
-      // )
-
-      // const response = await runtime.useModel(ModelType.TEXT_SMALL, {
-      //   prompt: shouldRespondPrompt
-      // })
-
-      // logger.debug(`*** Should Respond Response for ${runtime.character.name} ***\n`, response)
-      // logger.debug(`*** Raw Response Type: ${typeof response} ***`)
-
-      // // Try to preprocess response by removing code blocks markers if present
-      // let processedResponse = response
-      // if (typeof response === 'string' && response.includes('```')) {
-      //   logger.debug('*** Response contains code block markers, attempting to clean up ***')
-      //   processedResponse = response.replace(/```json\n|\n```|```/g, '')
-      //   logger.debug('*** Processed Response ***\n', processedResponse)
-      // }
-
-      // const responseObject = parseJSONObjectFromText(processedResponse)
-      // logger.debug('*** Parsed Response Object ***', responseObject)
-
-      // // Safely handle the case where parsing returns null
-      // // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      // const providers = responseObject?.providers as string[] | undefined
-      // logger.debug('*** Providers Value ***', providers)
-
-      // ayaLogger.log('responseObject', responseObject)
-
-      // const shouldRespond = responseObject?.action && responseObject.action !== 'IGNORE'
-      // logger.debug('*** Should Respond ***', shouldRespond)
-
       const shouldRespond = true
-      const providers = ['ACTIONS', 'PROVIDERS', 'CHARACTER', 'RECENT_MESSAGES', 'ENTITIES']
-      const state = await runtime.composeState(message, undefined, providers)
+      const providers = ['ROUTER_ACTIONS', 'PROVIDERS', 'RECENT_MESSAGES', 'ENTITIES']
+      const state = await runtime.composeState(message, ['ACTIONS'], providers)
 
       let responseMessages: Memory[] = []
 
       if (shouldRespond) {
-        const prompt = composePromptFromState({
-          state,
-          template: runtime.character.templates?.messageHandlerTemplate || messageHandlerTemplate
-        })
+        const routerTemplate =
+          runtime.character.templates?.actionRouterTemplate || actionRouterTemplate
+        const prompt = composePromptFromState({ state, template: routerTemplate })
+
+        // console.log('*** Prompt ***\n', prompt)
 
         let responseContent: Content | null = null
 
         // Retry if missing required fields
         let retries = 0
         const maxRetries = 3
-        while (retries < maxRetries && (!responseContent?.thought || !responseContent?.actions)) {
-          const response = await runtime.useModel(ModelType.TEXT_LARGE, {
-            prompt
-          })
+        while (retries < maxRetries) {
+          try {
+            const response = await runtime.useModel(ModelType.TEXT_LARGE, {
+              prompt
+            })
 
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          responseContent = parseJSONObjectFromText(response) as Content
-
-          retries++
-          if (!responseContent?.thought && !responseContent?.actions) {
-            ayaLogger.warn('*** Missing required fields, retrying... ***')
+            const routerResponse = ActionRouterResponseSchema.parse(
+              parseJSONObjectFromText(response)
+            )
+            responseContent = {
+              actions: [routerResponse.action]
+            }
+            break
+          } catch (error) {
+            ayaLogger.error('*** Error parsing response ***', error)
+            retries++
           }
         }
 
         if (responseContent) {
           responseContent.inReplyTo = createUniqueUuid(runtime, messageId)
-
-          // last line of defense to ensure the response is valid
-          const validation = await validateResponse({
-            runtime,
-            response: responseContent,
-            requestText: message.content.text || '',
-            context: prompt
-          })
-
-          if (validation) {
-            responseContent = validation
-          }
-
-          // make sure if content.actions has a REPLY action, it's the first action
-          const actions = responseContent.actions || []
-          if (actions.includes('REPLY')) {
-            responseContent.actions = actions.filter((action) => action !== 'REPLY')
-            responseContent.actions.unshift('REPLY')
-          }
 
           responseMessages = [
             {

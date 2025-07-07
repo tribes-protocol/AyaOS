@@ -1,3 +1,18 @@
+export const actionRouterTemplate = `
+# Task: Decide the next action for {{agentName}}.
+{{actionNames}}
+
+{{providers}}
+
+# Instructions: Respond with a JSON block containing your thought and the next action to take.
+
+\`\`\`json
+{
+  "action": "<action name>"
+}
+\`\`\`
+`.trim()
+
 export const messageHandlerTemplate = `
 # Task: Generate dialog and actions for the character {{agentName}}.
 {{providers}}

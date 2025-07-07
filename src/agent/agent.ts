@@ -217,6 +217,7 @@ export class Agent implements IAyaAgent {
 
       // step 4: initialize environment variables and runtime
       runtime = new AgentRuntime({
+        conversationLength: 20,
         character: this.character_,
         plugins: this.plugins,
         agentId: this.character_.id,
