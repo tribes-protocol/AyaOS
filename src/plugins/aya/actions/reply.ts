@@ -1,4 +1,4 @@
-import { isRequiredString } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import {
   Action,
   composePromptFromState,
@@ -8,6 +8,12 @@ import {
   ModelType,
   type State
 } from '@elizaos/core'
+import { z } from 'zod'
+
+export const ReplyActionResponseSchema = z.object({
+  thought: z.string(),
+  message: z.string()
+})
 
 const replyTemplate = `# Task: Generate dialog for the character {{agentName}}.
 {{providers}}
@@ -40,31 +46,16 @@ export const replyAction: Action = {
     options?: {
       [key: string]: unknown
     },
-    callback?: HandlerCallback,
-    responses?: Memory[]
+    callback?: HandlerCallback
   ) => {
-    // Find all responses with REPLY action and text
-    const existingResponses = responses?.filter(
-      (response) => response.content.actions?.includes('REPLY') && response.content.message
-    )
-
-    // If we found any existing responses, use them and skip LLM
-    if (existingResponses && existingResponses.length > 0) {
-      for (const response of existingResponses) {
-        const responseContent = {
-          thought: response.content.thought || 'Using provided text for reply',
-          text: isRequiredString(response.content.message) ? response.content.message : '',
-          actions: ['REPLY']
-        }
-        await callback?.(responseContent)
-      }
-      return
-    }
-
+    // Print message without the embedding property
+    const { embedding: _embedding, ...messageWithoutEmbedding } = message
+    ayaLogger.info('reply action message', messageWithoutEmbedding)
     // Only generate response using LLM if no suitable response was found
     state = await runtime.composeState(message, [
       ...(message.content.providers ?? []),
-      'RECENT_MESSAGES'
+      'RECENT_MESSAGES',
+      'CHARACTER'
     ])
 
     const prompt = composePromptFromState({
@@ -76,13 +67,15 @@ export const replyAction: Action = {
       thought: string
       message: string
     } = await runtime.useModel(ModelType.OBJECT_LARGE, {
-      prompt
+      prompt,
+      schema: ReplyActionResponseSchema
     })
 
+    ayaLogger.info('reply action response', response)
+
     const responseContent = {
-      thought: isRequiredString(response.thought) ? response.thought : '',
-      text: isRequiredString(response.message) ? response.message : '',
-      actions: ['REPLY']
+      thought: response.thought,
+      text: response.message
     }
 
     await callback?.(responseContent)

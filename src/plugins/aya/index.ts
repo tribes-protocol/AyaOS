@@ -13,6 +13,7 @@ import { characterProvider } from '@/plugins/aya/providers/character'
 import { entitiesProvider } from '@/plugins/aya/providers/entities'
 import { recentMessagesProvider } from '@/plugins/aya/providers/messages'
 import { providersProvider } from '@/plugins/aya/providers/providers'
+import { routerActionsProvider } from '@/plugins/aya/providers/router_actions'
 import { timeProvider } from '@/plugins/aya/providers/time'
 import { AyaClientService } from '@/plugins/aya/services/client'
 import { WebSearchService } from '@/plugins/aya/services/websearch'
@@ -167,6 +168,7 @@ export const ayaPlugin: Plugin = {
     entitiesProvider,
     providersProvider,
     actionsProvider,
+    routerActionsProvider,
     characterProvider,
     recentMessagesProvider
   ],
