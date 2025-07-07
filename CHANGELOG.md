@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.2.0
+
+### Patch Changes
+
+- 3cd88a0: convert message handler to a router
+
 ## 0.1.67
 
 ### Patch Changes
