@@ -1,5 +1,12 @@
 # @tribesxyz/ayaos
 
+## 0.2.2
+
+### Patch Changes
+
+- aef3faa: update version
+- 2852723: validate the REPLY action just in case
+
 ## 0.2.0
 
 ### Patch Changes
