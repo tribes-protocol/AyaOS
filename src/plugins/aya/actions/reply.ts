@@ -1,4 +1,5 @@
 import { ayaLogger } from '@/common/logger'
+import { validateResponse } from '@/llms/response-validator'
 import {
   Action,
   composePromptFromState,
@@ -33,9 +34,9 @@ Your response should include the valid JSON block and nothing else.`
 
 export const replyAction: Action = {
   name: 'REPLY',
-  similes: ['GREET', 'REPLY_TO_MESSAGE', 'SEND_REPLY', 'RESPOND', 'RESPONSE'],
+  similes: ['REPLY_TO_MESSAGE', 'SEND_REPLY', 'RESPOND', 'RESPONSE'],
   description:
-    'Replies to the current conversation with the text from the generated message. Default if the agent is responding with a message and no other action. Use REPLY at the beginning of a chain of actions as an acknowledgement, and at the end of a chain of actions as a final response.',
+    "Replies to the current conversation with the generated message text. This is the default action when no other action matches the user's request. Use REPLY at the start of a chain of actions as an acknowledgement, and at the end as a final response.",
   validate: async (_runtime: IAgentRuntime) => {
     return true
   },
@@ -78,7 +79,19 @@ export const replyAction: Action = {
       text: response.message
     }
 
-    await callback?.(responseContent)
+    const validatedResponse = await validateResponse({
+      runtime,
+      response: responseContent,
+      requestText: message.content.text || '',
+      context: prompt
+    })
+
+    if (validatedResponse) {
+      ayaLogger.info('reply action response is valid', validatedResponse)
+      await callback?.(validatedResponse)
+    } else {
+      ayaLogger.error('reply action response is not valid', responseContent)
+    }
   },
   examples: [
     [
