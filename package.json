@@ -1,6 +1,6 @@
 {
   "name": "@tribesxyz/ayaos",
-  "version": "0.2.2",
+  "version": "0.2.0-beta.17",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -38,7 +38,7 @@
     "@turnkey/http": "2.18.0",
     "@turnkey/sdk-server": "1.7.3",
     "@turnkey/viem": "0.6.10",
-    "@xmtp/content-type-primitives": "^2.0.2",
+    "@xmtp/content-type-primitives": "2.0.2",
     "@xmtp/content-type-reaction": "2.0.2",
     "@xmtp/content-type-reply": "2.0.2",
     "@xmtp/content-type-text": "2.0.2",
