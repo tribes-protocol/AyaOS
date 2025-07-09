@@ -1,3 +1,4 @@
+import { XmtpContent } from '@/plugins/xmtp/types'
 import {
   Content,
   Entity,
@@ -12,6 +13,10 @@ import {
   stringToUuid,
   UUID
 } from '@elizaos/core'
+// Export values (classes, enums, functions)
+
+import { ActionsContent } from '@/helpers/xmtpactions'
+import { WalletSendCallsParams } from '@xmtp/content-type-wallet-send-calls'
 export { Agent } from '@/agent/agent'
 export type { IAyaAgent } from '@/agent/iagent'
 export { RateLimiter } from '@/agent/ratelimiter'
@@ -29,11 +34,21 @@ export type { IKnowledgeService, IWalletService } from '@/services/interfaces'
 export { KnowledgeService } from '@/services/knowledge'
 export { WalletService } from '@/services/wallet'
 export type { Action, ActionExample, IAgentRuntime, Plugin, Provider } from '@elizaos/core'
-// Export values (classes, enums, functions)
-
 export { ModelType, Service, ServiceType, stringToUuid }
 // Export types (interfaces, type aliases)
-export type { Content, Entity, HandlerCallback, Memory, Participant, Relationship, State, UUID }
+export type {
+  ActionsContent,
+  Content,
+  Entity,
+  HandlerCallback,
+  Memory,
+  Participant,
+  Relationship,
+  State,
+  UUID,
+  WalletSendCallsParams,
+  XmtpContent
+}
 
 export { ayaLogger } from '@/common/logger'
 
