@@ -1,5 +1,6 @@
 import { isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
+import { ContentTypeActions, ContentTypeIntent, IntentContentSchema } from '@/helpers/xmtpactions'
 import { XMTP_SOURCE } from '@/plugins/xmtp/constants'
 import { XmtpContent } from '@/plugins/xmtp/types'
 import {
@@ -65,7 +66,9 @@ export class XMTPManager {
         continue
       }
 
-      ayaLogger.info(`Received message: ${message.content} by ${message.senderInboxId}`)
+      ayaLogger.info(
+        `Received message: ${JSON.stringify(message.content, null, 2)} by ${message.senderInboxId}`
+      )
 
       const conversation = await this.client.conversations.getConversationById(
         message.conversationId
@@ -247,6 +250,10 @@ export class XMTPManager {
       return conversation.send(reply, ContentTypeReply)
     }
 
+    if (content.xmtpActions) {
+      return conversation.send(content.xmtpActions, ContentTypeActions)
+    }
+
     return conversation.send(content.text, ContentTypeText)
   }
 
@@ -263,7 +270,7 @@ export class XMTPManager {
       id: createUniqueUuid(this.runtime, messageId),
       agentId: this.runtime.agentId,
       content: {
-        text: content.text,
+        text: this.decodeXMTPContentToText(content),
         inReplyTo,
         source: XMTP_SOURCE,
         channelType: ChannelType.THREAD
@@ -287,6 +294,13 @@ export class XMTPManager {
           text = replyContent.data.content
         } else {
           throw new Error('Failed to parse reply content')
+        }
+      } else if (message.contentType?.sameAs(ContentTypeIntent)) {
+        const intentContent = IntentContentSchema.safeParse(message.content)
+        if (intentContent.success && intentContent.data) {
+          text = `User selected action: ${intentContent.data.metadata?.actionLabel}`
+        } else {
+          throw new Error('Failed to parse actions content')
         }
       } else {
         text = z.string().parse(message.content)
@@ -365,6 +379,22 @@ export class XMTPManager {
       ayaLogger.error(`Error in XMTP ensureMessageConnection: ${error}`)
       throw error
     }
+  }
+
+  decodeXMTPContentToText(content: XmtpContent): string {
+    if (content.transactionCalls) {
+      return JSON.stringify(content.transactionCalls)
+    }
+
+    if (content.reaction) {
+      return JSON.stringify(content.reaction)
+    }
+
+    if (content.xmtpActions) {
+      return JSON.stringify(content.xmtpActions)
+    }
+
+    return content.text || ''
   }
 
   async stop(): Promise<void> {

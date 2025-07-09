@@ -3,6 +3,7 @@ import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
 import { ensureStringSetting, isNull, retry } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { HexStringSchema } from '@/common/types'
+import { ActionsCodec, IntentCodec } from '@/helpers/xmtpactions'
 import { XMTPManager } from '@/plugins/xmtp/client'
 import { XMTP_KEY } from '@/plugins/xmtp/constants'
 import { createSigner } from '@/plugins/xmtp/helper'
@@ -63,7 +64,13 @@ export class XMTPService extends Service {
     const config = {
       env,
       dbPath: path.join(pathResolver.xmtpDbDir, 'messages'),
-      codecs: [new ReplyCodec(), new WalletSendCallsCodec(), new ReactionCodec()]
+      codecs: [
+        new ReplyCodec(),
+        new WalletSendCallsCodec(),
+        new ReactionCodec(),
+        new ActionsCodec(),
+        new IntentCodec()
+      ]
     }
 
     ayaLogger.info('XMTP initializing...', config)

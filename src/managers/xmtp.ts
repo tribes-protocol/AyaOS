@@ -1,5 +1,6 @@
 import { isNull } from '@/common/functions'
 import { EthAddress } from '@/common/types'
+import { ContentTypeActions } from '@/helpers/xmtpactions'
 import { IXmtpManager } from '@/managers/interfaces'
 import { XmtpContent } from '@/plugins/xmtp/types'
 import { ContentTypeReaction, Reaction } from '@xmtp/content-type-reaction'
@@ -48,6 +49,10 @@ export class XmtpManager implements IXmtpManager {
         contentType: ContentTypeText
       }
       return conversation.send(reply, ContentTypeReply)
+    }
+
+    if (content.xmtpActions) {
+      return conversation.send(content.xmtpActions, ContentTypeActions)
     }
 
     return conversation.send(content.text, ContentTypeText)
