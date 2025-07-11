@@ -43,7 +43,7 @@
     "@xmtp/content-type-reply": "2.0.2",
     "@xmtp/content-type-text": "2.0.2",
     "@xmtp/content-type-wallet-send-calls": "2.0.0",
-    "@xmtp/node-sdk": "2.0.9",
+    "@xmtp/node-sdk": "3.1.2",
     "agent-twitter-client": "0.0.18",
     "ai": "4.3.6",
     "amqplib": "0.10.5",

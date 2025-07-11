@@ -51,19 +51,23 @@ export class XMTPManager {
       `[XMTP] Send a message on http://xmtp.chat/dm/${this.client.accountIdentifier?.identifier}`
     )
 
-    ayaLogger.info('Waiting for messages...')
-    const stream = this.client.conversations.streamAllMessages()
+    const xmtpClient = this.client
 
-    ayaLogger.info('✅ XMTP client started')
+    const onMessage = async (err: Error | null, message?: DecodedMessage): Promise<void> => {
+      ayaLogger.log('New message received', { err, message })
 
-    for await (const message of await stream) {
+      if (err) {
+        ayaLogger.error('Error processing message', { err })
+        return
+      }
+
       if (isNull(message?.content)) {
-        continue
+        return
       }
 
       // Ignore own messages
       if (message.senderInboxId === this.client.inboxId) {
-        continue
+        return
       }
 
       ayaLogger.info(
@@ -76,13 +80,13 @@ export class XMTPManager {
 
       if (isNull(conversation)) {
         ayaLogger.warn('Unable to find conversation, skipping')
-        continue
+        return
       }
 
       // Check if this is a group chat and if we should respond
       if (!this.shouldProcessMessage(message, conversation)) {
         ayaLogger.info('Skipping message - not mentioned in group chat')
-        continue
+        return
       }
 
       void this.processMessage(message, conversation).catch((error) => {
@@ -91,6 +95,39 @@ export class XMTPManager {
 
       ayaLogger.info('Waiting for messages...')
     }
+
+    let timeout: NodeJS.Timeout | null = null
+
+    const onFail = (): void => {
+      ayaLogger.error('Stream failed')
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+      timeout = setTimeout(() => {
+        void handleStream()
+      }, RETRY_INTERVAL)
+    }
+
+    const handleStream = async (): Promise<void> => {
+      try {
+        ayaLogger.info('Syncing conversations...')
+        await xmtpClient.conversations.sync()
+
+        // start stream
+        const _stream = await xmtpClient.conversations.streamAllMessages(
+          onMessage,
+          undefined,
+          undefined,
+          onFail
+        )
+      } catch (error) {
+        ayaLogger.error('Error syncing conversations', { error })
+        onFail()
+      }
+    }
+
+    ayaLogger.info('✅ XMTP client started. Waiting for messages...')
+    await handleStream()
   }
 
   /**
