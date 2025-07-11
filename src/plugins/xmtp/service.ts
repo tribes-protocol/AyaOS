@@ -3,16 +3,11 @@ import { AYA_AGENT_DATA_DIR_KEY } from '@/common/constants'
 import { ensureStringSetting, isNull, retry } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
 import { HexStringSchema } from '@/common/types'
-import { ActionsCodec, IntentCodec } from '@/helpers/xmtpactions'
 import { XMTPManager } from '@/plugins/xmtp/client'
 import { XMTP_KEY } from '@/plugins/xmtp/constants'
 import { createSigner } from '@/plugins/xmtp/helper'
 import { WalletService } from '@/services/wallet'
 import { IAgentRuntime, Service, ServiceTypeName, UUID } from '@elizaos/core'
-import { ReactionCodec } from '@xmtp/content-type-reaction'
-import { ReplyCodec } from '@xmtp/content-type-reply'
-import { WalletSendCallsCodec } from '@xmtp/content-type-wallet-send-calls'
-import { Client as XmtpClient, XmtpEnv } from '@xmtp/node-sdk'
 import path from 'path'
 import { Account, privateKeyToAccount } from 'viem/accounts'
 
@@ -55,28 +50,13 @@ export class XMTPService extends Service {
     }
 
     const signer = createSigner(account)
-    const env: XmtpEnv = 'production'
 
     const dataDir = ensureStringSetting(runtime, AYA_AGENT_DATA_DIR_KEY)
     const { managers } = AgentRegistry.get(dataDir)
     const pathResolver = managers.path
 
-    const config = {
-      env,
-      dbPath: path.join(pathResolver.xmtpDbDir, 'messages'),
-      codecs: [
-        new ReplyCodec(),
-        new WalletSendCallsCodec(),
-        new ReactionCodec(),
-        new ActionsCodec(),
-        new IntentCodec()
-      ]
-    }
-
-    ayaLogger.info('XMTP initializing...', config)
-    const client = await XmtpClient.create(signer, config)
-
-    manager = new XMTPManager(runtime, client)
+    const dbPath = path.join(pathResolver.xmtpDbDir, 'messages')
+    manager = await XMTPManager.create(runtime, signer, dbPath)
     service.managers.set(runtime.agentId, manager)
     void retry(async () => await manager.start(), { maxRetries: 3, logError: true, ms: 1000 })
 
