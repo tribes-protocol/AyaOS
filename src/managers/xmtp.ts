@@ -1,7 +1,9 @@
 import { isNull } from '@/common/functions'
+import { ayaLogger } from '@/common/logger'
 import { EthAddress } from '@/common/types'
 import { ContentTypeActions } from '@/helpers/xmtpactions'
 import { IXmtpManager } from '@/managers/interfaces'
+import { XMTPContentTypes } from '@/plugins/xmtp/client'
 import { XmtpContent } from '@/plugins/xmtp/types'
 import { ContentTypeReaction, Reaction } from '@xmtp/content-type-reaction'
 import { ContentTypeReply } from '@xmtp/content-type-reply'
@@ -10,7 +12,7 @@ import { ContentTypeWalletSendCalls } from '@xmtp/content-type-wallet-send-calls
 import { IdentifierKind, Client as XmtpClient } from '@xmtp/node-sdk'
 
 export class XmtpManager implements IXmtpManager {
-  constructor(private readonly xmtpClient: XmtpClient) {}
+  constructor(private readonly xmtpClient: XmtpClient<XMTPContentTypes>) {}
 
   async sendMessage(params: {
     identifier: EthAddress
@@ -55,6 +57,11 @@ export class XmtpManager implements IXmtpManager {
       return conversation.send(content.xmtpActions, ContentTypeActions)
     }
 
-    return conversation.send(content.text, ContentTypeText)
+    if (content.text) {
+      return conversation.send(content.text, ContentTypeText)
+    }
+
+    ayaLogger.error('Unknown content type', { content })
+    throw new Error('Unknown content type')
   }
 }
