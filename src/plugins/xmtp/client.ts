@@ -1,5 +1,14 @@
 import { isNull } from '@/common/functions'
 import { ayaLogger } from '@/common/logger'
+import {
+  ActionsCodec,
+  ActionsContent,
+  ContentTypeActions,
+  ContentTypeIntent,
+  IntentCodec,
+  IntentContent,
+  IntentContentSchema
+} from '@/helpers/xmtpactions'
 import { XMTP_SOURCE } from '@/plugins/xmtp/constants'
 import { XmtpContent } from '@/plugins/xmtp/types'
 import {
@@ -11,20 +20,39 @@ import {
   MessagePayload,
   UUID
 } from '@elizaos/core'
-import { ContentTypeReaction, Reaction } from '@xmtp/content-type-reaction'
+import type { GroupUpdated } from '@xmtp/content-type-group-updated'
+import { ContentTypeReaction, Reaction, ReactionCodec } from '@xmtp/content-type-reaction'
 import type { Reply } from '@xmtp/content-type-reply'
-import { ContentTypeReply } from '@xmtp/content-type-reply'
+import { ContentTypeReply, ReplyCodec } from '@xmtp/content-type-reply'
 import { ContentTypeText } from '@xmtp/content-type-text'
-import { ContentTypeWalletSendCalls } from '@xmtp/content-type-wallet-send-calls'
+import {
+  ContentTypeWalletSendCalls,
+  WalletSendCallsCodec,
+  WalletSendCallsParams
+} from '@xmtp/content-type-wallet-send-calls'
 import {
   DecodedMessage,
   Dm,
   Group,
   IdentifierKind,
+  Signer,
   Client as XmtpClient,
+  XmtpEnv,
   type Conversation
 } from '@xmtp/node-sdk'
 import { z } from 'zod'
+
+const RETRY_INTERVAL = 5000
+
+// Define comprehensive content types that can be handled by the XMTP client
+export type XMTPContentTypes =
+  | string
+  | GroupUpdated
+  | ActionsContent
+  | IntentContent
+  | Reply
+  | WalletSendCallsParams
+  | Reaction
 
 const ReplyContentSchema = z.object({
   reference: z.string(),
@@ -33,11 +61,34 @@ const ReplyContentSchema = z.object({
 
 export class XMTPManager {
   runtime: IAgentRuntime
-  public readonly client: XmtpClient
+  public readonly client: XmtpClient<XMTPContentTypes>
 
-  constructor(runtime: IAgentRuntime, client: XmtpClient) {
+  private constructor(runtime: IAgentRuntime, client: XmtpClient<XMTPContentTypes>) {
     this.runtime = runtime
     this.client = client
+  }
+
+  static async create(
+    runtime: IAgentRuntime,
+    signer: Signer,
+    dbPath: string
+  ): Promise<XMTPManager> {
+    const env: XmtpEnv = 'production'
+    const config = {
+      env,
+      dbPath,
+      codecs: [
+        new ReplyCodec(),
+        new WalletSendCallsCodec(),
+        new ReactionCodec(),
+        new ActionsCodec(),
+        new IntentCodec()
+      ]
+    }
+    ayaLogger.info('XMTP initializing...', config)
+
+    const client = await XmtpClient.create(signer, config)
+    return new XMTPManager(runtime, client)
   }
 
   async start(): Promise<void> {
@@ -50,22 +101,28 @@ export class XMTPManager {
       `[XMTP] Send a message on http://xmtp.chat/dm/${this.client.accountIdentifier?.identifier}`
     )
 
-    ayaLogger.info('Waiting for messages...')
-    const stream = this.client.conversations.streamAllMessages()
+    const xmtpClient = this.client
 
-    ayaLogger.info('✅ XMTP client started')
+    const onMessage = async (err: Error | null, message?: DecodedMessage): Promise<void> => {
+      ayaLogger.log('New message received', { err, message })
 
-    for await (const message of await stream) {
+      if (err) {
+        ayaLogger.error('Error processing message', { err })
+        return
+      }
+
       if (isNull(message?.content)) {
-        continue
+        return
       }
 
       // Ignore own messages
       if (message.senderInboxId === this.client.inboxId) {
-        continue
+        return
       }
 
-      ayaLogger.info(`Received message: ${message.content} by ${message.senderInboxId}`)
+      ayaLogger.info(
+        `Received message: ${JSON.stringify(message.content, null, 2)} by ${message.senderInboxId}`
+      )
 
       const conversation = await this.client.conversations.getConversationById(
         message.conversationId
@@ -73,13 +130,13 @@ export class XMTPManager {
 
       if (isNull(conversation)) {
         ayaLogger.warn('Unable to find conversation, skipping')
-        continue
+        return
       }
 
       // Check if this is a group chat and if we should respond
       if (!this.shouldProcessMessage(message, conversation)) {
         ayaLogger.info('Skipping message - not mentioned in group chat')
-        continue
+        return
       }
 
       void this.processMessage(message, conversation).catch((error) => {
@@ -88,6 +145,39 @@ export class XMTPManager {
 
       ayaLogger.info('Waiting for messages...')
     }
+
+    let timeout: NodeJS.Timeout | null = null
+
+    const onFail = (): void => {
+      ayaLogger.error('Stream failed')
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+      timeout = setTimeout(() => {
+        void handleStream()
+      }, RETRY_INTERVAL)
+    }
+
+    const handleStream = async (): Promise<void> => {
+      try {
+        ayaLogger.info('Syncing conversations...')
+        await xmtpClient.conversations.sync()
+
+        // start stream
+        const _stream = await xmtpClient.conversations.streamAllMessages(
+          onMessage,
+          undefined,
+          undefined,
+          onFail
+        )
+      } catch (error) {
+        ayaLogger.error('Error syncing conversations', { error })
+        onFail()
+      }
+    }
+
+    ayaLogger.info('✅ XMTP client started. Waiting for messages...')
+    await handleStream()
   }
 
   /**
@@ -96,7 +186,10 @@ export class XMTPManager {
    * - Only process group messages if bot is mentioned by address or username
    *   or if it's a reply to the bot
    */
-  private shouldProcessMessage(message: DecodedMessage, conversation: Conversation): boolean {
+  private shouldProcessMessage(
+    message: DecodedMessage,
+    conversation: Conversation<XMTPContentTypes>
+  ): boolean {
     // Always process DM messages
     if (conversation instanceof Dm) {
       return true
@@ -113,7 +206,7 @@ export class XMTPManager {
     return true
   }
 
-  private isConversationGroup(conversation: Conversation): boolean {
+  private isConversationGroup(conversation: Conversation<XMTPContentTypes>): boolean {
     return conversation instanceof Group
   }
 
@@ -192,7 +285,10 @@ export class XMTPManager {
     return false
   }
 
-  private async processMessage(message: DecodedMessage, conversation: Conversation): Promise<void> {
+  private async processMessage(
+    message: DecodedMessage,
+    conversation: Conversation<XMTPContentTypes>
+  ): Promise<void> {
     const userMemory = await this.ensureMessageConnection(message, conversation)
 
     if (isNull(userMemory.content.text) || userMemory.content.text.trim() === '') {
@@ -221,7 +317,7 @@ export class XMTPManager {
 
   private async sendMessage(
     message: DecodedMessage,
-    conversation: Conversation,
+    conversation: Conversation<XMTPContentTypes>,
     content: XmtpContent
   ): Promise<string> {
     if (content.transactionCalls) {
@@ -247,11 +343,20 @@ export class XMTPManager {
       return conversation.send(reply, ContentTypeReply)
     }
 
-    return conversation.send(content.text, ContentTypeText)
+    if (content.xmtpActions) {
+      return conversation.send(content.xmtpActions, ContentTypeActions)
+    }
+
+    if (content.text) {
+      return conversation.send(content.text, ContentTypeText)
+    }
+
+    ayaLogger.error('Unknown content type', { content })
+    throw new Error('Unknown content type')
   }
 
   private async createResponseMemory(
-    conversation: Conversation,
+    conversation: Conversation<XMTPContentTypes>,
     content: XmtpContent,
     messageId: string,
     inReplyTo?: UUID
@@ -263,7 +368,7 @@ export class XMTPManager {
       id: createUniqueUuid(this.runtime, messageId),
       agentId: this.runtime.agentId,
       content: {
-        text: content.text,
+        text: this.decodeXMTPContentToText(content),
         inReplyTo,
         source: XMTP_SOURCE,
         channelType: ChannelType.THREAD
@@ -276,7 +381,7 @@ export class XMTPManager {
 
   private async ensureMessageConnection(
     message: DecodedMessage,
-    conversation: Conversation
+    conversation: Conversation<XMTPContentTypes>
   ): Promise<Memory> {
     try {
       let text: string
@@ -287,6 +392,13 @@ export class XMTPManager {
           text = replyContent.data.content
         } else {
           throw new Error('Failed to parse reply content')
+        }
+      } else if (message.contentType?.sameAs(ContentTypeIntent)) {
+        const intentContent = IntentContentSchema.safeParse(message.content)
+        if (intentContent.success && intentContent.data) {
+          text = `User selected action: ${intentContent.data.metadata?.actionLabel}`
+        } else {
+          throw new Error('Failed to parse actions content')
         }
       } else {
         text = z.string().parse(message.content)
@@ -365,6 +477,22 @@ export class XMTPManager {
       ayaLogger.error(`Error in XMTP ensureMessageConnection: ${error}`)
       throw error
     }
+  }
+
+  decodeXMTPContentToText(content: XmtpContent): string {
+    if (content.transactionCalls) {
+      return JSON.stringify(content.transactionCalls)
+    }
+
+    if (content.reaction) {
+      return JSON.stringify(content.reaction)
+    }
+
+    if (content.xmtpActions) {
+      return JSON.stringify(content.xmtpActions)
+    }
+
+    return content.text || ''
   }
 
   async stop(): Promise<void> {

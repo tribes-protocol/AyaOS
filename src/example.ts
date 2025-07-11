@@ -12,6 +12,27 @@ async function main(): Promise<void> {
 
     await agent.start()
     ayaLogger.info('example agent started')
+
+    await agent.xmtp.sendMessage({
+      identifier: '0xAA6605fDB8e19BACAD3e096999Ba94A0798AD3EE',
+      content: {
+        xmtpActions: {
+          id: '1',
+          description: 'How are you doing today?',
+          actions: [
+            { id: '123', label: 'I am doing great' },
+            {
+              id: '456',
+              label: 'I am doing ok'
+            },
+            {
+              id: '789',
+              label: 'I am not doing well'
+            }
+          ]
+        }
+      }
+    })
   } catch (error) {
     ayaLogger.error('An error occurred', { error })
 
