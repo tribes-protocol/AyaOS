@@ -1,5 +1,12 @@
 # @tribesxyz/ayaos
 
+## 0.2.3
+
+### Patch Changes
+
+- 54f0d14: xmpt quick action support
+- e4bb3e8: support xmtp actions
+
 ## 0.2.2
 
 ### Patch Changes
