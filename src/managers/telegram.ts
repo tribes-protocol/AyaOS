@@ -21,6 +21,6 @@ export class TelegramManager implements ITelegramManager {
       content,
       replyToMessageId
     )
-    return message.message_id ?? undefined
+    return message?.message_id ?? undefined
   }
 }
