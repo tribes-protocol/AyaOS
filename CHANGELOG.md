@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.2.4
+
+### Patch Changes
+
+- dc59241: xmtp actions fixes
+
 ## 0.2.3
 
 ### Patch Changes
