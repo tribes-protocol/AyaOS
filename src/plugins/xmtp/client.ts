@@ -134,7 +134,7 @@ export class XMTPManager {
       }
 
       // Check if this is a group chat and if we should respond
-      if (!this.shouldProcessMessage(message, conversation)) {
+      if (!(await this.shouldProcessMessage(message, conversation))) {
         ayaLogger.info('Skipping message - not mentioned in group chat')
         return
       }
@@ -186,10 +186,10 @@ export class XMTPManager {
    * - Only process group messages if bot is mentioned by address or username
    *   or if it's a reply to the bot
    */
-  private shouldProcessMessage(
+  private async shouldProcessMessage(
     message: DecodedMessage,
     conversation: Conversation<XMTPContentTypes>
-  ): boolean {
+  ): Promise<boolean> {
     // Always process DM messages
     if (conversation instanceof Dm) {
       return true
@@ -199,7 +199,8 @@ export class XMTPManager {
     if (this.isConversationGroup(conversation)) {
       const isBotMentioned = this.isBotMentioned(message)
       const isReplyToBot = this.isReplyToBot(message)
-      return isBotMentioned || isReplyToBot
+      const isBotAction = await this.isBotAction(message)
+      return isBotMentioned || isReplyToBot || isBotAction
     }
 
     // Default to processing (fallback for unknown conversation types)
@@ -238,6 +239,17 @@ export class XMTPManager {
     }
 
     return isReplyToBot
+  }
+
+  private async isBotAction(message: DecodedMessage): Promise<boolean> {
+    if (!message.contentType?.sameAs(ContentTypeIntent)) {
+      return false
+    }
+
+    const intentContent = IntentContentSchema.parse(message.content)
+    const actionId = intentContent.id
+    const isBotAction = await this.runtime.getCache(this.actionCacheKey(actionId))
+    return !isNull(isBotAction)
   }
 
   /**
@@ -363,6 +375,10 @@ export class XMTPManager {
   ): Promise<Memory> {
     const entityId = this.runtime.agentId
     const roomId = createUniqueUuid(this.runtime, conversation.id)
+
+    if (content.xmtpActions) {
+      await this.runtime.setCache(this.actionCacheKey(content.xmtpActions.id), 'true')
+    }
 
     return {
       id: createUniqueUuid(this.runtime, messageId),
@@ -497,5 +513,9 @@ export class XMTPManager {
 
   async stop(): Promise<void> {
     ayaLogger.warn('XMTP client does not support stopping yet')
+  }
+
+  private actionCacheKey(actionId: string): string {
+    return `xmtp_${actionId}`
   }
 }

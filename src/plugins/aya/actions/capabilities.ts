@@ -37,7 +37,7 @@ export const capabilitiesAction: Action = {
     runtime: IAgentRuntime,
     message: Memory,
     state: State | undefined,
-    options?: {
+    _options?: {
       [key: string]: unknown
     },
     callback?: HandlerCallback
@@ -46,8 +46,29 @@ export const capabilitiesAction: Action = {
     const actionNames = runtime.actions.map((action) => action.name)
     ayaLogger.info('[capabilitiesAction] Available actions:', actionNames)
 
-    // Collect all available actions
-    const actionsData = runtime.actions.filter((action) => !IGNORE_ACTIONS.has(action.name))
+    // Collect all available actions by calling validate on each action
+    const actionsData: Action[] = []
+    for (const action of runtime.actions) {
+      if (IGNORE_ACTIONS.has(action.name)) {
+        continue
+      }
+
+      try {
+        const newState: State = {
+          values: state?.values || {},
+          data: state?.data || {},
+          text: state?.text || '',
+          ACTION_CALLER: 'ayaos_capabilities'
+        }
+        const isValid = await action.validate(runtime, message, newState)
+        if (isValid) {
+          actionsData.push(action)
+        }
+      } catch (error) {
+        ayaLogger.error(`[capabilitiesAction] Error validating action ${action.name}:`, error)
+        // Skip actions that fail validation
+      }
+    }
 
     // Create description list for summarization
     const actionDescriptions = actionsData
