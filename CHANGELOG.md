@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.2.5
+
+### Patch Changes
+
+- 406ee5d: minor xmtp fix
+
 ## 0.2.4
 
 ### Patch Changes
