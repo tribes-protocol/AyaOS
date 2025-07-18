@@ -199,8 +199,13 @@ export class XMTPManager {
     if (this.isConversationGroup(conversation)) {
       const isBotMentioned = this.isBotMentioned(message)
       const isReplyToBot = this.isReplyToBot(message)
+
+      if (isBotMentioned || isReplyToBot) {
+        return true
+      }
+
       const isBotAction = await this.isBotAction(message)
-      return isBotMentioned || isReplyToBot || isBotAction
+      return isBotAction
     }
 
     // Default to processing (fallback for unknown conversation types)
@@ -288,8 +293,8 @@ export class XMTPManager {
       return true
     }
 
-    const xmptEnsName = this.runtime.getSetting('XMTP_ENS_NAME')
-    if (xmptEnsName && text.includes(xmptEnsName)) {
+    const xmptEnsName = z.string().parse(this.runtime.getSetting('XMTP_ENS_NAME'))
+    if (xmptEnsName && text.includes(xmptEnsName.toLowerCase())) {
       ayaLogger.info(`Bot mentioned with ENS name: ${xmptEnsName}`)
       return true
     }
