@@ -392,7 +392,8 @@ export class XMTPManager {
         text: this.decodeXMTPContentToText(content),
         inReplyTo,
         source: XMTP_SOURCE,
-        channelType: ChannelType.THREAD
+        channelType: ChannelType.THREAD,
+        messageId
       },
       entityId,
       roomId,
