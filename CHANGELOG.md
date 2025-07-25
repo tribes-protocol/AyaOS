@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.2.6
+
+### Patch Changes
+
+- 961fb2d: return message id in content
+
 ## 0.2.5
 
 ### Patch Changes
