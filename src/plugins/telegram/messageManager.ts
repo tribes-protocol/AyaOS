@@ -456,7 +456,8 @@ export class MessageManager {
                 ...content,
                 text,
                 inReplyTo: messageId,
-                channelType
+                channelType,
+                messageId: sentMessage.message_id
               },
               createdAt: sentMessage.date * 1000
             }
