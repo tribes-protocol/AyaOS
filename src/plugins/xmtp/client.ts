@@ -13,12 +13,12 @@ import { XMTP_SOURCE } from '@/plugins/xmtp/constants'
 import { XmtpContent } from '@/plugins/xmtp/types'
 import {
   ChannelType,
-  createUniqueUuid,
   EventType,
   IAgentRuntime,
   Memory,
   MessagePayload,
-  UUID
+  UUID,
+  createUniqueUuid
 } from '@elizaos/core'
 import type { GroupUpdated } from '@xmtp/content-type-group-updated'
 import { ContentTypeReaction, Reaction, ReactionCodec } from '@xmtp/content-type-reaction'
@@ -103,13 +103,8 @@ export class XMTPManager {
 
     const xmtpClient = this.client
 
-    const onMessage = async (err: Error | null, message?: DecodedMessage): Promise<void> => {
-      ayaLogger.log('New message received', { err, message })
-
-      if (err) {
-        ayaLogger.error('Error processing message', { err })
-        return
-      }
+    const onMessage = async (message: DecodedMessage): Promise<void> => {
+      ayaLogger.log('New message received', { message })
 
       if (isNull(message?.content)) {
         return
@@ -148,8 +143,8 @@ export class XMTPManager {
 
     let timeout: NodeJS.Timeout | null = null
 
-    const onFail = (): void => {
-      ayaLogger.error('Stream failed')
+    const onFail = (error: Error): void => {
+      ayaLogger.error('Stream failed', { error })
       if (timeout) {
         clearTimeout(timeout)
       }
@@ -164,15 +159,15 @@ export class XMTPManager {
         await xmtpClient.conversations.sync()
 
         // start stream
-        const _stream = await xmtpClient.conversations.streamAllMessages(
-          onMessage,
-          undefined,
-          undefined,
-          onFail
-        )
+        const _stream = await xmtpClient.conversations.streamAllMessages({
+          onValue: onMessage,
+
+          onError: onFail
+        })
       } catch (error) {
         ayaLogger.error('Error syncing conversations', { error })
-        onFail()
+        const err: Error = error instanceof Error ? error : new Error(`${error}`)
+        onFail(err)
       }
     }
 
