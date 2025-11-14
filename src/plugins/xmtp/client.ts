@@ -413,7 +413,7 @@ export class XMTPManager {
       } else if (message.contentType?.sameAs(ContentTypeIntent)) {
         const intentContent = IntentContentSchema.safeParse(message.content)
         if (intentContent.success && intentContent.data) {
-          text = `User selected action: ${intentContent.data.metadata?.actionLabel}`
+          text = `User selected action: ${intentContent.data.actionId}`
         } else {
           throw new Error('Failed to parse actions content')
         }
