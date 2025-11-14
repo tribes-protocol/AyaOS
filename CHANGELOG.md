@@ -1,5 +1,11 @@
 # @tribesxyz/ayaos
 
+## 0.2.8
+
+### Patch Changes
+
+- 1af2c3b: fix broken xmtp action id
+
 ## 0.2.7
 
 ### Patch Changes
